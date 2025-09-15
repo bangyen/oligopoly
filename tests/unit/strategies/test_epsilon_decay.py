@@ -13,7 +13,7 @@ from src.sim.games.cournot import CournotResult
 from src.sim.strategies.strategies import QLearning
 
 
-def test_epsilon_decay_basic():
+def test_epsilon_decay_basic() -> None:
     """Test basic epsilon decay functionality."""
     q_learning = QLearning(
         min_action=0.0,
@@ -29,7 +29,7 @@ def test_epsilon_decay_basic():
     assert q_learning.get_current_epsilon() == 1.0
 
     bounds = (0.0, 10.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Track epsilon over multiple rounds
     epsilon_values: List[float] = []
@@ -82,7 +82,7 @@ def test_epsilon_decay_basic():
     ), f"Final epsilon ({final_epsilon}) should be >= epsilon_min ({q_learning.epsilon_min})"
 
 
-def test_epsilon_decay_rate():
+def test_epsilon_decay_rate() -> None:
     """Test that epsilon decays at the correct rate."""
     decay_rate = 0.8
     q_learning = QLearning(
@@ -96,7 +96,7 @@ def test_epsilon_decay_rate():
     )
 
     bounds = (0.0, 5.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Track epsilon over rounds
     epsilon_values: List[float] = []
@@ -135,7 +135,7 @@ def test_epsilon_decay_rate():
             ), f"Round {i}: expected {expected_epsilon}, got {actual_epsilon}"
 
 
-def test_epsilon_min_bound():
+def test_epsilon_min_bound() -> None:
     """Test that epsilon never goes below epsilon_min."""
     q_learning = QLearning(
         min_action=0.0,
@@ -148,7 +148,7 @@ def test_epsilon_min_bound():
     )
 
     bounds = (0.0, 5.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Run many rounds to ensure epsilon reaches minimum
     epsilon_values: List[float] = []
@@ -199,7 +199,7 @@ def test_epsilon_min_bound():
         ), f"Epsilon should stay at minimum {q_learning.epsilon_min}, got {eps}"
 
 
-def test_epsilon_decay_different_rates():
+def test_epsilon_decay_different_rates() -> None:
     """Test epsilon decay with different decay rates."""
     decay_rates = [0.5, 0.8, 0.95, 0.99]
 
@@ -215,7 +215,7 @@ def test_epsilon_decay_different_rates():
         )
 
         bounds = (0.0, 5.0)
-        market_params = {}
+        market_params: dict[str, float] = {}
 
         # Check initial epsilon before any actions
         initial_epsilon = q_learning.get_current_epsilon()
@@ -257,7 +257,7 @@ def test_epsilon_decay_different_rates():
         ), f"Decay rate {decay_rate}: final epsilon {final_epsilon} should be >= epsilon_min {q_learning.epsilon_min}"
 
 
-def test_epsilon_no_decay_when_zero():
+def test_epsilon_no_decay_when_zero() -> None:
     """Test that epsilon doesn't decay when already at minimum."""
     q_learning = QLearning(
         min_action=0.0,
@@ -270,7 +270,7 @@ def test_epsilon_no_decay_when_zero():
     )
 
     bounds = (0.0, 5.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # First round
     action1 = q_learning.next_action(

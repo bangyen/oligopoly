@@ -13,7 +13,7 @@ from src.sim.games.cournot import CournotResult
 from src.sim.strategies.strategies import QLearning
 
 
-def test_q_init_random_actions():
+def test_q_init_random_actions() -> None:
     """Test that ε=1 produces random actions from grid."""
     # Create Q-learning strategy with epsilon=1 (full exploration)
     q_learning = QLearning(
@@ -37,7 +37,7 @@ def test_q_init_random_actions():
     # Test multiple actions to verify randomness
     actions_chosen: List[float] = []
     bounds = (0.0, 10.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Generate 100 actions with empty history (first round behavior)
     for _ in range(100):
@@ -75,7 +75,7 @@ def test_q_init_random_actions():
     ), f"Expected epsilon >= epsilon_min ({q_learning.epsilon_min}), got {current_epsilon}"
 
 
-def test_q_init_with_history():
+def test_q_init_with_history() -> None:
     """Test that ε=1 produces random actions even with history."""
     # Create Q-learning strategy with epsilon=1
     q_learning = QLearning(
@@ -98,7 +98,7 @@ def test_q_init_with_history():
     # Generate actions with history
     actions_chosen: List[float] = []
     bounds = (0.0, 5.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     for _ in range(50):
         action = q_learning.next_action(
@@ -124,7 +124,7 @@ def test_q_init_with_history():
     ), f"Expected multiple different actions, got only {unique_actions} unique actions"
 
 
-def test_q_init_epsilon_verification():
+def test_q_init_epsilon_verification() -> None:
     """Test that epsilon starts at 1.0 and Q-table is empty initially."""
     q_learning = QLearning(
         min_action=0.0,

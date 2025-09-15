@@ -12,7 +12,7 @@ from src.sim.games.cournot import CournotResult
 from src.sim.strategies.strategies import QLearning
 
 
-def test_repro_seed_identical_sequences():
+def test_repro_seed_identical_sequences() -> None:
     """Test that fixed seed produces identical action sequences."""
     seed = 42
 
@@ -38,7 +38,7 @@ def test_repro_seed_identical_sequences():
     )
 
     bounds = (0.0, 10.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Generate sequences from both strategies
     sequence1: List[float] = []
@@ -106,7 +106,7 @@ def test_repro_seed_identical_sequences():
     ), f"Epsilon values differ: {q_learning1.get_current_epsilon()} vs {q_learning2.get_current_epsilon()}"
 
 
-def test_repro_seed_different_seeds():
+def test_repro_seed_different_seeds() -> None:
     """Test that different seeds produce different sequences."""
     # Create strategies with different seeds
     q_learning_seed1 = QLearning(
@@ -130,7 +130,7 @@ def test_repro_seed_different_seeds():
     )
 
     bounds = (0.0, 10.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Generate sequences from both strategies
     sequence1: List[float] = []
@@ -202,7 +202,7 @@ def test_repro_seed_different_seeds():
             assert sequences_differ, "Sequences should differ with different seeds"
 
 
-def test_repro_seed_multiple_runs():
+def test_repro_seed_multiple_runs() -> None:
     """Test reproducibility across multiple independent runs."""
     seed = 789
 
@@ -221,7 +221,7 @@ def test_repro_seed_multiple_runs():
         )
 
         bounds = (0.0, 5.0)
-        market_params = {}
+        market_params: dict[str, float] = {}
 
         sequence: List[float] = []
 
@@ -260,7 +260,7 @@ def test_repro_seed_multiple_runs():
         ), f"Run {i} differs from reference sequence"
 
 
-def test_repro_seed_q_table_consistency():
+def test_repro_seed_q_table_consistency() -> None:
     """Test that Q-tables are identical with same seed."""
     seed = 555
 
@@ -286,7 +286,7 @@ def test_repro_seed_q_table_consistency():
     )
 
     bounds = (0.0, 10.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Run both strategies through same sequence
     for step in range(20):
@@ -325,7 +325,7 @@ def test_repro_seed_q_table_consistency():
     assert q_learning1.get_current_epsilon() == q_learning2.get_current_epsilon()
 
 
-def test_repro_seed_no_seed_vs_seed():
+def test_repro_seed_no_seed_vs_seed() -> None:
     """Test that no seed produces different results than fixed seed."""
     # Strategy with no seed (None)
     q_learning_no_seed = QLearning(
@@ -350,7 +350,7 @@ def test_repro_seed_no_seed_vs_seed():
     )
 
     bounds = (0.0, 10.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Generate sequences
     sequence_no_seed: List[float] = []

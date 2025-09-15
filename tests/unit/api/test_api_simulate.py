@@ -4,6 +4,9 @@ This module tests the POST /simulate and GET /runs/{id} endpoints
 to ensure proper functionality, validation, and persistence.
 """
 
+import atexit
+import os
+import tempfile
 from typing import Generator
 
 import pytest
@@ -15,8 +18,12 @@ from sqlalchemy.pool import StaticPool
 from main import app, get_db
 from sim.models.models import Base
 
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./data/test.db"
+# Create temporary database file
+temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+temp_file.close()
+
+# Test database setup - use temporary database
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{temp_file.name}"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
@@ -41,6 +48,16 @@ app.dependency_overrides[get_db] = override_get_db
 
 # Create test client
 client = TestClient(app)
+
+
+# Cleanup function to be called at module teardown
+def cleanup_temp_db():
+    """Clean up temporary database file."""
+    if os.path.exists(temp_file.name):
+        os.unlink(temp_file.name)
+
+
+atexit.register(cleanup_temp_db)
 
 
 @pytest.fixture(scope="function")
