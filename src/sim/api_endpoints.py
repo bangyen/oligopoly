@@ -4,7 +4,7 @@ This module provides additional API endpoints for detailed analysis,
 metrics, and replay functionality.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -39,7 +39,7 @@ class RunDetail(BaseModel):
     rounds: int
     created_at: str
     updated_at: str
-    results: Dict[str, Any] = None
+    results: Optional[Dict[str, Any]] = None
 
 
 @router.get("/runs", response_model=List[RunSummary])
@@ -105,7 +105,9 @@ async def get_run_detail(run_id: str, db: Session = Depends(get_db)) -> RunDetai
 
 
 @router.get("/runs/{run_id}/metrics")
-async def get_run_metrics(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_run_metrics(
+    run_id: str, db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
     """Get calculated metrics for a simulation run."""
     with log_execution_time(logger, f"get run metrics {run_id}"):
         try:
@@ -298,7 +300,7 @@ async def generate_heatmap(
     firm_j: int,
     costs: List[float],
     grid_size: int = 20,
-    params: Dict[str, Any] = None,
+    params: Optional[Dict[str, Any]] = None,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Generate profit surface heatmap for two firms."""
