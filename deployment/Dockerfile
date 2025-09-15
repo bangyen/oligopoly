@@ -8,12 +8,12 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
+# Copy project files
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
-
-# Copy source code
 COPY src/ ./src/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e .
 
 # Set Python path
 ENV PYTHONPATH=/app/src
