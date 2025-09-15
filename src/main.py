@@ -102,6 +102,45 @@ class SimulationResponse(BaseModel):
     run_id: str = Field(..., description="Unique identifier for the simulation run")
 
 
+class ComparisonRequest(BaseModel):
+    """Request model for comparison endpoint."""
+
+    left_config: SimulationRequest = Field(
+        ..., description="Left scenario configuration"
+    )
+    right_config: SimulationRequest = Field(
+        ..., description="Right scenario configuration"
+    )
+
+
+class ComparisonResponse(BaseModel):
+    """Response model for comparison endpoint."""
+
+    left_run_id: str = Field(
+        ..., description="Unique identifier for the left scenario run"
+    )
+    right_run_id: str = Field(
+        ..., description="Unique identifier for the right scenario run"
+    )
+
+
+class ComparisonResults(BaseModel):
+    """Response model for comparison results endpoint."""
+
+    left_run_id: str = Field(..., description="Left scenario run ID")
+    right_run_id: str = Field(..., description="Right scenario run ID")
+    rounds: int = Field(..., description="Number of rounds (should be same for both)")
+    left_metrics: Dict[str, List[float]] = Field(
+        ..., description="Left scenario metrics arrays"
+    )
+    right_metrics: Dict[str, List[float]] = Field(
+        ..., description="Right scenario metrics arrays"
+    )
+    deltas: Dict[str, List[float]] = Field(
+        ..., description="Delta arrays (right - left)"
+    )
+
+
 # Database dependency
 def get_db() -> Generator[Session, None, None]:
     """Get database session dependency."""
@@ -284,3 +323,303 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@app.post("/compare", response_model=ComparisonResponse)
+async def compare_scenarios(
+    request: ComparisonRequest, db: Session = Depends(get_db)
+) -> ComparisonResponse:
+    """Run two simulation scenarios for comparison.
+
+    Executes both left and right scenario simulations and returns their run IDs.
+    Both simulations must have the same number of rounds for valid comparison.
+
+    Args:
+        request: Comparison configuration with left and right scenarios
+        db: Database session for persistence
+
+    Returns:
+        ComparisonResponse containing both run IDs
+
+    Raises:
+        HTTPException: If simulations fail or configurations are invalid
+    """
+    try:
+        # Validate that both scenarios have the same number of rounds
+        if request.left_config.rounds != request.right_config.rounds:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Both scenarios must have the same number of rounds. "
+                f"Left: {request.left_config.rounds}, Right: {request.right_config.rounds}",
+            )
+
+        # Run left scenario
+        left_config: Dict[str, Any] = {
+            "params": request.left_config.params,
+            "firms": [{"cost": firm.cost} for firm in request.left_config.firms],
+            "seed": request.left_config.seed,
+            "events": (
+                [
+                    PolicyEvent(
+                        round_idx=event.round_idx,
+                        policy_type=event.policy_type,
+                        value=event.value,
+                    )
+                    for event in request.left_config.events
+                ]
+                if request.left_config.events
+                else []
+            ),
+        }
+
+        # Add segments configuration if provided for left scenario
+        if request.left_config.segments:
+            total_weight = sum(
+                segment.weight for segment in request.left_config.segments
+            )
+            if not math.isclose(total_weight, 1.0, abs_tol=1e-6):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Left scenario segment weights must sum to 1.0, got {total_weight:.6f}",
+                )
+            left_config["params"]["segments"] = [
+                {"alpha": segment.alpha, "beta": segment.beta, "weight": segment.weight}
+                for segment in request.left_config.segments
+            ]
+
+        # Run right scenario
+        right_config: Dict[str, Any] = {
+            "params": request.right_config.params,
+            "firms": [{"cost": firm.cost} for firm in request.right_config.firms],
+            "seed": request.right_config.seed,
+            "events": (
+                [
+                    PolicyEvent(
+                        round_idx=event.round_idx,
+                        policy_type=event.policy_type,
+                        value=event.value,
+                    )
+                    for event in request.right_config.events
+                ]
+                if request.right_config.events
+                else []
+            ),
+        }
+
+        # Add segments configuration if provided for right scenario
+        if request.right_config.segments:
+            total_weight = sum(
+                segment.weight for segment in request.right_config.segments
+            )
+            if not math.isclose(total_weight, 1.0, abs_tol=1e-6):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Right scenario segment weights must sum to 1.0, got {total_weight:.6f}",
+                )
+            right_config["params"]["segments"] = [
+                {"alpha": segment.alpha, "beta": segment.beta, "weight": segment.weight}
+                for segment in request.right_config.segments
+            ]
+
+        # Run both simulations
+        left_run_id = run_game(
+            model=request.left_config.model,
+            rounds=request.left_config.rounds,
+            config=left_config,
+            db=db,
+        )
+
+        right_run_id = run_game(
+            model=request.right_config.model,
+            rounds=request.right_config.rounds,
+            config=right_config,
+            db=db,
+        )
+
+        return ComparisonResponse(left_run_id=left_run_id, right_run_id=right_run_id)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@app.get("/compare/{left_run_id}/{right_run_id}", response_model=ComparisonResults)
+async def get_comparison_results(
+    left_run_id: str, right_run_id: str, db: Session = Depends(get_db)
+) -> ComparisonResults:
+    """Retrieve aligned comparison results for two simulation runs.
+
+    Returns time-series metrics for both runs aligned by round, along with
+    calculated deltas (right - left) for each metric.
+
+    Args:
+        left_run_id: Unique identifier for the left scenario run
+        right_run_id: Unique identifier for the right scenario run
+        db: Database session
+
+    Returns:
+        ComparisonResults containing aligned metrics arrays and deltas
+
+    Raises:
+        HTTPException: If either run_id is not found or data retrieval fails
+    """
+    try:
+        # Get results for both runs
+        left_results = get_run_results(left_run_id, db)
+        right_results = get_run_results(right_run_id, db)
+
+        left_results_dict = dict(left_results)
+        right_results_dict = dict(right_results)
+
+        # Validate that both runs have the same number of rounds
+        left_rounds = left_results_dict.get("rounds", 0)
+        right_rounds = right_results_dict.get("rounds", 0)
+        if left_rounds != right_rounds:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Runs must have the same number of rounds. "
+                f"Left: {left_rounds}, Right: {right_rounds}",
+            )
+
+        # Calculate metrics for both runs
+        left_metrics = _calculate_comparison_metrics(left_results_dict)
+        right_metrics = _calculate_comparison_metrics(right_results_dict)
+
+        # Calculate deltas (right - left)
+        deltas = {}
+        for metric_name in left_metrics:
+            if metric_name in right_metrics:
+                left_values = left_metrics[metric_name]
+                right_values = right_metrics[metric_name]
+                # Ensure both arrays have the same length
+                min_length = min(len(left_values), len(right_values))
+                deltas[metric_name] = [
+                    right_values[i] - left_values[i] for i in range(min_length)
+                ]
+
+        return ComparisonResults(
+            left_run_id=left_run_id,
+            right_run_id=right_run_id,
+            rounds=left_rounds,
+            left_metrics=left_metrics,
+            right_metrics=right_metrics,
+            deltas=deltas,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+def _calculate_comparison_metrics(run_data: Dict[str, Any]) -> Dict[str, List[float]]:
+    """Calculate metrics arrays for comparison from run data.
+
+    Args:
+        run_data: Dictionary containing run results and metadata
+
+    Returns:
+        Dictionary with metric names as keys and arrays of values as values
+    """
+    # Check if this is the new format (with "results" key) or old format (with "rounds_data" key)
+    if "results" in run_data:
+        # New format from strategy/collusion runners
+        rounds_data = run_data.get("results", {})
+        model = run_data.get("model", "cournot")
+
+        metrics: Dict[str, List[float]] = {
+            "market_price": [],
+            "total_quantity": [],
+            "total_profit": [],
+            "hhi": [],
+            "consumer_surplus": [],
+        }
+
+        for round_idx in sorted(rounds_data.keys(), key=int):
+            round_data = rounds_data[round_idx]
+            firms_data = list(round_data.values())
+            if not firms_data:
+                continue
+
+            # Get quantities, prices, and profits
+            quantities = [firm["quantity"] for firm in firms_data]
+            prices = [firm["price"] for firm in firms_data]
+            profits = [firm["profit"] for firm in firms_data]
+
+            # Calculate market metrics
+            if model == "cournot":
+                market_price = prices[0] if prices else 0.0
+                demand_a = 100.0  # Default demand parameter
+                hhi, cs = calculate_round_metrics_cournot(
+                    quantities, market_price, demand_a
+                )
+            else:  # bertrand
+                total_demand = sum(quantities)
+                demand_alpha = 100.0  # Default demand parameter
+                # For Bertrand, we need to reconstruct the prices list from the result
+                # Since we only store the market price, we'll use that for all firms
+                market_price = min(prices) if prices else 0.0
+                firm_prices = [market_price] * len(quantities)
+                hhi, cs = calculate_round_metrics_bertrand(
+                    firm_prices, quantities, total_demand, demand_alpha
+                )
+
+            metrics["market_price"].append(
+                market_price if model == "cournot" else min(prices) if prices else 0.0
+            )
+            metrics["total_quantity"].append(sum(quantities))
+            metrics["total_profit"].append(sum(profits))
+            metrics["hhi"].append(hhi)
+            metrics["consumer_surplus"].append(cs)
+
+        return metrics
+    else:
+        # Old format from basic runner
+        rounds_data = run_data.get("rounds_data", [])
+        model = run_data.get("model", "cournot")
+
+        metrics = {
+            "market_price": [],
+            "total_quantity": [],
+            "total_profit": [],
+            "hhi": [],
+            "consumer_surplus": [],
+        }
+
+        for round_data in rounds_data:
+            round_idx = round_data.get("round", 0)
+            price = round_data.get("price", 0.0)
+            total_qty = round_data.get("total_qty", 0.0)
+            total_profit = round_data.get("total_profit", 0.0)
+
+            # For basic runner, we need to estimate quantities per firm
+            # This is a simplified approach - in practice, you'd want to store more detailed data
+            num_firms = len(run_data.get("firms_data", []))
+            if num_firms > 0:
+                avg_qty_per_firm = total_qty / num_firms
+                quantities = [avg_qty_per_firm] * num_firms
+            else:
+                quantities = [total_qty]
+
+            # Calculate market metrics
+            if model == "cournot":
+                demand_a = 100.0  # Default demand parameter
+                hhi, cs = calculate_round_metrics_cournot(quantities, price, demand_a)
+            else:  # bertrand
+                demand_alpha = 100.0  # Default demand parameter
+                # For Bertrand, we need to create a prices list with the same length as quantities
+                firm_prices = [price] * len(quantities)
+                hhi, cs = calculate_round_metrics_bertrand(
+                    firm_prices, quantities, total_qty, demand_alpha
+                )
+
+            metrics["market_price"].append(price)
+            metrics["total_quantity"].append(total_qty)
+            metrics["total_profit"].append(total_profit)
+            metrics["hhi"].append(hhi)
+            metrics["consumer_surplus"].append(cs)
+
+        return metrics

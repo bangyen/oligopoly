@@ -4,7 +4,7 @@ This module provides a minimal web interface for exploring simulation results,
 including price, quantity, profit, HHI, and consumer surplus over time.
 """
 
-from typing import Any, Dict, cast
+from typing import Any, Dict, Optional, cast
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -328,6 +328,18 @@ def main() -> None:
     st.title("📊 Oligopoly Simulation Dashboard")
     st.markdown("Visualize market dynamics, concentration, and consumer welfare")
 
+    # Create tabs
+    tab1, tab2 = st.tabs(["📈 Single Run", "⚖️ Comparison"])
+
+    with tab1:
+        single_run_tab()
+
+    with tab2:
+        comparison_tab()
+
+
+def single_run_tab() -> None:
+    """Single run visualization tab."""
     # Sidebar for run selection
     st.sidebar.header("Run Selection")
 
@@ -450,6 +462,407 @@ def main() -> None:
         CS = 0.5 * (100 - 70) * 30 = 450
         """
         )
+
+
+def comparison_tab() -> None:
+    """Comparison visualization tab."""
+    st.header("⚖️ Scenario Comparison")
+    st.markdown("Compare two simulation scenarios side by side")
+
+    # API URL configuration
+    api_url = st.sidebar.text_input(
+        "API URL", value="http://localhost:8000", help="Base URL for the oligopoly API"
+    )
+
+    # Configuration sections
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("🔵 Left Scenario")
+        left_config = create_scenario_config_form("left")
+
+    with col2:
+        st.subheader("🔴 Right Scenario")
+        right_config = create_scenario_config_form("right")
+
+    # Run comparison button
+    if st.button("🚀 Run Comparison", type="primary"):
+        if left_config and right_config:
+            try:
+                with st.spinner("Running comparison..."):
+                    comparison_data = run_comparison(left_config, right_config, api_url)
+
+                if comparison_data:
+                    st.success("Comparison completed successfully!")
+
+                    # Display comparison results
+                    display_comparison_results(comparison_data)
+
+            except Exception as e:
+                st.error(f"Error running comparison: {e}")
+        else:
+            st.error("Please configure both scenarios before running comparison")
+
+
+def create_scenario_config_form(side: str) -> Dict[str, Any]:
+    """Create a configuration form for a scenario.
+
+    Args:
+        side: "left" or "right" to distinguish the scenario
+
+    Returns:
+        Dictionary containing the scenario configuration
+    """
+    config: Dict[str, Any] = {}
+
+    # Model selection
+    model = st.selectbox(
+        f"Model ({side})", ["cournot", "bertrand"], key=f"model_{side}"
+    )
+    config["model"] = model
+
+    # Rounds
+    rounds = st.number_input(
+        f"Rounds ({side})", min_value=1, max_value=1000, value=10, key=f"rounds_{side}"
+    )
+    config["rounds"] = rounds
+
+    # Parameters
+    st.markdown(f"**Parameters ({side})**")
+    if model == "cournot":
+        a = st.number_input(
+            f"Demand intercept (a) ({side})",
+            min_value=1.0,
+            value=100.0,
+            key=f"a_{side}",
+        )
+        b = st.number_input(
+            f"Demand slope (b) ({side})", min_value=0.1, value=1.0, key=f"b_{side}"
+        )
+        config["params"] = {"a": a, "b": b}
+    else:  # bertrand
+        alpha = st.number_input(
+            f"Demand alpha ({side})", min_value=1.0, value=100.0, key=f"alpha_{side}"
+        )
+        beta = st.number_input(
+            f"Demand beta ({side})", min_value=0.1, value=1.0, key=f"beta_{side}"
+        )
+        config["params"] = {"alpha": alpha, "beta": beta}
+
+    # Firms
+    st.markdown(f"**Firms ({side})**")
+    num_firms = st.number_input(
+        f"Number of firms ({side})",
+        min_value=1,
+        max_value=10,
+        value=2,
+        key=f"num_firms_{side}",
+    )
+
+    firms = []
+    for i in range(num_firms):
+        cost = st.number_input(
+            f"Firm {i+1} cost ({side})",
+            min_value=0.1,
+            value=10.0 + i * 5.0,
+            key=f"firm_{i}_{side}",
+        )
+        firms.append({"cost": cost})
+
+    config["firms"] = firms
+
+    # Seed
+    seed = st.number_input(
+        f"Random seed ({side})", min_value=0, value=42, key=f"seed_{side}"
+    )
+    config["seed"] = seed
+
+    return config
+
+
+def run_comparison(
+    left_config: Dict[str, Any], right_config: Dict[str, Any], api_url: str
+) -> Optional[Dict[str, Any]]:
+    """Run comparison between two scenarios.
+
+    Args:
+        left_config: Left scenario configuration
+        right_config: Right scenario configuration
+        api_url: API base URL
+
+    Returns:
+        Comparison results or None if failed
+    """
+    try:
+        # Prepare comparison request
+        comparison_request = {
+            "left_config": left_config,
+            "right_config": right_config,
+        }
+
+        # Run comparison
+        response = requests.post(f"{api_url}/compare", json=comparison_request)
+        response.raise_for_status()
+
+        comparison_response = response.json()
+        left_run_id = comparison_response["left_run_id"]
+        right_run_id = comparison_response["right_run_id"]
+
+        # Get comparison results
+        results_response = requests.get(
+            f"{api_url}/compare/{left_run_id}/{right_run_id}"
+        )
+        results_response.raise_for_status()
+
+        return cast(Dict[str, Any], results_response.json())
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"API request failed: {e}")
+        return None
+
+
+def display_comparison_results(comparison_data: Dict[str, Any]) -> None:
+    """Display comparison results with charts and deltas table.
+
+    Args:
+        comparison_data: Comparison results from API
+    """
+    # Display run IDs
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Left Run ID", comparison_data["left_run_id"])
+    with col2:
+        st.metric("Right Run ID", comparison_data["right_run_id"])
+
+    # Create comparison charts
+    st.subheader("📊 Comparison Charts")
+    create_comparison_charts(comparison_data)
+
+    # Display deltas table
+    st.subheader("📋 Deltas Table (Right - Left)")
+    create_deltas_table(comparison_data)
+
+
+def create_comparison_charts(comparison_data: Dict[str, Any]) -> None:
+    """Create comparison charts showing both scenarios.
+
+    Args:
+        comparison_data: Comparison results from API
+    """
+    left_metrics = comparison_data["left_metrics"]
+    right_metrics = comparison_data["right_metrics"]
+    rounds = comparison_data["rounds"]
+
+    # Create subplots
+    fig = make_subplots(
+        rows=3,
+        cols=2,
+        subplot_titles=(
+            "Market Price",
+            "Total Quantity",
+            "Total Profit",
+            "HHI",
+            "Consumer Surplus",
+            "Deltas Overview",
+        ),
+        specs=[
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+            [{"secondary_y": False}, {"secondary_y": False}],
+        ],
+    )
+
+    rounds_list = list(range(rounds))
+
+    # Price chart
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=left_metrics["market_price"],
+            mode="lines+markers",
+            name="Left Price",
+            line=dict(color="blue"),
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=right_metrics["market_price"],
+            mode="lines+markers",
+            name="Right Price",
+            line=dict(color="red"),
+        ),
+        row=1,
+        col=1,
+    )
+
+    # Quantity chart
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=left_metrics["total_quantity"],
+            mode="lines+markers",
+            name="Left Quantity",
+            line=dict(color="blue"),
+            showlegend=False,
+        ),
+        row=1,
+        col=2,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=right_metrics["total_quantity"],
+            mode="lines+markers",
+            name="Right Quantity",
+            line=dict(color="red"),
+            showlegend=False,
+        ),
+        row=1,
+        col=2,
+    )
+
+    # Profit chart
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=left_metrics["total_profit"],
+            mode="lines+markers",
+            name="Left Profit",
+            line=dict(color="blue"),
+            showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=right_metrics["total_profit"],
+            mode="lines+markers",
+            name="Right Profit",
+            line=dict(color="red"),
+            showlegend=False,
+        ),
+        row=2,
+        col=1,
+    )
+
+    # HHI chart
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=left_metrics["hhi"],
+            mode="lines+markers",
+            name="Left HHI",
+            line=dict(color="blue"),
+            showlegend=False,
+        ),
+        row=2,
+        col=2,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=right_metrics["hhi"],
+            mode="lines+markers",
+            name="Right HHI",
+            line=dict(color="red"),
+            showlegend=False,
+        ),
+        row=2,
+        col=2,
+    )
+
+    # Consumer Surplus chart
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=left_metrics["consumer_surplus"],
+            mode="lines+markers",
+            name="Left CS",
+            line=dict(color="blue"),
+            showlegend=False,
+        ),
+        row=3,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=right_metrics["consumer_surplus"],
+            mode="lines+markers",
+            name="Right CS",
+            line=dict(color="red"),
+            showlegend=False,
+        ),
+        row=3,
+        col=1,
+    )
+
+    # Deltas overview chart
+    deltas = comparison_data["deltas"]
+    fig.add_trace(
+        go.Scatter(
+            x=rounds_list,
+            y=deltas["market_price"],
+            mode="lines+markers",
+            name="Price Delta",
+            line=dict(color="green"),
+            showlegend=False,
+        ),
+        row=3,
+        col=2,
+    )
+
+    fig.update_layout(
+        height=900,
+        title_text="Scenario Comparison",
+        showlegend=True,
+    )
+    fig.update_xaxes(title_text="Round")
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
+    """Create a table showing deltas for each metric.
+
+    Args:
+        comparison_data: Comparison results from API
+    """
+    deltas = comparison_data["deltas"]
+    rounds = comparison_data["rounds"]
+
+    # Create DataFrame for deltas
+    delta_data = []
+    for round_idx in range(rounds):
+        row = {"Round": round_idx}
+        for metric_name, values in deltas.items():
+            row[f"{metric_name.replace('_', ' ').title()} Delta"] = values[round_idx]
+        delta_data.append(row)
+
+    delta_df = pd.DataFrame(delta_data)
+    st.dataframe(delta_df, use_container_width=True)
+
+    # Summary statistics
+    st.subheader("📈 Delta Summary Statistics")
+    summary_data = []
+    for metric_name, values in deltas.items():
+        summary_data.append(
+            {
+                "Metric": metric_name.replace("_", " ").title(),
+                "Mean Delta": f"{sum(values) / len(values):.4f}",
+                "Min Delta": f"{min(values):.4f}",
+                "Max Delta": f"{max(values):.4f}",
+                "Std Delta": f"{(sum((x - sum(values)/len(values))**2 for x in values) / len(values))**0.5:.4f}",
+            }
+        )
+
+    summary_df = pd.DataFrame(summary_data)
+    st.dataframe(summary_df, use_container_width=True)
 
 
 if __name__ == "__main__":
