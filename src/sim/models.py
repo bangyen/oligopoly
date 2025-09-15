@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -106,6 +106,9 @@ class Run(Base):  # type: ignore[misc,valid-type]
         "Round", back_populates="run", cascade="all, delete-orphan"
     )
     results = relationship("Result", back_populates="run", cascade="all, delete-orphan")
+    collusion_events = relationship(
+        "CollusionEvent", back_populates="run", cascade="all, delete-orphan"
+    )
 
 
 class Round(Base):  # type: ignore[misc,valid-type]
@@ -154,6 +157,28 @@ class Result(Base):  # type: ignore[misc,valid-type]
     # Relationships
     run = relationship("Run", back_populates="results")
     round = relationship("Round", back_populates="results")
+
+
+class CollusionEvent(Base):  # type: ignore[misc,valid-type]
+    """Collusion and regulatory events tracking.
+
+    Stores events related to cartel formation, defections, and regulatory
+    interventions for analysis and debugging of collusion dynamics.
+    """
+
+    __tablename__ = "collusion_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String(36), ForeignKey("runs.id"), nullable=False)
+    round_idx = Column(Integer, nullable=False)  # Round index (0-based)
+    event_type = Column(String(50), nullable=False)  # Type of event
+    firm_id = Column(Integer, nullable=True)  # Firm involved (if applicable)
+    description = Column(Text, nullable=False)  # Human-readable description
+    event_data = Column(JSON, nullable=True)  # Additional event data
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    run = relationship("Run", back_populates="collusion_events")
 
 
 class RunConfig(Base):  # type: ignore[misc,valid-type]
