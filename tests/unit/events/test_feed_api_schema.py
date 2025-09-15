@@ -4,6 +4,9 @@ This module tests that the event feed API returns the correct
 schema with proper event structure.
 """
 
+import os
+import tempfile
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -17,15 +20,18 @@ from src.sim.models.models import Base, Event, Run
 @pytest.fixture(scope="function")
 def test_db():
     """Create a test database session."""
-    engine = create_engine(
-        "sqlite:///:memory:", connect_args={"check_same_thread": False}
-    )
+    # Use a temporary file instead of in-memory database
+    temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+    temp_db.close()
+
+    engine = create_engine(f"sqlite:///{temp_db.name}")
     Base.metadata.create_all(bind=engine)
     session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = session_local()
     yield session
     session.close()
     Base.metadata.drop_all(bind=engine)
+    os.unlink(temp_db.name)
 
 
 @pytest.fixture(scope="function")
@@ -312,6 +318,11 @@ class TestFeedApiSchema:
 
     def test_nonexistent_run_returns_404(self, test_client, test_db):
         """Test that nonexistent run returns 404."""
-        # This test is skipped due to database session complexity in test setup
-        # The 404 behavior is tested implicitly in other tests
-        pytest.skip("Skipping 404 test due to database session complexity")
+        # Ensure database is properly set up by committing any pending changes
+        test_db.commit()
+
+        # Use a run ID that doesn't exist
+        nonexistent_run_id = 99999
+        response = test_client.get(f"/runs/{nonexistent_run_id}/events")
+
+        assert response.status_code == 404
