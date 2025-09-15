@@ -3,11 +3,14 @@
 This module implements the Bertrand model of oligopoly competition where firms
 simultaneously choose prices to maximize profits. The simulation allocates market
 demand to the lowest-priced firms and calculates individual firm profits.
+Supports both single-segment and multi-segment demand models.
 """
 
 import math
 from dataclasses import dataclass
 from typing import List, Tuple
+
+from ..models.models import SegmentedDemand
 
 
 @dataclass
@@ -98,6 +101,55 @@ def allocate_demand(
     return quantities, total_demand
 
 
+def allocate_segmented_demand(
+    prices: List[float], costs: List[float], segmented_demand: SegmentedDemand
+) -> Tuple[List[float], float]:
+    """Allocate segmented market demand among firms based on Bertrand competition.
+
+    Each segment chooses the firm with the lowest price (ties split equally).
+    Total demand is the weighted sum of segment demands at their respective
+    lowest prices.
+
+    Args:
+        prices: List of prices set by each firm
+        costs: List of marginal costs for each firm
+        segmented_demand: SegmentedDemand object with segment configurations
+
+    Returns:
+        Tuple of (quantities_allocated, total_demand_across_segments)
+    """
+    if not prices:
+        return [], 0.0
+
+    num_firms = len(prices)
+    quantities = [0.0] * num_firms
+    total_demand = 0.0
+
+    # Process each segment independently
+    for segment in segmented_demand.segments:
+        # Find minimum price for this segment
+        min_price = min(prices)
+
+        # Calculate segment demand at minimum price
+        segment_demand = segment.demand(min_price)
+
+        # Find firms with minimum price
+        min_price_firms = [
+            i for i, p in enumerate(prices) if math.isclose(p, min_price, abs_tol=1e-10)
+        ]
+
+        # Allocate segment demand equally among firms with minimum price
+        if min_price_firms:
+            demand_per_firm = segment_demand / len(min_price_firms)
+            for i in min_price_firms:
+                quantities[i] += segment.weight * demand_per_firm
+
+        # Add weighted segment demand to total
+        total_demand += segment.weight * segment_demand
+
+    return quantities, total_demand
+
+
 def bertrand_simulation(
     alpha: float, beta: float, costs: List[float], prices: List[float]
 ) -> BertrandResult:
@@ -135,6 +187,50 @@ def bertrand_simulation(
 
     # Allocate demand based on Bertrand competition
     quantities, total_demand = allocate_demand(prices, costs, alpha, beta)
+
+    # Calculate profits: π_i = (p_i - c_i) * q_i
+    profits = [(price - cost) * q for price, cost, q in zip(prices, costs, quantities)]
+
+    return BertrandResult(
+        total_demand=total_demand,
+        prices=prices.copy(),
+        quantities=quantities,
+        profits=profits,
+    )
+
+
+def bertrand_segmented_simulation(
+    segmented_demand: SegmentedDemand, costs: List[float], prices: List[float]
+) -> BertrandResult:
+    """Run a one-round Bertrand oligopoly simulation with segmented demand.
+
+    Computes market demand allocation based on price competition where firms
+    with the lowest price capture all demand within each segment, with ties
+    splitting equally. Calculates individual firm profits π_i = (p_i - c_i) * q_i.
+
+    Args:
+        segmented_demand: SegmentedDemand object with segment configurations
+        costs: List of marginal costs for each firm
+        prices: List of prices chosen by each firm
+
+    Returns:
+        BertrandResult containing demand, prices, quantities, and profits
+
+    Raises:
+        ValueError: If prices are negative or lists have mismatched lengths
+    """
+    # Validate inputs
+    validate_prices(prices)
+
+    if len(costs) != len(prices):
+        raise ValueError(
+            f"Costs list length ({len(costs)}) must match prices list length ({len(prices)})"
+        )
+
+    # Allocate demand based on segmented Bertrand competition
+    quantities, total_demand = allocate_segmented_demand(
+        prices, costs, segmented_demand
+    )
 
     # Calculate profits: π_i = (p_i - c_i) * q_i
     profits = [(price - cost) * q for price, cost, q in zip(prices, costs, quantities)]

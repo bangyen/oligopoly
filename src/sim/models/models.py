@@ -4,6 +4,7 @@ This module defines the core economic models used in the oligopoly simulation,
 including demand curves, market structures, firm behavior, and simulation configuration.
 """
 
+import math
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -42,6 +43,80 @@ class Demand:
         return f"Demand(a={self.a}, b={self.b})"
 
 
+@dataclass
+class DemandSegment:
+    """Individual consumer segment with linear demand: Q_k(p) = max(0, α_k - β_k*p).
+
+    Represents a segment of consumers with homogeneous preferences.
+    Each segment has its own demand parameters and market weight.
+    """
+
+    alpha: float  # Intercept parameter for segment demand curve
+    beta: float  # Slope parameter for segment demand curve
+    weight: float  # Market share weight (must sum to 1 across all segments)
+
+    def demand(self, price: float) -> float:
+        """Calculate segment demand at given price.
+
+        Args:
+            price: Market price
+
+        Returns:
+            Segment demand quantity
+        """
+        return max(0.0, self.alpha - self.beta * price)
+
+    def __repr__(self) -> str:
+        """Stable string representation for testing and debugging."""
+        return (
+            f"DemandSegment(alpha={self.alpha}, beta={self.beta}, weight={self.weight})"
+        )
+
+
+@dataclass
+class SegmentedDemand:
+    """Segmented market demand with K consumer segments.
+
+    Represents a market with multiple consumer segments, each with
+    different demand parameters and weights. Total demand is the
+    weighted sum of segment demands.
+    """
+
+    segments: list[DemandSegment]  # List of consumer segments
+
+    def __post_init__(self) -> None:
+        """Validate segment weights sum to 1."""
+        total_weight = sum(segment.weight for segment in self.segments)
+        if not math.isclose(total_weight, 1.0, abs_tol=1e-6):
+            raise ValueError(f"Segment weights must sum to 1.0, got {total_weight:.6f}")
+
+    def total_demand(self, price: float) -> float:
+        """Calculate total market demand at given price.
+
+        Args:
+            price: Market price
+
+        Returns:
+            Total weighted demand across all segments
+        """
+        return sum(segment.weight * segment.demand(price) for segment in self.segments)
+
+    def segment_demands(self, price: float) -> list[float]:
+        """Calculate demand for each segment at given price.
+
+        Args:
+            price: Market price
+
+        Returns:
+            List of demand quantities for each segment
+        """
+        return [segment.demand(price) for segment in self.segments]
+
+    def __repr__(self) -> str:
+        """Stable string representation for testing and debugging."""
+        return f"SegmentedDemand(segments={len(self.segments)})"
+
+
 class Market(Base):  # type: ignore[misc,valid-type]
     """Market configuration and parameters for simulation.
 
@@ -57,6 +132,7 @@ class Market(Base):  # type: ignore[misc,valid-type]
     demand_a = Column(Float, nullable=False)
     demand_b = Column(Float, nullable=False)
     num_firms = Column(Integer, nullable=False)
+    segments = Column(JSON, nullable=True)  # Segmented demand configuration
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship to firms in this market
@@ -65,6 +141,29 @@ class Market(Base):  # type: ignore[misc,valid-type]
     def get_demand(self) -> Demand:
         """Get the demand curve for this market."""
         return Demand(a=float(self.demand_a), b=float(self.demand_b))
+
+    def get_segmented_demand(self) -> SegmentedDemand:
+        """Get the segmented demand for this market.
+
+        Returns:
+            SegmentedDemand object with configured segments
+
+        Raises:
+            ValueError: If segments configuration is invalid
+        """
+        if not self.segments:
+            raise ValueError("No segments configured for this market")
+
+        demand_segments = []
+        for segment_config in self.segments:  # type: ignore[attr-defined]
+            segment = DemandSegment(
+                alpha=float(segment_config["alpha"]),
+                beta=float(segment_config["beta"]),
+                weight=float(segment_config["weight"]),
+            )
+            demand_segments.append(segment)
+
+        return SegmentedDemand(segments=demand_segments)
 
 
 class Firm(Base):  # type: ignore[misc,valid-type]
