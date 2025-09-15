@@ -5,15 +5,18 @@ competition models (Cournot, Bertrand), strategies, and advanced features
 like collusion dynamics and regulatory interventions.
 """
 
-from .bertrand import BertrandResult, bertrand_simulation
 from .collusion import CollusionEventType, CollusionManager, RegulatorState
-from .collusion_runner import create_collusion_simulation_config, run_collusion_game
-from .collusion_strategies import (
+from .games.bertrand import BertrandResult, bertrand_simulation
+from .games.cournot import CournotResult, cournot_simulation
+from .runners.collusion_runner import (
+    create_collusion_simulation_config,
+    run_collusion_game,
+)
+from .strategies.collusion_strategies import (
     CartelStrategy,
     CollusiveStrategy,
     OpportunisticStrategy,
 )
-from .cournot import CournotResult, cournot_simulation
 
 __all__ = [
     "bertrand_simulation",

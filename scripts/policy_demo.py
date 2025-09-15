@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.models import Base
-from sim.policy_shocks import PolicyEvent, PolicyType
-from sim.runner import get_run_results, run_game
+from sim.models.models import Base
+from sim.policy.policy_shocks import PolicyEvent, PolicyType
+from sim.runners.runner import get_run_results, run_game
 
 # Database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./demo.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./data/demo.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )

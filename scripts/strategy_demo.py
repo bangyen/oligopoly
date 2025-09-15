@@ -11,9 +11,9 @@ from typing import List
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from sim.bertrand import BertrandResult
-from sim.cournot import CournotResult
-from sim.strategies import RandomWalk, Static, TitForTat, create_strategy
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import RandomWalk, Static, TitForTat, create_strategy
 
 
 def demonstrate_strategies() -> None:

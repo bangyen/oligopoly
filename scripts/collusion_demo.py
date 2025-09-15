@@ -13,9 +13,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from typing import Any
 
-from sim.bertrand import bertrand_simulation
 from sim.collusion import CollusionEventType, CollusionManager, RegulatorState
-from sim.collusion_strategies import (
+from sim.games.bertrand import bertrand_simulation
+from sim.strategies.collusion_strategies import (
     CartelStrategy,
     CollusiveStrategy,
     OpportunisticStrategy,
