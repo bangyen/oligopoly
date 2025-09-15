@@ -5,11 +5,6 @@ This script demonstrates the collusion features including cartel formation,
 defection detection, regulatory intervention, and event logging.
 """
 
-import os
-import sys
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from typing import Any
 

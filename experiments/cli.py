@@ -5,12 +5,8 @@ This script provides a CLI for running experiment batches from JSON configuratio
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

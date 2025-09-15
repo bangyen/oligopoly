@@ -12,11 +12,7 @@ The script shows how ε-greedy agents learn to optimize their actions
 based on immediate rewards (profits) while balancing exploration and exploitation.
 """
 
-import sys
 from typing import List
-
-# Add src to path for imports
-sys.path.insert(0, "src")
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

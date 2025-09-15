@@ -5,11 +5,7 @@ This script demonstrates how to use the three implemented strategies
 (Static, TitForTat, RandomWalk) in both Cournot and Bertrand models.
 """
 
-import os
-import sys
 from typing import List
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from sim.games.bertrand import BertrandResult
 from sim.games.cournot import CournotResult
