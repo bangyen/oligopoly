@@ -241,4 +241,4 @@ Run the demo script to see the experiment runner in action:
 python experiments/demo.py
 ```
 
-This will create a sample configuration, run experiments, and display summary results.
+This will load the sample configuration, run experiments, and display summary results.
