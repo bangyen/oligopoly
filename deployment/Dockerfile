@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 WORKDIR /app
 
 # Install system dependencies
@@ -17,6 +20,12 @@ RUN pip install --no-cache-dir -e .
 
 # Set Python path
 ENV PYTHONPATH=/app/src
+
+# Change ownership to non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose port
 EXPOSE 8000

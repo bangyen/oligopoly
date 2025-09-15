@@ -40,6 +40,7 @@ dependencies = [
     "plotly>=5.17.0",
     "pandas>=2.0.0",
     "requests>=2.31.0",
+    "urllib3>=1.26,<2.0",
 ]
 
 [project.optional-dependencies]
@@ -52,7 +53,6 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
-    "types-requests>=2.31.0",
     "types-python-dateutil>=2.8.0",
 ]
 
@@ -131,9 +131,20 @@ disable_error_code = ["import-untyped"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q"
+addopts = "-ra -q --strict-markers --strict-config"
 testpaths = [
     "tests",
+]
+filterwarnings = [
+    "error::DeprecationWarning",
+    "error::PendingDeprecationWarning",
+    "ignore::UserWarning",
+    "ignore::FutureWarning",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
 ]
 
 [tool.coverage.run]
