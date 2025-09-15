@@ -266,6 +266,31 @@ async def get_statistics(db: Session = Depends(get_db)) -> Dict[str, Any]:
             )
 
 
+@router.get("/health")
+async def health_check(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Get application health status."""
+    with log_execution_time(logger, "health check"):
+        try:
+            from sim.monitoring import get_health_status
+
+            health = get_health_status(db)
+            return {
+                "status": health.status,
+                "timestamp": health.timestamp.isoformat(),
+                "uptime_seconds": health.uptime_seconds,
+                "version": health.version,
+                "checks": health.checks,
+            }
+
+        except Exception as e:
+            logger.error(f"Health check failed: {e}")
+            return {
+                "status": "unhealthy",
+                "error": str(e),
+                "timestamp": "2025-01-01T00:00:00Z",
+            }
+
+
 @router.post("/heatmap")
 async def generate_heatmap(
     model: str,
