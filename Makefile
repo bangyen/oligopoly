@@ -1,4 +1,5 @@
-.PHONY: init fmt lint type test all docker docker-stop docker-clean
+.PHONY: init fmt lint type test all docker docker-stop docker-clean scripts experiments dashboard
+
 init: ## install tooling
 	python -m pip install -U pip
 	pip install black ruff mypy pytest
@@ -29,3 +30,17 @@ docker-stop: ## stop services
 docker-clean: ## remove all containers, images, and volumes
 	cd deployment && docker compose down -v --remove-orphans
 	docker rmi oligopoly:latest deployment-app 2>/dev/null || true
+
+# Script and experiment targets
+scripts: ## run all demo scripts
+	python scripts/collusion_demo.py
+	python scripts/epsilon_greedy_demo.py
+	python scripts/policy_demo.py
+	python scripts/segmented_demand_demo.py
+	python scripts/strategy_demo.py
+
+experiments: ## run experiments demo
+	python experiments/demo.py
+
+dashboard: ## start streamlit dashboard (requires API running)
+	streamlit run scripts/dashboard.py
