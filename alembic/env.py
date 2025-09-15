@@ -10,7 +10,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
+from alembic import context  # type: ignore[attr-defined]
 
 # Add src to path so we can import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -36,7 +36,7 @@ target_metadata = Base.metadata
 # ... etc.
 
 
-def get_url():
+def get_url() -> str:
     """Get database URL from environment or config."""
     return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
 

@@ -12,7 +12,7 @@ from src.sim.bertrand import bertrand_simulation, calculate_demand
 class TestDemandNonNegativity:
     """Test cases for demand non-negativity constraint."""
 
-    def test_demand_zero_when_price_too_high(self):
+    def test_demand_zero_when_price_too_high(self) -> None:
         """Test that demand is zero when price exceeds alpha/beta."""
         alpha, beta = 50.0, 2.0
         costs = [10.0, 15.0]
@@ -34,7 +34,7 @@ class TestDemandNonNegativity:
         assert result.profits[0] == pytest.approx(0.0, abs=1e-6)
         assert result.profits[1] == pytest.approx(0.0, abs=1e-6)
 
-    def test_demand_boundary_case(self):
+    def test_demand_boundary_case(self) -> None:
         """Test demand at the boundary where Q = 0."""
         alpha, beta = 100.0, 1.0
         costs = [20.0, 25.0]
@@ -46,7 +46,7 @@ class TestDemandNonNegativity:
         assert all(q == pytest.approx(0.0, abs=1e-6) for q in result.quantities)
         assert all(pi == pytest.approx(0.0, abs=1e-6) for pi in result.profits)
 
-    def test_demand_just_above_zero(self):
+    def test_demand_just_above_zero(self) -> None:
         """Test demand just above zero boundary."""
         alpha, beta = 100.0, 1.0
         costs = [20.0, 25.0]
@@ -62,7 +62,7 @@ class TestDemandNonNegativity:
         assert result.quantities[0] == pytest.approx(expected_demand, abs=1e-6)
         assert result.quantities[1] == pytest.approx(0.0, abs=1e-6)
 
-    def test_calculate_demand_function(self):
+    def test_calculate_demand_function(self) -> None:
         """Test the calculate_demand helper function directly."""
         # Normal case
         assert calculate_demand(100.0, 1.0, 20.0) == pytest.approx(80.0, abs=1e-6)

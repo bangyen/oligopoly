@@ -12,7 +12,7 @@ from src.sim.bertrand import bertrand_simulation
 class TestBertrandTie:
     """Test cases for Bertrand price ties."""
 
-    def test_two_firms_tie_for_lowest_price(self):
+    def test_two_firms_tie_for_lowest_price(self) -> None:
         """Test that two firms with equal lowest prices split demand equally."""
         alpha, beta = 120.0, 1.2
         costs = [20.0, 20.0, 25.0]
@@ -39,7 +39,7 @@ class TestBertrandTie:
         assert result.profits[1] == pytest.approx(expected_profit, abs=1e-6)
         assert result.profits[2] == pytest.approx(0.0, abs=1e-6)
 
-    def test_three_firms_tie_for_lowest_price(self):
+    def test_three_firms_tie_for_lowest_price(self) -> None:
         """Test that three firms with equal lowest prices split demand equally."""
         alpha, beta = 100.0, 1.0
         costs = [10.0, 10.0, 10.0]
@@ -60,7 +60,7 @@ class TestBertrandTie:
         assert result.total_demand == pytest.approx(total_demand, abs=1e-6)
         assert sum(result.quantities) == pytest.approx(total_demand, abs=1e-6)
 
-    def test_tie_with_different_costs(self):
+    def test_tie_with_different_costs(self) -> None:
         """Test tie scenario where firms have different costs but same prices."""
         alpha, beta = 80.0, 0.8
         costs = [15.0, 20.0, 25.0]
