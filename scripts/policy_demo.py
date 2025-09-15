@@ -5,12 +5,16 @@ This script demonstrates how different policy interventions affect
 simulation outcomes by running simulations with and without policy shocks.
 """
 
-from typing import Any, Dict
 
 from sim.policy.policy_shocks import PolicyEvent, PolicyType
 from sim.runners.runner import get_run_results, run_game
 
-from utils import create_demo_database, format_currency, print_demo_completion, print_round_results
+from .utils import (
+    create_demo_database,
+    format_currency,
+    print_demo_completion,
+    print_round_results,
+)
 
 
 def run_demo_simulation() -> None:
@@ -51,7 +55,9 @@ def run_demo_simulation() -> None:
         tax_round1 = results_tax["rounds_data"][1]
         tax_reduction = baseline_round1["total_profit"] - tax_round1["total_profit"]
         tax_rate_actual = tax_reduction / baseline_round1["total_profit"]
-        print(f"   Tax effect: {format_currency(baseline_round1['total_profit'])} → {format_currency(tax_round1['total_profit'])} ({tax_rate_actual:.0%} reduction)")
+        print(
+            f"   Tax effect: {format_currency(baseline_round1['total_profit'])} → {format_currency(tax_round1['total_profit'])} ({tax_rate_actual:.0%} reduction)"
+        )
 
         # 3. Subsidy policy simulation
         config_subsidy = {
@@ -69,9 +75,13 @@ def run_demo_simulation() -> None:
         # Compare subsidy effect
         baseline_round0 = results_baseline["rounds_data"][0]
         subsidy_round0 = results_subsidy["rounds_data"][0]
-        subsidy_increase = subsidy_round0["total_profit"] - baseline_round0["total_profit"]
+        subsidy_increase = (
+            subsidy_round0["total_profit"] - baseline_round0["total_profit"]
+        )
         subsidy_per_unit = subsidy_increase / baseline_round0["total_qty"]
-        print(f"   Subsidy effect: {format_currency(baseline_round0['total_profit'])} → {format_currency(subsidy_round0['total_profit'])} (+{format_currency(subsidy_per_unit)}/unit)")
+        print(
+            f"   Subsidy effect: {format_currency(baseline_round0['total_profit'])} → {format_currency(subsidy_round0['total_profit'])} (+{format_currency(subsidy_per_unit)}/unit)"
+        )
 
         # 4. Price cap policy simulation
         config_cap = {
@@ -90,9 +100,13 @@ def run_demo_simulation() -> None:
         baseline_round2 = results_baseline["rounds_data"][2]
         cap_round2 = results_cap["rounds_data"][2]
         if baseline_round2["price"] > 50.0:
-            print(f"   Price cap effect: {format_currency(baseline_round2['price'])} → {format_currency(cap_round2['price'])}")
+            print(
+                f"   Price cap effect: {format_currency(baseline_round2['price'])} → {format_currency(cap_round2['price'])}"
+            )
         else:
-            print(f"   Price cap effect: No change (price {format_currency(baseline_round2['price'])} < $50)")
+            print(
+                f"   Price cap effect: No change (price {format_currency(baseline_round2['price'])} < $50)"
+            )
 
         # 5. Multiple policies simulation
         config_multi = {
@@ -111,7 +125,7 @@ def run_demo_simulation() -> None:
 
         print_demo_completion(
             "Policy shocks",
-            "Tax reduction, subsidy increase, price caps, multi-round policies"
+            "Tax reduction, subsidy increase, price caps, multi-round policies",
         )
 
     finally:

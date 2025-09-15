@@ -11,7 +11,7 @@ from sim.games.bertrand import BertrandResult
 from sim.games.cournot import CournotResult
 from sim.strategies.strategies import RandomWalk, Static, TitForTat, create_strategy
 
-from utils import format_list, print_demo_completion
+from .utils import format_list, print_demo_completion
 
 
 def demonstrate_strategies() -> None:
@@ -108,7 +108,7 @@ def demonstrate_strategies() -> None:
 
     print_demo_completion(
         "Strategy demonstration",
-        "Static, TitForTat, RandomWalk behaviors, strategy factory"
+        "Static, TitForTat, RandomWalk behaviors, strategy factory",
     )
 
 
@@ -146,7 +146,9 @@ def demonstrate_cournot_vs_bertrand() -> None:
 
     print(f"TitForTat with Bertrand rival price 6.0: {action_bertrand:.2f}")
 
-    print(f"\n✓ TitForTat correctly extracts quantities from Cournot and prices from Bertrand!")
+    print(
+        "\n✓ TitForTat correctly extracts quantities from Cournot and prices from Bertrand!"
+    )
 
 
 if __name__ == "__main__":

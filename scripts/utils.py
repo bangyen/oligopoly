@@ -60,8 +60,8 @@ def create_demo_database(database_url: str = "sqlite:///:memory:") -> Any:
     """Create a database session for demo purposes."""
     engine = create_engine(database_url, echo=False)
     Base.metadata.create_all(engine)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    return SessionLocal()
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    return session_local()
 
 
 def print_demo_completion(topic: str, features: str) -> None:
@@ -73,7 +73,9 @@ def print_demo_completion(topic: str, features: str) -> None:
 def print_round_results(results: dict, label: str) -> None:
     """Print simulation results in a concise format."""
     rounds_data = results["rounds_data"]
-    
+
     # Show just the key metrics for each round
     for round_data in rounds_data:
-        print(f"   Round {round_data['round']}: Price {format_currency(round_data['price'])}, Profit {format_currency(round_data['total_profit'])}")
+        print(
+            f"   Round {round_data['round']}: Price {format_currency(round_data['price'])}, Profit {format_currency(round_data['total_profit'])}"
+        )
