@@ -12,7 +12,7 @@ from src.sim.bertrand import allocate_demand, bertrand_simulation, calculate_dem
 class TestBertrandUndercut:
     """Test cases for Bertrand undercutting behavior."""
 
-    def test_undercut_to_marginal_cost(self):
+    def test_undercut_to_marginal_cost(self) -> None:
         """Test that firm undercutting to marginal cost gets all demand with zero profit."""
         # Firm 0 sets price equal to marginal cost, others set higher prices
         alpha, beta = 100.0, 1.0
@@ -37,7 +37,7 @@ class TestBertrandUndercut:
         assert result.total_demand == pytest.approx(80.0, abs=1e-6)
         assert sum(result.quantities) == pytest.approx(result.total_demand, abs=1e-6)
 
-    def test_undercut_below_marginal_cost(self):
+    def test_undercut_below_marginal_cost(self) -> None:
         """Test firm undercutting below marginal cost gets all demand with negative profit."""
         alpha, beta = 100.0, 1.0
         costs = [20.0, 25.0, 30.0]
@@ -61,7 +61,7 @@ class TestBertrandUndercut:
 class TestBertrandTie:
     """Test cases for Bertrand price ties."""
 
-    def test_two_firms_tie_for_lowest_price(self):
+    def test_two_firms_tie_for_lowest_price(self) -> None:
         """Test that two firms with equal lowest prices split demand equally."""
         alpha, beta = 120.0, 1.2
         costs = [20.0, 20.0, 25.0]
@@ -88,7 +88,7 @@ class TestBertrandTie:
         assert result.profits[1] == pytest.approx(expected_profit, abs=1e-6)
         assert result.profits[2] == pytest.approx(0.0, abs=1e-6)
 
-    def test_three_firms_tie_for_lowest_price(self):
+    def test_three_firms_tie_for_lowest_price(self) -> None:
         """Test that three firms with equal lowest prices split demand equally."""
         alpha, beta = 100.0, 1.0
         costs = [10.0, 10.0, 10.0]
@@ -113,7 +113,7 @@ class TestBertrandTie:
 class TestDemandNonNegativity:
     """Test cases for demand non-negativity constraint."""
 
-    def test_demand_zero_when_price_too_high(self):
+    def test_demand_zero_when_price_too_high(self) -> None:
         """Test that demand is zero when price exceeds alpha/beta."""
         alpha, beta = 50.0, 2.0
         costs = [10.0, 15.0]
@@ -135,7 +135,7 @@ class TestDemandNonNegativity:
         assert result.profits[0] == pytest.approx(0.0, abs=1e-6)
         assert result.profits[1] == pytest.approx(0.0, abs=1e-6)
 
-    def test_demand_boundary_case(self):
+    def test_demand_boundary_case(self) -> None:
         """Test demand at the boundary where Q = 0."""
         alpha, beta = 100.0, 1.0
         costs = [20.0, 25.0]
@@ -151,7 +151,7 @@ class TestDemandNonNegativity:
 class TestCLIBertrand:
     """Test cases for CLI functionality."""
 
-    def test_cli_output_format(self):
+    def test_cli_output_format(self) -> None:
         """Test that CLI produces correct output format."""
         # This would typically be tested with subprocess, but for now we test the logic
         alpha, beta = 120.0, 1.2
@@ -169,7 +169,7 @@ class TestCLIBertrand:
         # Verify total demand equals sum of allocated quantities
         assert sum(result.quantities) == pytest.approx(result.total_demand, abs=1e-6)
 
-    def test_cli_example_from_spec(self):
+    def test_cli_example_from_spec(self) -> None:
         """Test the specific example from the specification."""
         alpha, beta = 120.0, 1.2
         costs = [20.0, 20.0, 25.0]
@@ -194,22 +194,22 @@ class TestCLIBertrand:
 class TestInputValidation:
     """Test cases for input validation."""
 
-    def test_negative_prices_raise_error(self):
+    def test_negative_prices_raise_error(self) -> None:
         """Test that negative prices raise ValueError."""
         with pytest.raises(ValueError, match="must be non-negative"):
             bertrand_simulation(100.0, 1.0, [10.0], [-5.0])
 
-    def test_mismatched_costs_and_prices_raise_error(self):
+    def test_mismatched_costs_and_prices_raise_error(self) -> None:
         """Test that mismatched costs and prices lists raise ValueError."""
         with pytest.raises(ValueError, match="must match"):
             bertrand_simulation(100.0, 1.0, [10.0, 20.0], [15.0])
 
-    def test_non_positive_alpha_raises_error(self):
+    def test_non_positive_alpha_raises_error(self) -> None:
         """Test that non-positive alpha raises ValueError."""
         with pytest.raises(ValueError, match="must be positive"):
             bertrand_simulation(0.0, 1.0, [10.0], [15.0])
 
-    def test_non_positive_beta_raises_error(self):
+    def test_non_positive_beta_raises_error(self) -> None:
         """Test that non-positive beta raises ValueError."""
         with pytest.raises(ValueError, match="must be positive"):
             bertrand_simulation(100.0, 0.0, [10.0], [15.0])
@@ -218,7 +218,7 @@ class TestInputValidation:
 class TestHelperFunctions:
     """Test cases for helper functions."""
 
-    def test_calculate_demand(self):
+    def test_calculate_demand(self) -> None:
         """Test demand calculation function."""
         # Normal case
         assert calculate_demand(100.0, 1.0, 20.0) == pytest.approx(80.0, abs=1e-6)
@@ -229,7 +229,7 @@ class TestHelperFunctions:
         # Negative demand case (should return 0)
         assert calculate_demand(100.0, 1.0, 150.0) == pytest.approx(0.0, abs=1e-6)
 
-    def test_allocate_demand(self):
+    def test_allocate_demand(self) -> None:
         """Test demand allocation function."""
         prices = [20.0, 25.0, 30.0]
         costs = [10.0, 15.0, 20.0]

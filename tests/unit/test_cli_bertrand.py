@@ -12,7 +12,7 @@ from src.sim.bertrand import bertrand_simulation
 class TestCLIBertrand:
     """Test cases for CLI functionality."""
 
-    def test_cli_output_format(self):
+    def test_cli_output_format(self) -> None:
         """Test that CLI produces correct output format."""
         # This would typically be tested with subprocess, but for now we test the logic
         alpha, beta = 120.0, 1.2
@@ -30,7 +30,7 @@ class TestCLIBertrand:
         # Verify total demand equals sum of allocated quantities
         assert sum(result.quantities) == pytest.approx(result.total_demand, abs=1e-6)
 
-    def test_cli_example_from_spec(self):
+    def test_cli_example_from_spec(self) -> None:
         """Test the specific example from the specification."""
         alpha, beta = 120.0, 1.2
         costs = [20.0, 20.0, 25.0]
@@ -51,7 +51,7 @@ class TestCLIBertrand:
         assert result.profits[0] == pytest.approx(0.0, abs=1e-6)
         assert result.profits[2] == pytest.approx(0.0, abs=1e-6)
 
-    def test_cli_output_structure(self):
+    def test_cli_output_structure(self) -> None:
         """Test that CLI output has the expected structure."""
         alpha, beta = 100.0, 1.0
         costs = [10.0, 15.0, 20.0]
@@ -80,7 +80,7 @@ class TestCLIBertrand:
         assert result.profits[1] == pytest.approx(0.0, abs=1e-6)
         assert result.profits[2] == pytest.approx(0.0, abs=1e-6)
 
-    def test_cli_with_ties(self):
+    def test_cli_with_ties(self) -> None:
         """Test CLI output format when firms tie for lowest price."""
         alpha, beta = 80.0, 0.8
         costs = [15.0, 15.0, 20.0]
@@ -99,7 +99,7 @@ class TestCLIBertrand:
         assert result.total_demand == pytest.approx(total_demand, abs=1e-6)
         assert sum(result.quantities) == pytest.approx(total_demand, abs=1e-6)
 
-    def test_cli_with_zero_demand(self):
+    def test_cli_with_zero_demand(self) -> None:
         """Test CLI output when demand is zero."""
         alpha, beta = 50.0, 2.0
         costs = [10.0, 15.0]

@@ -42,7 +42,7 @@ class Demand:
         return f"Demand(a={self.a}, b={self.b})"
 
 
-class Market(Base):
+class Market(Base):  # type: ignore[misc,valid-type]
     """Market configuration and parameters for simulation.
 
     Stores market-level parameters including demand curve coefficients,
@@ -67,7 +67,7 @@ class Market(Base):
         return Demand(a=self.demand_a, b=self.demand_b)
 
 
-class Firm(Base):
+class Firm(Base):  # type: ignore[misc,valid-type]
     """Individual firm participating in the market.
 
     Represents a firm with its cost structure and strategic parameters.
@@ -87,7 +87,7 @@ class Firm(Base):
     market = relationship("Market", back_populates="firms")
 
 
-class Run(Base):
+class Run(Base):  # type: ignore[misc,valid-type]
     """Simulation run tracking.
 
     Stores metadata about multi-round simulation runs including
@@ -108,7 +108,7 @@ class Run(Base):
     results = relationship("Result", back_populates="run", cascade="all, delete-orphan")
 
 
-class Round(Base):
+class Round(Base):  # type: ignore[misc,valid-type]
     """Individual round within a simulation run.
 
     Tracks each round of a multi-round simulation for
@@ -129,7 +129,7 @@ class Round(Base):
     )
 
 
-class Result(Base):
+class Result(Base):  # type: ignore[misc,valid-type]
     """Individual firm results for each round.
 
     Stores the action (quantity/price), market price, quantity sold,
@@ -156,7 +156,7 @@ class Result(Base):
     round = relationship("Round", back_populates="results")
 
 
-class RunConfig(Base):
+class RunConfig(Base):  # type: ignore[misc,valid-type]
     """Configuration for simulation runs.
 
     Stores parameters that control how simulations are executed,
