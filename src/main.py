@@ -18,6 +18,7 @@ from sim.metrics import (
     calculate_round_metrics_cournot,
 )
 from sim.models import Base
+from sim.policy_shocks import PolicyEvent, PolicyType
 from sim.runner import get_run_results, run_game
 
 # Database configuration
@@ -45,6 +46,18 @@ class FirmConfig(BaseModel):
     cost: float = Field(..., gt=0, description="Marginal cost of production")
 
 
+class PolicyEventRequest(BaseModel):
+    """Request model for a policy event."""
+
+    round_idx: int = Field(
+        ..., ge=0, description="Round index when to apply the policy"
+    )
+    policy_type: PolicyType = Field(..., description="Type of policy intervention")
+    value: float = Field(
+        ..., ge=0, description="Policy value (tax rate, subsidy per unit, or price cap)"
+    )
+
+
 class SimulationRequest(BaseModel):
     """Request model for simulation endpoint."""
 
@@ -59,6 +72,9 @@ class SimulationRequest(BaseModel):
         ..., min_length=1, max_length=10, description="Firm configurations"
     )
     seed: Optional[int] = Field(None, description="Random seed for reproducibility")
+    events: Optional[List[PolicyEventRequest]] = Field(
+        default_factory=list, description="Policy events to apply during simulation"
+    )
 
 
 class SimulationResponse(BaseModel):
@@ -126,6 +142,18 @@ async def simulate(
             "params": request.params,
             "firms": [{"cost": firm.cost} for firm in request.firms],
             "seed": request.seed,
+            "events": (
+                [
+                    PolicyEvent(
+                        round_idx=event.round_idx,
+                        policy_type=event.policy_type,
+                        value=event.value,
+                    )
+                    for event in request.events
+                ]
+                if request.events
+                else []
+            ),
         }
 
         # Run the simulation
