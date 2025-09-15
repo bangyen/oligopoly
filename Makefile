@@ -37,6 +37,7 @@ experiments: ## run experiments demo
 
 dashboard: ## start streamlit dashboard (starts API if needed)
 	@echo "Checking if API is running..."
-	@curl -s http://localhost:8000/ > /dev/null 2>&1 || (echo "API not running, starting Docker services..." && $(MAKE) docker)
+	@curl -s http://localhost:8000/ > /dev/null 2>&1 || \
+		(echo "API not running, starting Docker services..." && $(MAKE) docker)
 	@echo "Starting dashboard..."
 	streamlit run scripts/dashboard.py
