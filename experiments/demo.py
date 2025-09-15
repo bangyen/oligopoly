@@ -11,8 +11,6 @@ from pathlib import Path
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import json
-
 from scripts.utils import (
     create_experiment_database,
     print_experiment_summary,
@@ -20,50 +18,19 @@ from scripts.utils import (
 from sim.experiments.runner import ExperimentRunner
 
 
-def create_demo_config() -> str:
-    """Create a demo experiment configuration file."""
-    config_path = Path("experiments") / "demo_config.json"
-    config_path.parent.mkdir(exist_ok=True)
-
-    config_data = [
-        {
-            "config_id": "cournot_baseline",
-            "model": "cournot",
-            "rounds": 5,
-            "params": {"a": 100.0, "b": 1.0},
-            "firms": [{"cost": 10.0}, {"cost": 15.0}],
-        },
-        {
-            "config_id": "bertrand_baseline",
-            "model": "bertrand",
-            "rounds": 5,
-            "params": {"alpha": 100.0, "beta": 1.0},
-            "firms": [{"cost": 10.0}, {"cost": 15.0}],
-        },
-        {
-            "config_id": "cournot_with_policy",
-            "model": "cournot",
-            "rounds": 5,
-            "params": {"a": 100.0, "b": 1.0},
-            "firms": [{"cost": 10.0}, {"cost": 15.0}],
-            "policies": [{"round_idx": 2, "policy_type": "TAX", "value": 0.1}],
-        },
-    ]
-
-    with open(config_path, "w") as f:
-        json.dump(config_data, f, indent=2)
-
-    return str(config_path)
+def get_demo_config() -> str:
+    """Get the demo experiment configuration file path."""
+    return str(Path(__file__).parent / "sample_config.json")
 
 
 def run_demo() -> None:
     """Run the experiment runner demo."""
     print("=== Oligopoly Experiment Runner Demo ===")
 
-    # Create demo configuration
-    print("1. Creating demo experiment configuration")
-    config_path = create_demo_config()
-    print(f"   Configuration saved to: {config_path}")
+    # Get demo configuration
+    print("1. Loading demo experiment configuration")
+    config_path = get_demo_config()
+    print(f"   Configuration loaded from: {config_path}")
 
     # Setup database
     print("2. Setting up database")
