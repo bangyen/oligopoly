@@ -4,71 +4,19 @@ This module tests the POST /simulate and GET /runs/{id} endpoints
 to ensure proper functionality, validation, and persistence.
 """
 
-import atexit
-import os
-import tempfile
-from typing import Generator
-
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from main import app, get_db
-from sim.models.models import Base
+from tests.utils import override_get_db_for_testing
 
-# Create temporary database file
-temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-temp_file.close()
-
-# Test database setup - use temporary database
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{temp_file.name}"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db() -> Generator[Session, None, None]:
-    """Override database dependency for testing."""
-    try:
-        db = TestingSessionLocal()
-        # Ensure tables exist
-        Base.metadata.create_all(bind=engine)
-        yield db
-    finally:
-        db.close()
-
-
-# Override the dependency
-app.dependency_overrides[get_db] = override_get_db
+# Override the database dependency for testing
+override_get_db_for_testing(app, get_db)
 
 # Create test client
 client = TestClient(app)
 
 
-# Cleanup function to be called at module teardown
-def cleanup_temp_db():
-    """Clean up temporary database file."""
-    if os.path.exists(temp_file.name):
-        os.unlink(temp_file.name)
-
-
-atexit.register(cleanup_temp_db)
-
-
-@pytest.fixture(scope="function")
-def setup_database() -> Generator[None, None, None]:
-    """Set up test database for each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-
-def test_api_simulate_cournot(setup_database: None) -> None:
+def test_api_simulate_cournot() -> None:
     """Test POST /simulate returns 200 and run_id for Cournot model."""
     request_data = {
         "model": "cournot",
@@ -91,7 +39,7 @@ def test_api_simulate_cournot(setup_database: None) -> None:
     assert len(data["run_id"]) > 0
 
 
-def test_api_simulate_bertrand(setup_database: None) -> None:
+def test_api_simulate_bertrand() -> None:
     """Test POST /simulate returns 200 and run_id for Bertrand model."""
     request_data = {
         "model": "bertrand",
@@ -110,7 +58,7 @@ def test_api_simulate_bertrand(setup_database: None) -> None:
     assert len(data["run_id"]) > 0
 
 
-def test_api_simulate_invalid_model(setup_database: None) -> None:
+def test_api_simulate_invalid_model() -> None:
     """Test POST /simulate returns 422 for invalid model."""
     request_data = {
         "model": "invalid_model",
@@ -123,7 +71,7 @@ def test_api_simulate_invalid_model(setup_database: None) -> None:
     assert response.status_code == 422
 
 
-def test_api_simulate_invalid_rounds(setup_database: None) -> None:
+def test_api_simulate_invalid_rounds() -> None:
     """Test POST /simulate returns 422 for invalid rounds."""
     request_data = {
         "model": "cournot",
@@ -136,7 +84,7 @@ def test_api_simulate_invalid_rounds(setup_database: None) -> None:
     assert response.status_code == 422
 
 
-def test_api_simulate_no_firms(setup_database: None) -> None:
+def test_api_simulate_no_firms() -> None:
     """Test POST /simulate returns 422 for empty firms list."""
     request_data = {
         "model": "cournot",
@@ -149,7 +97,7 @@ def test_api_simulate_no_firms(setup_database: None) -> None:
     assert response.status_code == 422
 
 
-def test_persistence_counts(setup_database: None) -> None:
+def test_persistence_counts() -> None:
     """Test DB has exactly `rounds` rows for given run_id; results rows == rounds * num_firms."""
     request_data = {
         "model": "cournot",
@@ -182,7 +130,7 @@ def test_persistence_counts(setup_database: None) -> None:
         assert len(firm_data["profits"]) == 4
 
 
-def test_get_run_valid_id(setup_database: None) -> None:
+def test_get_run_valid_id() -> None:
     """Test GET /runs/{id} returns arrays of equal length with valid data."""
     request_data = {
         "model": "cournot",
@@ -236,13 +184,13 @@ def test_get_run_valid_id(setup_database: None) -> None:
             assert isinstance(profit, (int, float))
 
 
-def test_get_run_invalid_id(setup_database: None) -> None:
+def test_get_run_invalid_id() -> None:
     """Test GET /runs/{id} returns 404 for non-existent run_id."""
     response = client.get("/runs/non-existent-id")
     assert response.status_code == 404
 
 
-def test_idempotency_different_seeds(setup_database: None) -> None:
+def test_idempotency_different_seeds() -> None:
     """Test same run config with different seeds -> different run_ids."""
     base_config = {
         "model": "cournot",
@@ -267,7 +215,7 @@ def test_idempotency_different_seeds(setup_database: None) -> None:
     assert run_id1 != run_id2
 
 
-def test_idempotency_same_seed(setup_database: None) -> None:
+def test_idempotency_same_seed() -> None:
     """Test same run config with same seed -> deterministic results (optional)."""
     config = {
         "model": "cournot",
@@ -298,7 +246,7 @@ def test_idempotency_same_seed(setup_database: None) -> None:
     assert data1["firms_data"][1]["actions"][0] == data2["firms_data"][1]["actions"][0]
 
 
-def test_bertrand_simulation_results(setup_database: None) -> None:
+def test_bertrand_simulation_results() -> None:
     """Test Bertrand simulation produces valid results."""
     request_data = {
         "model": "bertrand",
