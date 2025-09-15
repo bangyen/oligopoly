@@ -7,6 +7,12 @@ including output format and the specific example from the specification.
 import pytest
 
 from src.sim.games.bertrand import bertrand_simulation
+from tests.utils import (
+    assert_bertrand_cli_format,
+    assert_bertrand_output_format,
+    create_sample_bertrand_cli_config,
+    create_sample_bertrand_config,
+)
 
 
 class TestCLIBertrand:
@@ -14,21 +20,13 @@ class TestCLIBertrand:
 
     def test_cli_output_format(self) -> None:
         """Test that CLI produces correct output format."""
-        # This would typically be tested with subprocess, but for now we test the logic
-        alpha, beta = 120.0, 1.2
-        costs = [20.0, 20.0, 25.0]
-        prices = [22.0, 21.0, 24.0]
+        config = create_sample_bertrand_config()
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            config["alpha"], config["beta"], config["costs"], config["prices"]
+        )
 
-        # Verify the structure matches expected CLI output
-        assert result.total_demand >= 0
-        assert len(result.prices) == len(costs)
-        assert len(result.quantities) == len(costs)
-        assert len(result.profits) == len(costs)
-
-        # Verify total demand equals sum of allocated quantities
-        assert sum(result.quantities) == pytest.approx(result.total_demand, abs=1e-6)
+        assert_bertrand_output_format(result, len(config["costs"]))
 
     def test_cli_example_from_spec(self) -> None:
         """Test the specific example from the specification."""
@@ -53,32 +51,18 @@ class TestCLIBertrand:
 
     def test_cli_output_structure(self) -> None:
         """Test that CLI output has the expected structure."""
-        alpha, beta = 100.0, 1.0
-        costs = [10.0, 15.0, 20.0]
-        prices = [12.0, 14.0, 16.0]
+        config = create_sample_bertrand_cli_config()
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            config["alpha"], config["beta"], config["costs"], config["prices"]
+        )
 
-        # Expected CLI output format:
-        # Q=88.0
-        # p_0=12.0, q_0=88.0, π_0=176.0
-        # p_1=14.0, q_1=0.0, π_1=0.0
-        # p_2=16.0, q_2=0.0, π_2=0.0
-
-        # Verify all components are present and correct
-        assert result.total_demand == pytest.approx(
-            88.0, abs=1e-6
-        )  # Q(12) = 100-1*12 = 88
-
-        # Firm 0 has lowest price, gets all demand
-        assert result.quantities[0] == pytest.approx(88.0, abs=1e-6)
-        assert result.quantities[1] == pytest.approx(0.0, abs=1e-6)
-        assert result.quantities[2] == pytest.approx(0.0, abs=1e-6)
-
-        # Verify profits
-        assert result.profits[0] == pytest.approx(176.0, abs=1e-6)  # (12-10)*88 = 176
-        assert result.profits[1] == pytest.approx(0.0, abs=1e-6)
-        assert result.profits[2] == pytest.approx(0.0, abs=1e-6)
+        assert_bertrand_cli_format(
+            result,
+            config["expected_demand"],
+            config["expected_quantities"],
+            config["expected_profits"],
+        )
 
     def test_cli_with_ties(self) -> None:
         """Test CLI output format when firms tie for lowest price."""
