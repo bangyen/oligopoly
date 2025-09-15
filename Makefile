@@ -35,5 +35,8 @@ docker-clean: ## remove all containers, images, and volumes
 experiments: ## run experiments demo
 	python experiments/demo.py
 
-dashboard: ## start streamlit dashboard (requires API running)
+dashboard: ## start streamlit dashboard (starts API if needed)
+	@echo "Checking if API is running..."
+	@curl -s http://localhost:8000/ > /dev/null 2>&1 || (echo "API not running, starting Docker services..." && $(MAKE) docker)
+	@echo "Starting dashboard..."
 	streamlit run scripts/dashboard.py
