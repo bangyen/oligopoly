@@ -51,7 +51,8 @@ dev = [
 
 [project.scripts]
 oligopoly = "main:app"
-cournot = "sim.cli:main"
+cournot = "sim.cli:cournot_main"
+bertrand = "sim.cli:bertrand_main"
 
 [project.urls]
 Homepage = "https://github.com/bangyen/oligopoly"
