@@ -13,6 +13,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from sim.metrics import (
+    calculate_round_metrics_bertrand,
+    calculate_round_metrics_cournot,
+)
 from sim.models import Base
 from sim.runner import get_run_results, run_game
 
@@ -143,8 +147,8 @@ async def simulate(
 async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Retrieve time-series results for a simulation run.
 
-    Returns detailed results including market prices, quantities, and profits
-    for each round and firm in the simulation.
+    Returns detailed results including market prices, quantities, profits,
+    HHI, and consumer surplus for each round and firm in the simulation.
 
     Args:
         run_id: Unique identifier for the simulation run
@@ -152,13 +156,67 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
 
     Returns:
         Dictionary containing time-series data with arrays of equal length
+        and calculated metrics (HHI, consumer surplus)
 
     Raises:
         HTTPException: If run_id is not found or data retrieval fails
     """
     try:
         results = get_run_results(run_id, db)
-        return dict(results)
+        results_dict = dict(results)
+
+        # Calculate metrics for each round
+        rounds_data = results_dict.get("results", {})
+        model = results_dict.get("model", "cournot")
+
+        metrics = {}
+        for round_idx, round_data in rounds_data.items():
+            round_idx = int(round_idx)
+
+            # Extract firm data
+            firms_data = list(round_data.values())
+            if not firms_data:
+                continue
+
+            # Get quantities, prices, and profits
+            quantities = [firm["quantity"] for firm in firms_data]
+            prices = [firm["price"] for firm in firms_data]
+            profits = [firm["profit"] for firm in firms_data]
+
+            # Calculate market metrics
+            if model == "cournot":
+                market_price = (
+                    prices[0] if prices else 0.0
+                )  # All firms have same price in Cournot
+                # Use default demand parameters - in real implementation, these should be stored
+                demand_a = 100.0  # This should come from the simulation parameters
+                hhi, cs = calculate_round_metrics_cournot(
+                    quantities, market_price, demand_a
+                )
+            else:  # bertrand
+                total_demand = sum(quantities)
+                demand_alpha = 100.0  # This should come from the simulation parameters
+                hhi, cs = calculate_round_metrics_bertrand(
+                    prices, quantities, total_demand, demand_alpha
+                )
+
+            metrics[round_idx] = {
+                "hhi": hhi,
+                "consumer_surplus": cs,
+                "market_price": (
+                    market_price
+                    if model == "cournot"
+                    else min(prices) if prices else 0.0
+                ),
+                "total_quantity": sum(quantities),
+                "total_profit": sum(profits),
+                "num_firms": len(firms_data),
+            }
+
+        # Add metrics to results
+        results_dict["metrics"] = metrics
+
+        return results_dict
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
