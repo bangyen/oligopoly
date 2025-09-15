@@ -92,7 +92,7 @@ def display_event_feed(events_data: Dict[str, Any]) -> None:
     Args:
         events_data: Dictionary containing events data
     """
-    st.subheader("📝 Event Feed")
+    st.subheader("Event Feed")
 
     events = events_data.get("events", [])
     total_events = events_data.get("total_events", 0)
@@ -135,7 +135,7 @@ def display_replay_controls(replay_data: Dict[str, Any]) -> None:
     Args:
         replay_data: Dictionary containing replay frames
     """
-    st.subheader("🎬 Simulation Replay")
+    st.subheader("Simulation Replay")
 
     frames = replay_data.get("frames", [])
     total_frames = replay_data.get("total_frames", 0)
@@ -152,22 +152,6 @@ def display_replay_controls(replay_data: Dict[str, Any]) -> None:
     if event_rounds:
         st.write(f"**Event Rounds:** {', '.join(map(str, event_rounds))}")
 
-    # Replay controls
-    col1, col2, col3 = st.columns([1, 1, 1])
-
-    with col1:
-        if st.button("▶️ Play Replay", key="play_replay"):
-            st.session_state.replay_playing = True
-
-    with col2:
-        if st.button("⏸️ Pause", key="pause_replay"):
-            st.session_state.replay_playing = False
-
-    with col3:
-        if st.button("🔄 Reset", key="reset_replay"):
-            st.session_state.replay_frame = 0
-            st.session_state.replay_playing = False
-
     # Initialize session state
     if "replay_frame" not in st.session_state:
         st.session_state.replay_frame = 0
@@ -182,6 +166,10 @@ def display_replay_controls(replay_data: Dict[str, Any]) -> None:
         value=st.session_state.replay_frame,
         key="frame_slider",
     )
+
+    # Update session state when slider changes
+    if frame_idx != st.session_state.replay_frame:
+        st.session_state.replay_frame = frame_idx
 
     # Display current frame
     if frame_idx < len(frames):
@@ -253,29 +241,35 @@ def calculate_metrics_for_run(run_data: Dict[str, Any]) -> pd.DataFrame:
         calculate_round_metrics_cournot,
     )
 
-    rounds_data = run_data["results"]
+    rounds_data = run_data["rounds_data"]
+    firms_data = run_data["firms_data"]
     model = run_data["model"]
 
     metrics_data = []
 
-    for round_idx, round_data in rounds_data.items():
-        round_idx = int(round_idx)
+    for round_idx, round_data in enumerate(rounds_data):
+        # Get quantities, prices, and profits for this round
+        quantities = []
+        prices = []
+        profits = []
 
-        # Extract firm data
-        firms_data = list(round_data.values())
-        if not firms_data:
+        for firm_data in firms_data:
+            if round_idx < len(firm_data["quantities"]):
+                quantities.append(firm_data["quantities"][round_idx])
+                profits.append(firm_data["profits"][round_idx])
+                if model == "cournot":
+                    # In Cournot, all firms have the same price
+                    prices.append(round_data["price"])
+                else:  # bertrand
+                    # In Bertrand, actions are prices
+                    prices.append(firm_data["actions"][round_idx])
+
+        if not quantities:
             continue
-
-        # Get quantities, prices, and profits
-        quantities = [firm["quantity"] for firm in firms_data]
-        prices = [firm["price"] for firm in firms_data]
-        profits = [firm["profit"] for firm in firms_data]
 
         # Calculate market metrics
         if model == "cournot":
-            market_price = (
-                prices[0] if prices else 0.0
-            )  # All firms have same price in Cournot
+            market_price = round_data["price"]
             # Use default demand parameters - in real implementation, these should be stored
             demand_a = 100.0  # This should come from the simulation parameters
             hhi, cs = calculate_round_metrics_cournot(
@@ -402,22 +396,28 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
     Args:
         run_data: Dictionary containing run results and metadata
     """
-    rounds_data = run_data["results"]
+    rounds_data = run_data["rounds_data"]
+    firms_data = run_data["firms_data"]
+    model = run_data["model"]
 
     # Prepare data for firm-level analysis
     firm_data = []
-    for round_idx, round_data in rounds_data.items():
-        round_idx = int(round_idx)
-        for firm_id, firm_info in round_data.items():
-            firm_data.append(
-                {
-                    "round": round_idx,
-                    "firm_id": int(firm_id),
-                    "quantity": firm_info["quantity"],
-                    "price": firm_info["price"],
-                    "profit": firm_info["profit"],
-                }
-            )
+    for round_idx, round_data in enumerate(rounds_data):
+        for firm_idx, firm_info in enumerate(firms_data):
+            if round_idx < len(firm_info["quantities"]):
+                firm_data.append(
+                    {
+                        "round": round_idx,
+                        "firm_id": firm_idx,
+                        "quantity": firm_info["quantities"][round_idx],
+                        "price": (
+                            round_data["price"]
+                            if model == "cournot"
+                            else firm_info["actions"][round_idx]
+                        ),
+                        "profit": firm_info["profits"][round_idx],
+                    }
+                )
 
     if not firm_data:
         st.warning("No firm data available")
@@ -487,17 +487,28 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
 
     # Calculate market shares for each round
     market_share_data = []
-    for round_idx, round_data in rounds_data.items():
-        round_idx = int(round_idx)
-        quantities = [firm["quantity"] for firm in round_data.values()]
+    for round_idx, round_data in enumerate(rounds_data):
+        quantities = []
+        for firm_info in firms_data:
+            if round_idx < len(firm_info["quantities"]):
+                quantities.append(firm_info["quantities"][round_idx])
+
         total_qty = sum(quantities)
 
-        for firm_id, firm_info in round_data.items():
-            firm_id = int(firm_id)
-            market_share = firm_info["quantity"] / total_qty if total_qty > 0 else 0
-            market_share_data.append(
-                {"round": round_idx, "firm_id": firm_id, "market_share": market_share}
-            )
+        for firm_idx, firm_info in enumerate(firms_data):
+            if round_idx < len(firm_info["quantities"]):
+                market_share = (
+                    firm_info["quantities"][round_idx] / total_qty
+                    if total_qty > 0
+                    else 0
+                )
+                market_share_data.append(
+                    {
+                        "round": round_idx,
+                        "firm_id": firm_idx,
+                        "market_share": market_share,
+                    }
+                )
 
     df_shares = pd.DataFrame(market_share_data)
     for firm_id in firms:
@@ -529,20 +540,29 @@ def main() -> None:
     st.title("📊 Oligopoly Simulation Dashboard")
     st.markdown("Visualize market dynamics, concentration, and consumer welfare")
 
+    # Global API configuration
+    st.sidebar.header("API Configuration")
+    api_url = st.sidebar.text_input(
+        "API URL",
+        value="http://localhost:8000",
+        help="Base URL for the oligopoly API",
+        key="global_api_url",
+    )
+
     # Create tabs
     tab1, tab2, tab3 = st.tabs(["📈 Single Run", "⚖️ Comparison", "🔥 Heatmaps"])
 
     with tab1:
-        single_run_tab()
+        single_run_tab(api_url)
 
     with tab2:
-        comparison_tab()
+        comparison_tab(api_url)
 
     with tab3:
-        heatmap_tab()
+        heatmap_tab(api_url)
 
 
-def single_run_tab() -> None:
+def single_run_tab(api_url: str) -> None:
     """Single run visualization tab."""
     # Sidebar for run selection
     st.sidebar.header("Run Selection")
@@ -550,85 +570,100 @@ def single_run_tab() -> None:
     # For demo purposes, we'll use a hardcoded run_id
     # In a real implementation, you'd fetch available runs from the API
     run_id = st.sidebar.text_input(
-        "Run ID", value="demo-run-123", help="Enter the simulation run ID to visualize"
+        "Run ID",
+        value="demo-run-123",
+        help="Enter the simulation run ID to visualize",
+        key="single_run_id",
     )
 
-    api_url = st.sidebar.text_input(
-        "API URL", value="http://localhost:8000", help="Base URL for the oligopoly API"
-    )
+    # Check if we have data loaded or if user clicked load button
+    if st.sidebar.button("Load Run Data") or st.session_state.get(
+        "run_data_loaded", False
+    ):
+        # Get run data from session state or load it
+        if (
+            st.session_state.get("run_data_loaded", False)
+            and st.session_state.get("run_id") == run_id
+        ):
+            # Use cached data
+            run_data = st.session_state.run_data
+            st.success(f"Loaded run {run_id} (cached)")
+        else:
+            # Load new data
+            try:
+                with st.spinner("Loading run data..."):
+                    run_data = load_run_data(run_id, api_url)
 
-    if st.sidebar.button("Load Run Data"):
-        try:
-            # Load run data
-            with st.spinner("Loading run data..."):
-                run_data = load_run_data(run_id, api_url)
+                st.success(f"Loaded run {run_id}")
 
-            st.success(f"Loaded run {run_id}")
+                # Set session state to indicate data is loaded and store the data
+                st.session_state.run_data_loaded = True
+                st.session_state.run_data = run_data
+                st.session_state.run_id = run_id
 
-            # Display run metadata
-            col1, col2, col3 = st.columns(3)
+            except Exception as e:
+                st.error(f"Error loading run data: {e}")
+                return
+
+        # Display run metadata
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            model = run_data.get("model", "Unknown")
+            st.metric("Model", model.title())
+        with col2:
+            st.metric("Rounds", run_data.get("rounds", 0))
+        with col3:
+            st.metric("Created", run_data.get("created_at", "Unknown")[:10])
+
+        # Calculate and display metrics
+        with st.spinner("Calculating metrics..."):
+            metrics_df = calculate_metrics_for_run(run_data)
+
+        if not metrics_df.empty:
+            # Display summary statistics
+            st.subheader("Summary Statistics")
+            col1, col2, col3, col4 = st.columns(4)
+
             with col1:
-                st.metric("Model", run_data.get("model", "Unknown"))
+                st.metric("Avg HHI", f"{metrics_df['hhi'].mean():.3f}")
             with col2:
-                st.metric("Rounds", run_data.get("rounds", 0))
+                st.metric(
+                    "Avg Consumer Surplus",
+                    f"{metrics_df['consumer_surplus'].mean():.1f}",
+                )
             with col3:
-                st.metric("Created", run_data.get("created_at", "Unknown")[:10])
+                st.metric("Avg Price", f"{metrics_df['market_price'].mean():.2f}")
+            with col4:
+                st.metric("Avg Quantity", f"{metrics_df['total_quantity'].mean():.1f}")
 
-            # Calculate and display metrics
-            with st.spinner("Calculating metrics..."):
-                metrics_df = calculate_metrics_for_run(run_data)
+            # Create charts
+            st.subheader("Market Metrics Over Time")
+            create_metrics_charts(metrics_df)
 
-            if not metrics_df.empty:
-                # Display summary statistics
-                st.subheader("📈 Summary Statistics")
-                col1, col2, col3, col4 = st.columns(4)
+            st.subheader("Individual Firm Performance")
+            create_firm_breakdown_chart(run_data)
 
-                with col1:
-                    st.metric("Avg HHI", f"{metrics_df['hhi'].mean():.3f}")
-                with col2:
-                    st.metric(
-                        "Avg Consumer Surplus",
-                        f"{metrics_df['consumer_surplus'].mean():.1f}",
-                    )
-                with col3:
-                    st.metric("Avg Price", f"{metrics_df['market_price'].mean():.2f}")
-                with col4:
-                    st.metric(
-                        "Avg Quantity", f"{metrics_df['total_quantity'].mean():.1f}"
-                    )
+            # Display raw data
+            st.subheader("Raw Data")
+            st.dataframe(metrics_df, use_container_width=True)
 
-                # Create charts
-                st.subheader("📊 Market Metrics Over Time")
-                create_metrics_charts(metrics_df)
+            # Load and display events
+            try:
+                with st.spinner("Loading events..."):
+                    events_data = load_events_data(run_id, api_url)
+                display_event_feed(events_data)
+            except Exception as e:
+                st.warning(f"Could not load events: {e}")
 
-                st.subheader("🏢 Individual Firm Performance")
-                create_firm_breakdown_chart(run_data)
+            # Load and display replay
+            try:
+                with st.spinner("Loading replay data..."):
+                    replay_data = load_replay_data(run_id, api_url)
+                display_replay_controls(replay_data)
+            except Exception as e:
+                st.warning(f"Could not load replay data: {e}")
 
-                # Display raw data
-                st.subheader("📋 Raw Data")
-                st.dataframe(metrics_df, use_container_width=True)
-
-                # Load and display events
-                try:
-                    with st.spinner("Loading events..."):
-                        events_data = load_events_data(run_id, api_url)
-                    display_event_feed(events_data)
-                except Exception as e:
-                    st.warning(f"Could not load events: {e}")
-
-                # Load and display replay
-                try:
-                    with st.spinner("Loading replay data..."):
-                        replay_data = load_replay_data(run_id, api_url)
-                    display_replay_controls(replay_data)
-                except Exception as e:
-                    st.warning(f"Could not load replay data: {e}")
-
-        except Exception as e:
-            st.error(f"Error loading run data: {e}")
-
-    # Add some demo information
-    st.sidebar.markdown("---")
+    # Add some demo information in sidebar
     st.sidebar.markdown("### About")
     st.sidebar.markdown(
         """
@@ -641,72 +676,67 @@ def single_run_tab() -> None:
     """
     )
 
-    # Demo data section
-    st.markdown("---")
-    st.subheader("🎯 Demo Data")
-    st.markdown(
-        """
-    For demonstration purposes, here's what the metrics mean:
-
-    - **HHI = 0.5**: Two firms with equal market share (50% each)
-    - **HHI = 1.0**: Monopoly (single firm has 100% market share)
-    - **Consumer Surplus**: Higher values indicate better consumer welfare
-    """
-    )
-
-    # Example calculations
-    st.subheader("🧮 Example Calculations")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("**HHI Examples:**")
-        st.code(
+    # Demo information section (only show when no data is loaded)
+    if not st.session_state.get("run_data_loaded", False):
+        st.subheader("Demo Data")
+        st.markdown(
             """
-        # Two equal firms: [0.5, 0.5]
-        HHI = 0.5² + 0.5² = 0.25 + 0.25 = 0.5
+        For demonstration purposes, here's what the metrics mean:
 
-        # Monopoly: [1.0, 0.0]
-        HHI = 1.0² + 0.0² = 1.0 + 0.0 = 1.0
+        - **HHI = 0.5**: Two firms with equal market share (50% each)
+        - **HHI = 1.0**: Monopoly (single firm has 100% market share)
+        - **Consumer Surplus**: Higher values indicate better consumer welfare
         """
         )
 
-    with col2:
-        st.markdown("**Consumer Surplus:**")
-        st.code(
-            """
-        # Linear demand: P = a - b*Q
-        # CS = 0.5 * (a - P_market) * Q_market
+        # Example calculations
+        st.subheader("Example Calculations")
 
-        # Example: a=100, P=70, Q=30
-        CS = 0.5 * (100 - 70) * 30 = 450
-        """
-        )
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**HHI Examples:**")
+            st.code(
+                """
+# Two equal firms: [0.5, 0.5]
+HHI = 0.5² + 0.5² = 0.25 + 0.25 = 0.5
+
+# Monopoly: [1.0, 0.0]
+HHI = 1.0² + 0.0² = 1.0 + 0.0 = 1.0
+"""
+            )
+
+        with col2:
+            st.markdown("**Consumer Surplus:**")
+            st.code(
+                """
+# Linear demand: P = a - b*Q
+# CS = 0.5 * (a - P_market) * Q_market
+
+# Example: a=100, P=70, Q=30
+CS = 0.5 * (100 - 70) * 30 = 450
+"""
+            )
 
 
-def comparison_tab() -> None:
+def comparison_tab(api_url: str) -> None:
     """Comparison visualization tab."""
     st.header("⚖️ Scenario Comparison")
     st.markdown("Compare two simulation scenarios side by side")
-
-    # API URL configuration
-    api_url = st.sidebar.text_input(
-        "API URL", value="http://localhost:8000", help="Base URL for the oligopoly API"
-    )
 
     # Configuration sections
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("🔵 Left Scenario")
+        st.subheader("Left Scenario")
         left_config = create_scenario_config_form("left")
 
     with col2:
-        st.subheader("🔴 Right Scenario")
+        st.subheader("Right Scenario")
         right_config = create_scenario_config_form("right")
 
     # Run comparison button
-    if st.button("🚀 Run Comparison", type="primary"):
+    if st.button("Run Comparison", type="primary"):
         if left_config and right_config:
             try:
                 with st.spinner("Running comparison..."):
@@ -724,27 +754,24 @@ def comparison_tab() -> None:
             st.error("Please configure both scenarios before running comparison")
 
 
-def heatmap_tab() -> None:
+def heatmap_tab(api_url: str) -> None:
     """Heatmap visualization tab."""
     st.header("🔥 Strategy/Action Space Heatmaps")
     st.markdown(
         "Visualize profit surfaces and market share surfaces for different firm actions"
     )
 
-    # API URL configuration
-    api_url = st.sidebar.text_input(
-        "API URL", value="http://localhost:8000", help="Base URL for the oligopoly API"
-    )
-
     # Model selection
     model = st.selectbox(
         "Competition Model",
-        ["cournot", "bertrand"],
+        ["Cournot", "Bertrand"],
         help="Choose between Cournot (quantity) or Bertrand (price) competition",
     )
+    # Convert to lowercase for processing
+    model = model.lower()
 
     # Firm configuration
-    st.subheader("🏢 Firm Configuration")
+    st.subheader("Firm Configuration")
     num_firms = st.slider("Number of Firms", min_value=2, max_value=10, value=3)
 
     # Dynamic firm cost inputs
@@ -760,18 +787,18 @@ def heatmap_tab() -> None:
         costs.append(cost)
 
     # Heatmap configuration
-    st.subheader("🔥 Heatmap Configuration")
+    st.subheader("Heatmap Configuration")
 
     col1, col2 = st.columns(2)
     with col1:
         firm_i = st.selectbox(
-            "Firm i (surface computed for)",
+            "Firm I (Surface Computed For)",
             range(num_firms),
             help="Firm to compute profit surface for",
         )
     with col2:
         firm_j = st.selectbox(
-            "Firm j (second firm)",
+            "Firm J (Second Firm)",
             [i for i in range(num_firms) if i != firm_i],
             help="Second firm in the heatmap",
         )
@@ -827,7 +854,7 @@ def heatmap_tab() -> None:
         other_actions.append(action)
 
     # Market parameters
-    st.subheader("📊 Market Parameters")
+    st.subheader("Market Parameters")
 
     if model == "cournot":
         col1, col2 = st.columns(2)
@@ -851,7 +878,7 @@ def heatmap_tab() -> None:
         params = {"alpha": alpha, "beta": beta}
 
     # Generate heatmap button
-    if st.button("🔥 Generate Heatmap", type="primary"):
+    if st.button("Generate Heatmap", type="primary"):
         try:
             with st.spinner("Computing heatmap..."):
                 heatmap_data = compute_heatmap(
@@ -949,7 +976,7 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
     action_label = "Quantity" if model == "cournot" else "Price"
 
     # Create profit heatmap
-    st.subheader(f"💰 Profit Surface for Firm {firm_i}")
+    st.subheader(f"Profit Surface for Firm {firm_i}")
 
     fig_profit = go.Figure(
         data=go.Heatmap(
@@ -973,7 +1000,7 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
 
     # Create market share heatmap for Bertrand
     if model == "bertrand" and market_share_surface:
-        st.subheader(f"📊 Market Share Surface for Firm {firm_i}")
+        st.subheader(f"Market Share Surface for Firm {firm_i}")
 
         fig_market_share = go.Figure(
             data=go.Heatmap(
@@ -996,7 +1023,7 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
         st.plotly_chart(fig_market_share, use_container_width=True)
 
     # Display summary statistics
-    st.subheader("📈 Summary Statistics")
+    st.subheader("Summary Statistics")
 
     import numpy as np
 
@@ -1013,7 +1040,7 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
         st.metric("Std Profit", f"{profit_array.std():.2f}")
 
     # Display raw data
-    st.subheader("📋 Raw Data")
+    st.subheader("Raw Data")
 
     # Create DataFrame for profit surface
     import pandas as pd
@@ -1039,43 +1066,49 @@ def create_scenario_config_form(side: str) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
 
     # Model selection
-    model = st.selectbox(
-        f"Model ({side})", ["cournot", "bertrand"], key=f"model_{side}"
-    )
+    model = st.selectbox("Model", ["Cournot", "Bertrand"], key=f"model_{side}")
+    # Convert to lowercase for processing
+    model = model.lower()
     config["model"] = model
 
     # Rounds
     rounds = st.number_input(
-        f"Rounds ({side})", min_value=1, max_value=1000, value=10, key=f"rounds_{side}"
+        "Rounds", min_value=1, max_value=1000, value=10, key=f"rounds_{side}"
     )
     config["rounds"] = rounds
 
+    # Add spacing
+    st.markdown("")
+
     # Parameters
-    st.markdown(f"**Parameters ({side})**")
+    st.markdown("**Parameters**")
     if model == "cournot":
         a = st.number_input(
-            f"Demand intercept (a) ({side})",
+            "Demand Intercept (a)",
             min_value=1.0,
             value=100.0,
             key=f"a_{side}",
         )
         b = st.number_input(
-            f"Demand slope (b) ({side})", min_value=0.1, value=1.0, key=f"b_{side}"
+            "Demand Slope (b)", min_value=0.1, value=1.0, key=f"b_{side}"
         )
         config["params"] = {"a": a, "b": b}
     else:  # bertrand
         alpha = st.number_input(
-            f"Demand alpha ({side})", min_value=1.0, value=100.0, key=f"alpha_{side}"
+            "Demand Alpha", min_value=1.0, value=100.0, key=f"alpha_{side}"
         )
         beta = st.number_input(
-            f"Demand beta ({side})", min_value=0.1, value=1.0, key=f"beta_{side}"
+            "Demand Beta", min_value=0.1, value=1.0, key=f"beta_{side}"
         )
         config["params"] = {"alpha": alpha, "beta": beta}
 
+    # Add spacing
+    st.markdown("")
+
     # Firms
-    st.markdown(f"**Firms ({side})**")
+    st.markdown("**Firms**")
     num_firms = st.number_input(
-        f"Number of firms ({side})",
+        "Number of Firms",
         min_value=1,
         max_value=10,
         value=2,
@@ -1085,7 +1118,7 @@ def create_scenario_config_form(side: str) -> Dict[str, Any]:
     firms = []
     for i in range(num_firms):
         cost = st.number_input(
-            f"Firm {i+1} cost ({side})",
+            f"Firm {i+1} Cost",
             min_value=0.1,
             value=10.0 + i * 5.0,
             key=f"firm_{i}_{side}",
@@ -1094,9 +1127,13 @@ def create_scenario_config_form(side: str) -> Dict[str, Any]:
 
     config["firms"] = firms
 
+    # Add spacing
+    st.markdown("")
+
     # Seed
+    default_seed = 42 if side == "left" else 123
     seed = st.number_input(
-        f"Random seed ({side})", min_value=0, value=42, key=f"seed_{side}"
+        "Random Seed", min_value=0, value=default_seed, key=f"seed_{side}"
     )
     config["seed"] = seed
 
@@ -1158,11 +1195,11 @@ def display_comparison_results(comparison_data: Dict[str, Any]) -> None:
         st.metric("Right Run ID", comparison_data["right_run_id"])
 
     # Create comparison charts
-    st.subheader("📊 Comparison Charts")
+    st.subheader("Comparison Charts")
     create_comparison_charts(comparison_data)
 
     # Display deltas table
-    st.subheader("📋 Deltas Table (Right - Left)")
+    st.subheader("Deltas Table (Right - Left)")
     create_deltas_table(comparison_data)
 
 
@@ -1371,7 +1408,7 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
     st.dataframe(delta_df, use_container_width=True)
 
     # Summary statistics
-    st.subheader("📈 Delta Summary Statistics")
+    st.subheader("Delta Summary Statistics")
     summary_data = []
     for metric_name, values in deltas.items():
         summary_data.append(
