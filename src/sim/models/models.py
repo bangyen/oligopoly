@@ -205,6 +205,7 @@ class Run(Base):  # type: ignore[misc,valid-type]
         "Round", back_populates="run", cascade="all, delete-orphan"
     )
     results = relationship("Result", back_populates="run", cascade="all, delete-orphan")
+    events = relationship("Event", back_populates="run", cascade="all, delete-orphan")
     collusion_events = relationship(
         "CollusionEvent", back_populates="run", cascade="all, delete-orphan"
     )
@@ -258,11 +259,34 @@ class Result(Base):  # type: ignore[misc,valid-type]
     round = relationship("Round", back_populates="results")
 
 
-class CollusionEvent(Base):  # type: ignore[misc,valid-type]
-    """Collusion and regulatory events tracking.
+class Event(Base):  # type: ignore[misc,valid-type]
+    """Comprehensive event tracking for simulation runs.
 
-    Stores events related to cartel formation, defections, and regulatory
-    interventions for analysis and debugging of collusion dynamics.
+    Stores all types of events that occur during simulation including collusion,
+    defection, regulator interventions, policy shocks, and market entry/exit.
+    This unified event system enables comprehensive replay and analysis.
+    """
+
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String(36), ForeignKey("runs.id"), nullable=False)
+    round_idx = Column(Integer, nullable=False)  # Round index (0-based)
+    event_type = Column(String(50), nullable=False)  # Type of event
+    firm_id = Column(Integer, nullable=True)  # Firm involved (if applicable)
+    description = Column(Text, nullable=False)  # Human-readable description
+    event_data = Column(JSON, nullable=True)  # Additional event data
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    run = relationship("Run", back_populates="events")
+
+
+class CollusionEvent(Base):  # type: ignore[misc,valid-type]
+    """Legacy collusion events table for backward compatibility.
+
+    This table is maintained for existing data but new events should use
+    the unified Event table. This enables gradual migration.
     """
 
     __tablename__ = "collusion_events"

@@ -38,6 +38,207 @@ def load_run_data(
         raise
 
 
+def load_events_data(
+    run_id: str, api_base_url: str = "http://localhost:8000"
+) -> Dict[str, Any]:
+    """Load events data for a simulation run.
+
+    Args:
+        run_id: Unique identifier for the simulation run
+        api_base_url: Base URL for the API
+
+    Returns:
+        Dictionary containing events data
+
+    Raises:
+        requests.RequestException: If API request fails
+    """
+    try:
+        response = requests.get(f"{api_base_url}/runs/{run_id}/events")
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to load events data: {e}")
+        raise
+
+
+def load_replay_data(
+    run_id: str, api_base_url: str = "http://localhost:8000"
+) -> Dict[str, Any]:
+    """Load replay data for a simulation run.
+
+    Args:
+        run_id: Unique identifier for the simulation run
+        api_base_url: Base URL for the API
+
+    Returns:
+        Dictionary containing replay frames
+
+    Raises:
+        requests.RequestException: If API request fails
+    """
+    try:
+        response = requests.get(f"{api_base_url}/runs/{run_id}/replay")
+        response.raise_for_status()
+        return cast(Dict[str, Any], response.json())
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to load replay data: {e}")
+        raise
+
+
+def display_event_feed(events_data: Dict[str, Any]) -> None:
+    """Display a scrolling event feed.
+
+    Args:
+        events_data: Dictionary containing events data
+    """
+    st.subheader("📝 Event Feed")
+
+    events = events_data.get("events", [])
+    total_events = events_data.get("total_events", 0)
+
+    if total_events == 0:
+        st.info("No events recorded for this simulation.")
+        return
+
+    st.write(f"**Total Events:** {total_events}")
+
+    # Create a scrolling container for events
+    with st.container():
+        for event in events:
+            with st.expander(
+                f"Round {event['round_idx']}: {event['description']}", expanded=False
+            ):
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    st.write(f"**Type:** {event['event_type']}")
+                    st.write(f"**Description:** {event['description']}")
+                    if event.get("firm_id") is not None:
+                        st.write(f"**Firm:** {event['firm_id']}")
+                    st.write(f"**Timestamp:** {event['created_at']}")
+
+                with col2:
+                    # Display event icon if available
+                    event_data = event.get("event_data", {})
+                    icon = event_data.get("icon", "📝")
+                    st.write(f"**{icon}**")
+
+                    # Display category if available
+                    category = event_data.get("category", "other")
+                    st.write(f"**Category:** {category}")
+
+
+def display_replay_controls(replay_data: Dict[str, Any]) -> None:
+    """Display replay controls and frame-by-frame playback.
+
+    Args:
+        replay_data: Dictionary containing replay frames
+    """
+    st.subheader("🎬 Simulation Replay")
+
+    frames = replay_data.get("frames", [])
+    total_frames = replay_data.get("total_frames", 0)
+    frames_with_events = replay_data.get("frames_with_events", 0)
+    event_rounds = replay_data.get("event_rounds", [])
+
+    if total_frames == 0:
+        st.info("No replay data available for this simulation.")
+        return
+
+    st.write(f"**Total Frames:** {total_frames}")
+    st.write(f"**Frames with Events:** {frames_with_events}")
+
+    if event_rounds:
+        st.write(f"**Event Rounds:** {', '.join(map(str, event_rounds))}")
+
+    # Replay controls
+    col1, col2, col3 = st.columns([1, 1, 1])
+
+    with col1:
+        if st.button("▶️ Play Replay", key="play_replay"):
+            st.session_state.replay_playing = True
+
+    with col2:
+        if st.button("⏸️ Pause", key="pause_replay"):
+            st.session_state.replay_playing = False
+
+    with col3:
+        if st.button("🔄 Reset", key="reset_replay"):
+            st.session_state.replay_frame = 0
+            st.session_state.replay_playing = False
+
+    # Initialize session state
+    if "replay_frame" not in st.session_state:
+        st.session_state.replay_frame = 0
+    if "replay_playing" not in st.session_state:
+        st.session_state.replay_playing = False
+
+    # Frame selector
+    frame_idx = st.slider(
+        "Select Frame",
+        min_value=0,
+        max_value=max(0, total_frames - 1),
+        value=st.session_state.replay_frame,
+        key="frame_slider",
+    )
+
+    # Display current frame
+    if frame_idx < len(frames):
+        frame = frames[frame_idx]
+        display_replay_frame(frame)
+
+
+def display_replay_frame(frame: Dict[str, Any]) -> None:
+    """Display a single replay frame.
+
+    Args:
+        frame: Dictionary containing frame data
+    """
+    st.subheader(f"Frame {frame['round_idx']}")
+
+    # Frame metrics
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("Market Price", f"${frame['market_price']:.2f}")
+
+    with col2:
+        st.metric("Total Quantity", f"{frame['total_quantity']:.2f}")
+
+    with col3:
+        st.metric("Total Profit", f"${frame['total_profit']:.2f}")
+
+    with col4:
+        st.metric("HHI", f"{frame['hhi']:.3f}")
+
+    # Consumer surplus
+    st.metric("Consumer Surplus", f"${frame['consumer_surplus']:.2f}")
+
+    # Firm data
+    st.subheader("Firm Actions")
+    firm_data = frame.get("firm_data", {})
+
+    if firm_data:
+        firm_df = pd.DataFrame.from_dict(firm_data, orient="index")
+        firm_df.columns = ["Action", "Price", "Quantity", "Profit"]
+        st.dataframe(firm_df)
+
+    # Events in this frame
+    events = frame.get("events", [])
+    if events:
+        st.subheader("Events in This Frame")
+        for event in events:
+            st.write(f"• {event['description']}")
+
+    # Annotations
+    annotations = frame.get("annotations", [])
+    if annotations:
+        st.subheader("Annotations")
+        for annotation in annotations:
+            st.write(f"• {annotation}")
+
+
 def calculate_metrics_for_run(run_data: Dict[str, Any]) -> pd.DataFrame:
     """Calculate HHI and consumer surplus metrics for each round.
 
@@ -403,6 +604,22 @@ def single_run_tab() -> None:
                 # Display raw data
                 st.subheader("📋 Raw Data")
                 st.dataframe(metrics_df, use_container_width=True)
+
+                # Load and display events
+                try:
+                    with st.spinner("Loading events..."):
+                        events_data = load_events_data(run_id, api_url)
+                    display_event_feed(events_data)
+                except Exception as e:
+                    st.warning(f"Could not load events: {e}")
+
+                # Load and display replay
+                try:
+                    with st.spinner("Loading replay data..."):
+                        replay_data = load_replay_data(run_id, api_url)
+                    display_replay_controls(replay_data)
+                except Exception as e:
+                    st.warning(f"Could not load replay data: {e}")
 
         except Exception as e:
             st.error(f"Error loading run data: {e}")

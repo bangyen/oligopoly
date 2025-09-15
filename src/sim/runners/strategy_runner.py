@@ -9,9 +9,12 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from sqlalchemy.orm import Session
 
+from ..events.event_logger import EventLogger
+from ..events.event_types import EventType
 from ..games.bertrand import BertrandResult, bertrand_simulation
 from ..games.cournot import CournotResult, cournot_simulation
 from ..models.models import Result, Round, Run
+from ..policy.policy_shocks import PolicyEvent, PolicyType, apply_policy_shock
 from ..strategies.strategies import Strategy
 
 
@@ -24,6 +27,7 @@ def run_strategy_game(
     bounds: Tuple[float, float],
     db: Session,
     seed: Optional[int] = None,
+    events: Optional[List[PolicyEvent]] = None,
 ) -> str:
     """Run a multi-round oligopoly simulation using explicit strategies.
 
@@ -64,6 +68,9 @@ def run_strategy_game(
     db.add(run)
     db.flush()  # Get the run_id
 
+    # Initialize event logger
+    event_logger = EventLogger(str(run.id), db)
+
     try:
         # Initialize firm histories
         firm_histories: List[List[Union[CournotResult, BertrandResult]]] = [
@@ -101,6 +108,32 @@ def run_strategy_game(
                 )
             else:  # bertrand
                 result = _run_bertrand_round(params, costs, actions)
+
+            # Apply policy shocks if any
+            if events:
+                for event in events:
+                    if event.round_idx == round_num:
+                        result = apply_policy_shock(result, event, costs)
+
+                        # Log policy event
+                        policy_event_mapping = {
+                            PolicyType.TAX: EventType.TAX_APPLIED,
+                            PolicyType.SUBSIDY: EventType.SUBSIDY_APPLIED,
+                            PolicyType.PRICE_CAP: EventType.PRICE_CAP_APPLIED,
+                        }
+
+                        policy_event_type = policy_event_mapping.get(
+                            event.policy_type, EventType.TAX_APPLIED
+                        )
+                        event_logger.log_policy_event(
+                            event_type=policy_event_type,
+                            round_idx=round_num,
+                            policy_value=event.value,
+                            policy_details={
+                                "policy_type": event.policy_type.value,
+                                "original_value": event.value,
+                            },
+                        )
 
             # Store results in database
             for firm_idx, (action, cost) in enumerate(zip(actions, costs)):
