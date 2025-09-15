@@ -32,7 +32,7 @@ A minimal FastAPI + SQLAlchemy + Docker Compose repository for simulating oligop
 ### Running Tests
 
 ```bash
-pytest -q
+python -m pytest -q
 ```
 
 ## Project Structure
@@ -121,7 +121,7 @@ The project includes comprehensive tests for:
 
 Run tests with:
 ```bash
-pytest -q
+python -m pytest -q
 ```
 
 ## License
