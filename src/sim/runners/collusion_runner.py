@@ -9,7 +9,9 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from sqlalchemy.orm import Session
 
-from ..collusion import CollusionManager, RegulatorState
+from ..collusion import CollusionEventType, CollusionManager, RegulatorState
+from ..events.event_logger import EventLogger
+from ..events.event_types import EventType
 from ..games.bertrand import BertrandResult, bertrand_simulation
 from ..games.cournot import CournotResult, cournot_simulation
 from ..models.models import CollusionEvent, Result, Round, Run
@@ -89,6 +91,9 @@ def run_collusion_game(
     run = Run(model=model, rounds=rounds)
     db.add(run)
     db.flush()  # Get the run_id
+
+    # Initialize event logger
+    event_logger = EventLogger(str(run.id), db)
 
     try:
         # Initialize firm histories
@@ -247,8 +252,30 @@ def run_collusion_game(
                 )
                 db.add(result_record)
 
-            # Store collusion events in database
+            # Store collusion events using new event system
             for event in collusion_manager.get_events_for_round(round_num):
+                # Map old collusion event types to new event types
+                event_type_mapping = {
+                    CollusionEventType.CARTEL_FORMED: EventType.CARTEL_FORMED,
+                    CollusionEventType.FIRM_DEFECTED: EventType.DEFECTION_DETECTED,
+                    CollusionEventType.REGULATOR_INTERVENED: EventType.REGULATOR_INTERVENTION,
+                    CollusionEventType.PENALTY_IMPOSED: EventType.PENALTY_IMPOSED,
+                    CollusionEventType.PRICE_CAP_IMPOSED: EventType.PRICE_CAP_IMPOSED,
+                }
+
+                new_event_type = event_type_mapping.get(
+                    event.event_type, EventType.REGULATOR_INTERVENTION
+                )
+
+                # Log using new event system
+                event_logger.log_collusion_event(
+                    event_type=new_event_type,
+                    round_idx=event.round_idx,
+                    firm_id=event.firm_id,
+                    cartel_data=event.data,
+                )
+
+                # Also maintain legacy collusion events table for backward compatibility
                 event_record = CollusionEvent(
                     run_id=run.id,
                     round_idx=event.round_idx,

@@ -14,11 +14,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from sim.events.replay import ReplaySystem
 from sim.models.metrics import (
     calculate_round_metrics_bertrand,
     calculate_round_metrics_cournot,
 )
-from sim.models.models import Base
+from sim.models.models import Base, Event, Run
 from sim.policy.policy_shocks import PolicyEvent, PolicyType
 from sim.runners.runner import get_run_results, run_game
 
@@ -139,6 +140,56 @@ class ComparisonResults(BaseModel):
     deltas: Dict[str, List[float]] = Field(
         ..., description="Delta arrays (right - left)"
     )
+
+
+class EventItem(BaseModel):
+    """Individual event item for API responses."""
+
+    id: int = Field(..., description="Unique event identifier")
+    round_idx: int = Field(..., description="Round index when event occurred")
+    event_type: str = Field(..., description="Type of event")
+    firm_id: Optional[int] = Field(None, description="Firm involved (if applicable)")
+    description: str = Field(..., description="Human-readable event description")
+    event_data: Optional[Dict[str, Any]] = Field(
+        None, description="Additional event data"
+    )
+    created_at: str = Field(..., description="Event timestamp")
+
+
+class EventsResponse(BaseModel):
+    """Response model for events endpoint."""
+
+    run_id: str = Field(..., description="Simulation run ID")
+    total_events: int = Field(..., description="Total number of events")
+    events: List[EventItem] = Field(..., description="Ordered list of events")
+
+
+class ReplayFrame(BaseModel):
+    """Single frame in simulation replay."""
+
+    round_idx: int = Field(..., description="Round index")
+    timestamp: str = Field(..., description="Frame timestamp")
+    market_price: float = Field(..., description="Market price")
+    total_quantity: float = Field(..., description="Total quantity")
+    total_profit: float = Field(..., description="Total profit")
+    hhi: float = Field(..., description="Herfindahl-Hirschman Index")
+    consumer_surplus: float = Field(..., description="Consumer surplus")
+    num_firms: int = Field(..., description="Number of firms")
+    firm_data: Dict[int, Dict[str, float]] = Field(
+        ..., description="Firm-specific data"
+    )
+    events: List[Dict[str, Any]] = Field(..., description="Events in this round")
+    annotations: List[str] = Field(..., description="Human-readable annotations")
+
+
+class ReplayResponse(BaseModel):
+    """Response model for replay endpoint."""
+
+    run_id: str = Field(..., description="Simulation run ID")
+    total_frames: int = Field(..., description="Total number of frames")
+    frames_with_events: int = Field(..., description="Number of frames with events")
+    event_rounds: List[int] = Field(..., description="Rounds containing events")
+    frames: List[ReplayFrame] = Field(..., description="All replay frames")
 
 
 # Database dependency
@@ -623,3 +674,118 @@ def _calculate_comparison_metrics(run_data: Dict[str, Any]) -> Dict[str, List[fl
             metrics["consumer_surplus"].append(cs)
 
         return metrics
+
+
+@app.get("/runs/{run_id}/events", response_model=EventsResponse)
+async def get_run_events(run_id: str, db: Session = Depends(get_db)) -> EventsResponse:
+    """Retrieve all events for a simulation run.
+
+    Returns an ordered list of all events that occurred during the simulation,
+    including collusion events, policy interventions, and market dynamics.
+
+    Args:
+        run_id: Unique identifier for the simulation run
+        db: Database session
+
+    Returns:
+        EventsResponse containing ordered list of events
+
+    Raises:
+        HTTPException: If run_id is not found or data retrieval fails
+    """
+    try:
+        # Verify run exists
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
+
+        # Get all events for this run
+        events = (
+            db.query(Event)
+            .filter(Event.run_id == run_id)
+            .order_by(Event.round_idx, Event.created_at)
+            .all()
+        )
+
+        # Convert to API format
+        event_items = []
+        for event in events:
+            event_item = EventItem(
+                id=event.id,
+                round_idx=event.round_idx,
+                event_type=event.event_type,
+                firm_id=event.firm_id,
+                description=event.description,
+                event_data=event.event_data,
+                created_at=event.created_at.isoformat(),
+            )
+            event_items.append(event_item)
+
+        return EventsResponse(
+            run_id=run_id,
+            total_events=len(event_items),
+            events=event_items,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@app.get("/runs/{run_id}/replay", response_model=ReplayResponse)
+async def get_run_replay(run_id: str, db: Session = Depends(get_db)) -> ReplayResponse:
+    """Retrieve replay data for a simulation run.
+
+    Returns frame-by-frame replay data including market metrics, firm actions,
+    and event annotations for comprehensive simulation playback.
+
+    Args:
+        run_id: Unique identifier for the simulation run
+        db: Database session
+
+    Returns:
+        ReplayResponse containing all replay frames
+
+    Raises:
+        HTTPException: If run_id is not found or data retrieval fails
+    """
+    try:
+        # Initialize replay system
+        replay_system = ReplaySystem(run_id, db)
+
+        # Get all frames
+        frames = replay_system.get_all_frames()
+        frames_with_events = replay_system.get_frames_with_events()
+        event_rounds = replay_system.get_event_rounds()
+
+        # Convert frames to API format
+        replay_frames = []
+        for frame in frames:
+            replay_frame = ReplayFrame(
+                round_idx=frame.round_idx,
+                timestamp=frame.timestamp.isoformat(),
+                market_price=frame.market_price,
+                total_quantity=frame.total_quantity,
+                total_profit=frame.total_profit,
+                hhi=frame.hhi,
+                consumer_surplus=frame.consumer_surplus,
+                num_firms=frame.num_firms,
+                firm_data=frame.firm_data,
+                events=frame.events,
+                annotations=frame.annotations,
+            )
+            replay_frames.append(replay_frame)
+
+        return ReplayResponse(
+            run_id=run_id,
+            total_frames=len(replay_frames),
+            frames_with_events=len(frames_with_events),
+            event_rounds=event_rounds,
+            frames=replay_frames,
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
