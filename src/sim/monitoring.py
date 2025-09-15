@@ -54,7 +54,9 @@ class HealthChecker:
         """Check database connectivity."""
         try:
             # Simple query to test connection
-            db.execute("SELECT 1")
+            from sqlalchemy import text
+
+            db.execute(text("SELECT 1"))
             return {
                 "status": "healthy",
                 "message": "Database connection successful",
