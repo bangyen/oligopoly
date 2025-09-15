@@ -21,29 +21,14 @@ from sim.models.models import Base
 from sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
 from sim.strategies.strategies import EpsilonGreedy, Static, TitForTat
 
-# Database setup (in-memory SQLite for demo)
-engine = create_engine("sqlite:///:memory:", echo=False)
-Base.metadata.create_all(engine)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def calculate_hhi(quantities: List[float]) -> float:
-    """Calculate Herfindahl-Hirschman Index (HHI) for market concentration."""
-    total_quantity = sum(quantities)
-    if total_quantity == 0:
-        return 0.0
-    market_shares = [q / total_quantity for q in quantities]
-    return sum(share**2 for share in market_shares) * 10000
-
-
-def calculate_consumer_surplus(
-    price: float, total_quantity: float, a: float, b: float
-) -> float:
-    """Calculate consumer surplus for linear demand curve."""
-    if total_quantity == 0:
-        return 0.0
-    # CS = 0.5 * (a - price) * total_quantity
-    return 0.5 * max(0, a - price) * total_quantity
+from utils import (
+    calculate_consumer_surplus,
+    calculate_hhi,
+    create_demo_database,
+    format_currency,
+    format_list,
+    print_demo_completion,
+)
 
 
 def run_epsilon_greedy_demo() -> None:
@@ -80,20 +65,10 @@ def run_epsilon_greedy_demo() -> None:
         EpsilonGreedy(**grid_params, seed=44),
     ]
 
-    print("Initial setup:")
-    print(f"- Market parameters: a={market_params['a']}, b={market_params['b']}")
-    print(f"- Action bounds: {bounds}")
-    print(
-        f"- Grid: {grid_params['min_action']} to {grid_params['max_action']} step {grid_params['step_size']}"
-    )
-    print(f"- Initial firms: {len(strategies)} firms with costs {initial_costs}")
-    print(
-        f"- Learning parameters: ε₀={grid_params['epsilon_0']}, α={grid_params['learning_rate']}, γ={grid_params['decay_rate']}"
-    )
-    print()
+    print(f"Setup: {len(strategies)} firms, costs {initial_costs}, ε₀={grid_params['epsilon_0']}, α={grid_params['learning_rate']}")
 
     # Run simulation with database
-    db = SessionLocal()
+    db = create_demo_database()
 
     try:
         # Run first 10 rounds with 3 firms
@@ -146,12 +121,9 @@ def run_epsilon_greedy_demo() -> None:
                 }
             )
 
-        print(f"Completed rounds 0-9. Run ID: {run_id}")
-
         # Now add 4th firm and continue
-        print("\nAdding 4th firm at round 10...")
+        print("Adding 4th firm (cost: 8.0) at round 10...")
         new_cost = 8.0  # Lower cost than existing firms
-        print(f"- New firm cost: {new_cost}")
 
         # Create new strategy for 4th firm
         new_strategy = EpsilonGreedy(**grid_params, seed=45)
@@ -208,66 +180,31 @@ def run_epsilon_greedy_demo() -> None:
                 }
             )
 
-        print(f"Completed rounds 10-19. Run ID: {run_id_2}")
-
-        # Combine all results
-        all_rounds = rounds_0_9 + rounds_10_19
-
-        # Print summary statistics
-        print("\n=== Simulation Results ===")
-        print(f"Total rounds: {len(all_rounds)}")
-        print("Firms: 3 (rounds 0-9), 4 (rounds 10-19)")
-
         # Calculate averages for different periods
         pre_entry = rounds_0_9[-3:]  # Last 3 rounds before entry
         post_entry = rounds_10_19[3:]  # Rounds 13-19 (after entry effects)
 
         if pre_entry and post_entry:
             pre_avg_price = sum(float(r["price"]) for r in pre_entry) / len(pre_entry)
-            post_avg_price = sum(float(r["price"]) for r in post_entry) / len(
-                post_entry
-            )
-
+            post_avg_price = sum(float(r["price"]) for r in post_entry) / len(post_entry)
             pre_avg_hhi = sum(float(r["hhi"]) for r in pre_entry) / len(pre_entry)
             post_avg_hhi = sum(float(r["hhi"]) for r in post_entry) / len(post_entry)
-
             pre_avg_cs = sum(float(r["cs"]) for r in pre_entry) / len(pre_entry)
             post_avg_cs = sum(float(r["cs"]) for r in post_entry) / len(post_entry)
 
-            print("\nPre-entry (rounds 7-9) averages:")
-            print(f"  Price: {pre_avg_price:.2f}")
-            print(f"  HHI: {pre_avg_hhi:.0f}")
-            print(f"  Consumer Surplus: {pre_avg_cs:.2f}")
+            print(f"\nResults: 20 rounds (3 firms → 4 firms)")
+            print(f"Pre-entry: Price {format_currency(pre_avg_price)}, HHI {pre_avg_hhi:.0f}, CS {format_currency(pre_avg_cs)}")
+            print(f"Post-entry: Price {format_currency(post_avg_price)}, HHI {post_avg_hhi:.0f}, CS {format_currency(post_avg_cs)}")
+            print(f"Changes: Price {post_avg_price - pre_avg_price:+.1f}, HHI {post_avg_hhi - pre_avg_hhi:+.0f}, CS {post_avg_cs - pre_avg_cs:+.0f}")
 
-            print("\nPost-entry (rounds 13-19) averages:")
-            print(f"  Price: {post_avg_price:.2f}")
-            print(f"  HHI: {post_avg_hhi:.0f}")
-            print(f"  Consumer Surplus: {post_avg_cs:.2f}")
-
-            print("\nChanges after entry:")
-            print(f"  Price change: {post_avg_price - pre_avg_price:+.2f}")
-            print(f"  HHI change: {post_avg_hhi - pre_avg_hhi:+.0f}")
-            print(f"  CS change: {post_avg_cs - pre_avg_cs:+.2f}")
-
-        # Show Q-values evolution for first firm
-        print("\n=== Learning Progress (Firm 0) ===")
+        # Show learning progress for first firm
         firm_0_strategy = strategies[0]
-        print(f"Final ε: {firm_0_strategy.get_current_epsilon():.4f}")
-        print(f"Final Q-values: {[f'{q:.2f}' for q in firm_0_strategy.get_q_values()]}")
-
-        # Show action grid
-        action_grid = firm_0_strategy.get_action_grid()
-        print(
-            f"Action grid: {action_grid[:5]}...{action_grid[-3:]} ({len(action_grid)} actions)"
-        )
-
-        # Find best action
         q_values = firm_0_strategy.get_q_values()
+        action_grid = firm_0_strategy.get_action_grid()
         best_idx = q_values.index(max(q_values))
         best_action = action_grid[best_idx]
-        print(
-            f"Best learned action: {best_action:.1f} (Q-value: {q_values[best_idx]:.2f})"
-        )
+        
+        print(f"\nLearning (Firm 0): Final ε={firm_0_strategy.get_current_epsilon():.3f}, Best action={best_action:.1f} (Q={q_values[best_idx]:.1f})")
 
     finally:
         db.close()
@@ -275,7 +212,7 @@ def run_epsilon_greedy_demo() -> None:
 
 def run_baseline_comparison() -> None:
     """Run baseline strategies for comparison."""
-    print("\n=== Baseline Strategy Comparison ===\n")
+    print("\n=== Baseline Comparison ===")
 
     # Same market parameters
     market_params = {"a": 100.0, "b": 1.0}
@@ -289,9 +226,7 @@ def run_baseline_comparison() -> None:
         Static(value=25.0),  # Different static quantity
     ]
 
-    print("Running baseline comparison with Static and TitForTat strategies...")
-
-    db = SessionLocal()
+    db = create_demo_database()
     try:
         run_id = run_strategy_game(
             model="cournot",
@@ -316,11 +251,8 @@ def run_baseline_comparison() -> None:
         ]
         price = final_round[0]["price"]
 
-        print("Baseline results (round 9):")
-        print(f"  Quantities: {[f'{q:.1f}' for q in quantities]}")
-        print(f"  Profits: {[f'{p:.1f}' for p in profits]}")
-        print(f"  Price: {price:.2f}")
-        print(f"  HHI: {calculate_hhi(quantities):.0f}")
+        print(f"Baseline (Static/TitForTat): Price {format_currency(price)}, HHI {calculate_hhi(quantities):.0f}")
+        print(f"Profits: {format_list(profits)}")
 
     finally:
         db.close()
@@ -329,16 +261,9 @@ def run_baseline_comparison() -> None:
 if __name__ == "__main__":
     run_epsilon_greedy_demo()
     run_baseline_comparison()
-
-    print("\n=== Demo Commands ===")
-    print("To run this demo:")
-    print("  python scripts/epsilon_greedy_demo.py")
-    print("\nExpected directional changes after entry:")
-    print("  - Price: Should decrease (more competition)")
-    print("  - HHI: Should decrease (less concentration)")
-    print("  - Consumer Surplus: Should increase (lower prices)")
-    print("\nTo run tests:")
-    print("  pytest tests/unit/test_bandit_update.py -v")
-    print("  pytest tests/unit/test_epsilon_decay.py -v")
-    print("  pytest tests/unit/test_grid_bounds.py -v")
-    print("  pytest tests/integration/test_demo_outcomes.py -v")
+    
+    print_demo_completion(
+        "ε-Greedy learning",
+        "Q-learning, exploration-exploitation, firm entry dynamics, baseline comparison"
+    )
+    print("Expected: Price ↓, HHI ↓, Consumer Surplus ↑ after entry")

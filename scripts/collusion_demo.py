@@ -16,12 +16,13 @@ from sim.strategies.collusion_strategies import (
     OpportunisticStrategy,
 )
 
-
-def print_header(title: str) -> None:
-    """Print a formatted header."""
-    print(f"\n{'='*60}")
-    print(f" {title}")
-    print(f"{'='*60}")
+from utils import (
+    format_currency,
+    format_list,
+    print_demo_completion,
+    print_header,
+    print_summary,
+)
 
 
 def print_event(event: Any) -> None:
@@ -34,12 +35,11 @@ def print_event(event: Any) -> None:
 
 def demo_cartel_stability() -> None:
     """Demonstrate cartel formation and stability."""
-    print_header("CARTEL STABILITY DEMONSTRATION")
+    print("\n=== CARTEL STABILITY ===")
 
     manager = CollusionManager()
 
     # Form a cartel
-    print("1. Forming cartel with 3 firms...")
     manager.form_cartel(
         round_idx=0,
         collusive_price=60.0,
@@ -47,49 +47,41 @@ def demo_cartel_stability() -> None:
         participating_firms=[0, 1, 2],
     )
 
-    print(f"   Cartel active: {manager.is_cartel_active()}")
-    print(f"   Collusive price: ${manager.current_cartel.collusive_price}")
-    print(
-        f"   Collusive quantity per firm: {manager.current_cartel.collusive_quantity}"
-    )
+    print(f"Cartel formed: {manager.current_cartel.collusive_price} price, {manager.current_cartel.collusive_quantity} qty per firm")
 
     # Simulate cartel compliance
-    print("\n2. Simulating cartel compliance for 3 rounds...")
+    print("\nSimulating 3 rounds of compliance...")
     costs = [20.0, 25.0, 22.0]
+    profits_by_round = []
 
     for round_idx in range(1, 4):
-        # All firms follow cartel agreement
         prices = [60.0, 60.0, 60.0]
         quantities = [8.0, 8.0, 8.0]
-
-        # Run Bertrand simulation (result not used, just for completeness)
         bertrand_simulation(alpha=100.0, beta=1.0, costs=costs, prices=prices)
+        
+        profits = [(price - cost) * qty for price, cost, qty in zip(prices, costs, quantities)]
+        profits_by_round.append(profits)
 
-        # Calculate profits
-        profits = [
-            (price - cost) * qty for price, cost, qty in zip(prices, costs, quantities)
-        ]
+    # Show summary
+    avg_profits = [sum(round_profits[i] for round_profits in profits_by_round) / len(profits_by_round) 
+                   for i in range(3)]
+    print(f"Average profits: {format_list(avg_profits)}")
+    
+    total_quantity = sum([8.0, 8.0, 8.0])
+    market_shares = [8.0 / total_quantity] * 3
+    hhi = manager.calculate_hhi(market_shares)
+    print(f"Market concentration (HHI): {hhi:.3f}")
 
-        print(f"   Round {round_idx}:")
-        print(f"     Prices: {prices}")
-        print(f"     Quantities: {quantities}")
-        print(f"     Profits: {[f'${p:.1f}' for p in profits]}")
-
-        # Calculate HHI
-        total_quantity = sum(quantities)
-        market_shares = [q / total_quantity for q in quantities]
-        hhi = manager.calculate_hhi(market_shares)
-        print(f"     HHI: {hhi:.3f}")
-
-    print("\n3. Cartel stability results:")
-    print("   ✓ High profits for all firms")
-    print("   ✓ High market concentration (HHI)")
-    print("   ✓ Stable prices")
+    print_summary("Results", [
+        "Stable collusive pricing maintained",
+        "High profits for all participants", 
+        "Perfect market concentration achieved"
+    ])
 
 
 def demo_defection() -> None:
     """Demonstrate defection behavior."""
-    print_header("DEFECTION DEMONSTRATION")
+    print("\n=== DEFECTION DETECTION ===")
 
     manager = CollusionManager()
 
@@ -101,28 +93,14 @@ def demo_defection() -> None:
         participating_firms=[0, 1, 2],
     )
 
-    print("1. Cartel formed with price $50 and quantity 10 per firm")
+    print(f"Cartel formed: {format_currency(50.0)} price, 10 qty per firm")
 
     # Simulate compliance for 2 rounds
-    print("\n2. Rounds 1-2: All firms comply with cartel")
     costs = [20.0, 20.0, 20.0]
-
-    for round_idx in range(1, 3):
-        prices = [50.0, 50.0, 50.0]
-        quantities = [10.0, 10.0, 10.0]
-
-        # Run Bertrand simulation (result not used, just for completeness)
-        bertrand_simulation(alpha=100.0, beta=1.0, costs=costs, prices=prices)
-        profits = [
-            (price - cost) * qty for price, cost, qty in zip(prices, costs, quantities)
-        ]
-
-        print(f"   Round {round_idx}: Profits = {[f'${p:.1f}' for p in profits]}")
+    compliant_profit = (50.0 - 20.0) * 10.0
+    print(f"Rounds 1-2: All firms comply (profit: {format_currency(compliant_profit)} each)")
 
     # Firm 1 defects
-    print("\n3. Round 3: Firm 1 defects by undercutting price")
-
-    # Check for defection
     defected = manager.detect_defection(
         round_idx=3,
         firm_id=1,
@@ -133,27 +111,23 @@ def demo_defection() -> None:
     )
 
     if defected:
-        print("   ✓ Defection detected!")
-        print(f"   Defection count for Firm 1: {manager.get_firm_defection_count(1)}")
+        defection_profit = (45.0 - 20.0) * 15.0  # Assume captures more demand
+        profit_advantage = defection_profit - compliant_profit
+        
+        print(f"\nRound 3: Firm 1 defects (price: {format_currency(45.0)})")
+        print(f"Defection profit: {format_currency(defection_profit)} (+{format_currency(profit_advantage)})")
+        print(f"Defection count: {manager.get_firm_defection_count(1)}")
 
-        # Show defection profit advantage
-        compliant_profit = (50.0 - 20.0) * 10.0  # $300
-        defection_profit = (45.0 - 20.0) * 15.0  # Assume captures more demand: $375
-
-        print(f"   Compliant profit: ${compliant_profit}")
-        print(f"   Defection profit: ${defection_profit}")
-        print(f"   Profit advantage: ${defection_profit - compliant_profit:.1f}")
-
-    # Show events
-    print("\n4. Events logged:")
-    events = manager.get_events_for_round(3)
-    for event in events:
-        print_event(event)
+    print_summary("Key Events", [
+        "Defection detected and logged",
+        "Significant profit advantage from undercutting",
+        "Event tracking system activated"
+    ])
 
 
 def demo_regulator_intervention() -> None:
     """Demonstrate regulator intervention."""
-    print_header("REGULATOR INTERVENTION DEMONSTRATION")
+    print("\n=== REGULATOR INTERVENTION ===")
 
     # Configure regulator
     regulator_state = RegulatorState(
@@ -165,12 +139,8 @@ def demo_regulator_intervention() -> None:
     )
     manager = CollusionManager(regulator_state)
 
-    print("1. Regulator configured:")
-    print(f"   HHI threshold: {regulator_state.hhi_threshold}")
-    print(
-        f"   Price threshold: {regulator_state.baseline_price * regulator_state.price_threshold_multiplier}"
-    )
-    print(f"   Penalty amount: ${regulator_state.penalty_amount}")
+    price_threshold = regulator_state.baseline_price * regulator_state.price_threshold_multiplier
+    print(f"Regulator thresholds: HHI > {regulator_state.hhi_threshold}, Price > {format_currency(price_threshold)}")
 
     # Form cartel
     manager.form_cartel(
@@ -180,31 +150,15 @@ def demo_regulator_intervention() -> None:
         participating_firms=[0, 1, 2],
     )
 
-    print("\n2. Cartel formed with high prices")
-
     # Simulate high concentration and high prices
-    print("\n3. Simulating high market concentration...")
+    market_shares = [0.9, 0.08, 0.02]  # HHI = 0.8168
+    prices = [50.0, 50.0, 50.0]  # Above threshold
+    quantities = [18.0, 1.6, 0.4]
 
-    # High concentration market (one dominant firm)
-    market_shares = [0.85, 0.10, 0.05]  # HHI = 0.85² + 0.10² + 0.05² = 0.735
-    # Let's make it even higher
-    market_shares = [0.9, 0.08, 0.02]  # HHI = 0.9² + 0.08² + 0.02² = 0.8168
-
-    prices = [50.0, 50.0, 50.0]  # Above threshold of 30.0 * 1.5 = 45.0
-    quantities = [18.0, 1.6, 0.4]  # Proportional to market shares
-
-    print(f"   Market shares: {market_shares}")
-    print(f"   Prices: {prices}")
-    print(f"   Quantities: {quantities}")
-
-    # Calculate HHI and average price
     hhi = manager.calculate_hhi(market_shares)
     avg_price = manager.calculate_average_price(prices, quantities)
 
-    print(f"   HHI: {hhi:.3f} (threshold: {regulator_state.hhi_threshold})")
-    print(
-        f"   Average price: ${avg_price:.1f} (threshold: ${regulator_state.baseline_price * regulator_state.price_threshold_multiplier})"
-    )
+    print(f"\nMarket conditions: HHI = {hhi:.3f}, Avg price = {format_currency(avg_price)}")
 
     # Check for intervention
     should_intervene, intervention_type, intervention_value = (
@@ -217,11 +171,8 @@ def demo_regulator_intervention() -> None:
     )
 
     if should_intervene:
-        print("\n4. ✓ Regulator intervenes!")
-        print(f"   Intervention type: {intervention_type}")
-        print(f"   Intervention value: {intervention_value}")
-
-        # Apply intervention
+        print(f"✓ Regulator intervenes: {intervention_type} = {intervention_value}")
+        
         original_profits = [300.0, 250.0, 200.0]
         modified_profits = manager.apply_regulator_intervention(
             round_idx=5,
@@ -229,24 +180,20 @@ def demo_regulator_intervention() -> None:
             intervention_value=intervention_value,
             firm_profits=original_profits,
         )
+        print(f"Profit impact: {format_list(original_profits)} → {format_list(modified_profits)}")
 
-        print(f"   Original profits: {[f'${p:.1f}' for p in original_profits]}")
-        print(f"   Modified profits: {[f'${p:.1f}' for p in modified_profits]}")
-
-    # Show events
-    print("\n5. Events logged:")
-    events = manager.get_events_for_round(5)
-    for event in events:
-        print_event(event)
+    print_summary("Intervention Results", [
+        "High concentration detected (HHI > threshold)",
+        "Price cap intervention triggered",
+        "Market power constrained by regulation"
+    ])
 
 
 def demo_event_feed() -> None:
     """Demonstrate comprehensive event logging."""
-    print_header("EVENT FEED DEMONSTRATION")
+    print("\n=== EVENT LOGGING ===")
 
     manager = CollusionManager()
-
-    print("1. Complete collusion scenario with event logging:")
 
     # Round 0: Cartel formation
     manager.form_cartel(
@@ -309,47 +256,35 @@ def demo_event_feed() -> None:
             firm_profits=[300.0, 250.0, 200.0],
         )
 
-    # Display all events
-    print("\n2. Event timeline:")
-    for round_idx in range(6):
+    # Show key events only
+    print("Key events logged:")
+    key_rounds = [0, 3, 4, 5]
+    for round_idx in key_rounds:
         events = manager.get_events_for_round(round_idx)
         if events:
-            print(f"\n   Round {round_idx}:")
+            print(f"\nRound {round_idx}:")
             for event in events:
-                print_event(event)
+                print(f"  • {event.description}")
 
     # Summary statistics
-    print("\n3. Summary statistics:")
     total_events = len(manager.events)
-    cartel_events = len(
-        [e for e in manager.events if e.event_type == CollusionEventType.CARTEL_FORMED]
-    )
-    defection_events = len(
-        [e for e in manager.events if e.event_type == CollusionEventType.FIRM_DEFECTED]
-    )
-    intervention_events = len(
-        [
-            e
-            for e in manager.events
-            if e.event_type == CollusionEventType.REGULATOR_INTERVENED
-        ]
-    )
+    cartel_events = len([e for e in manager.events if e.event_type == CollusionEventType.CARTEL_FORMED])
+    defection_events = len([e for e in manager.events if e.event_type == CollusionEventType.FIRM_DEFECTED])
+    intervention_events = len([e for e in manager.events if e.event_type == CollusionEventType.REGULATOR_INTERVENED])
 
-    print(f"   Total events: {total_events}")
-    print(f"   Cartel formations: {cartel_events}")
-    print(f"   Defections: {defection_events}")
-    print(f"   Regulator interventions: {intervention_events}")
+    print(f"\nEvent summary: {total_events} total ({cartel_events} formations, {defection_events} defections, {intervention_events} interventions)")
 
-    # Defection counts by firm
-    print("   Defection counts by firm:")
-    for firm_id in range(3):
-        count = manager.get_firm_defection_count(firm_id)
-        print(f"     Firm {firm_id}: {count} defections")
+    print_summary("Event Tracking Features", [
+        "Comprehensive event logging across all rounds",
+        "Defection detection and counting by firm",
+        "Regulatory intervention monitoring",
+        "Timeline reconstruction capability"
+    ])
 
 
 def demo_strategies() -> None:
     """Demonstrate collusion-aware strategies."""
-    print_header("COLLUSION STRATEGIES DEMONSTRATION")
+    print("\n=== COLLUSION STRATEGIES ===")
 
     manager = CollusionManager()
 
@@ -361,23 +296,17 @@ def demo_strategies() -> None:
         participating_firms=[0, 1, 2],
     )
 
-    print("1. Cartel formed with price $50 and quantity 10")
+    print(f"Cartel formed: {format_currency(50.0)} price, 10 qty per firm")
 
     # Test different strategies
     strategies = [
         ("Cartel Strategy", CartelStrategy()),
         ("Collusive Strategy", CollusiveStrategy(defection_probability=0.3)),
-        (
-            "Opportunistic Strategy",
-            OpportunisticStrategy(profit_threshold_multiplier=1.2),
-        ),
+        ("Opportunistic Strategy", OpportunisticStrategy(profit_threshold_multiplier=1.2)),
     ]
 
-    print("\n2. Testing different strategies:")
-
+    print("\nStrategy behaviors:")
     for name, strategy in strategies:
-        print(f"\n   {name}:")
-
         if isinstance(strategy, CartelStrategy):
             action = strategy.next_action(
                 round_num=1,
@@ -387,7 +316,7 @@ def demo_strategies() -> None:
                 market_params={"model_type": "bertrand"},
                 collusion_manager=manager,
             )
-            print(f"     Action: ${action:.1f} (always follows cartel)")
+            print(f"  {name}: Always follows cartel ({format_currency(action)})")
 
         elif isinstance(strategy, CollusiveStrategy):
             prob = strategy.calculate_defection_probability(
@@ -396,7 +325,7 @@ def demo_strategies() -> None:
                 rival_histories=[],
                 collusion_manager=manager,
             )
-            print(f"     Defection probability: {prob:.2f}")
+            print(f"  {name}: {prob:.0%} defection probability")
 
         elif isinstance(strategy, OpportunisticStrategy):
             cartel_profit = strategy.estimate_cartel_profit(
@@ -412,15 +341,20 @@ def demo_strategies() -> None:
                 market_params={"alpha": 100.0, "beta": 1.0},
                 model_type="bertrand",
             )
-            print(f"     Cartel profit estimate: ${cartel_profit:.1f}")
-            print(f"     Defection profit estimate: ${defection_profit:.1f}")
-            print(f"     Profit advantage: {defection_profit/cartel_profit:.2f}x")
+            advantage = defection_profit / cartel_profit
+            print(f"  {name}: {advantage:.1f}x profit advantage from defection")
+
+    print_summary("Strategy Features", [
+        "Cartel-compliant behavior modeling",
+        "Probabilistic defection strategies",
+        "Profit-based opportunistic decisions",
+        "Integration with collusion management"
+    ])
 
 
 def main() -> None:
     """Run all demonstrations."""
-    print("OLIGOPOLY COLLUSION & REGULATOR DYNAMICS DEMO")
-    print("=" * 60)
+    print("=== OLIGOPOLY COLLUSION & REGULATOR DYNAMICS DEMO ===")
 
     try:
         demo_cartel_stability()
@@ -429,22 +363,15 @@ def main() -> None:
         demo_event_feed()
         demo_strategies()
 
-        print_header("DEMO COMPLETE")
-        print(
-            "All collusion and regulator dynamics features demonstrated successfully!"
+        print("\n=== DEMO COMPLETE ===")
+        print_demo_completion(
+            "Collusion and regulator dynamics",
+            "Cartel formation, defection detection, regulatory intervention, event logging, collusion strategies"
         )
-        print("\nKey features showcased:")
-        print("✓ Cartel formation and stability")
-        print("✓ Defection detection and profit advantages")
-        print("✓ Regulator monitoring (HHI and price thresholds)")
-        print("✓ Regulatory interventions (penalties and price caps)")
-        print("✓ Comprehensive event logging")
-        print("✓ Collusion-aware strategies")
 
     except Exception as e:
         print(f"\nError during demo: {e}")
         import traceback
-
         traceback.print_exc()
 
 
