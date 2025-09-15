@@ -12,7 +12,7 @@ from src.sim.games.cournot import CournotResult
 from src.sim.strategies.strategies import QLearning
 
 
-def test_action_bounds_200_steps():
+def test_action_bounds_200_steps() -> None:
     """Test that all actions over 200 steps stay within grid bounds."""
     # Create Q-learning strategy with specific bounds
     min_action = 5.0
@@ -35,7 +35,7 @@ def test_action_bounds_200_steps():
     assert actual_grid == expected_grid
 
     bounds = (min_action, max_action)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Track all actions over 200 steps
     actions_chosen: List[float] = []
@@ -95,7 +95,7 @@ def test_action_bounds_200_steps():
     ), f"Should use multiple different actions, got only {len(unique_actions)} unique actions"
 
 
-def test_action_bounds_different_grids():
+def test_action_bounds_different_grids() -> None:
     """Test action bounds with different grid configurations."""
     test_configs = [
         {"min": 0.0, "max": 10.0, "step": 1.0},  # [0,1,2,...,10]
@@ -120,7 +120,7 @@ def test_action_bounds_different_grids():
         )
 
         bounds = (min_action, max_action)
-        market_params = {}
+        market_params: dict[str, float] = {}
 
         # Generate 50 actions
         actions_chosen: List[float] = []
@@ -164,7 +164,7 @@ def test_action_bounds_different_grids():
             ), f"Config {config}: Action {action} not in grid {expected_grid}"
 
 
-def test_action_bounds_edge_cases():
+def test_action_bounds_edge_cases() -> None:
     """Test action bounds with edge cases."""
     # Test with very small step size
     q_learning_small_step = QLearning(
@@ -178,7 +178,7 @@ def test_action_bounds_edge_cases():
     )
 
     bounds = (0.0, 1.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Generate 100 actions
     actions_chosen: List[float] = []
@@ -263,7 +263,7 @@ def test_action_bounds_edge_cases():
         ), f"Action {action} not in grid {expected_large_grid}"
 
 
-def test_action_bounds_clamping():
+def test_action_bounds_clamping() -> None:
     """Test that actions are properly clamped to bounds."""
     # Create strategy with internal bounds different from external bounds
     q_learning = QLearning(
@@ -278,7 +278,7 @@ def test_action_bounds_clamping():
 
     # Use external bounds that are wider than internal bounds
     external_bounds = (5.0, 25.0)
-    market_params = {}
+    market_params: dict[str, float] = {}
 
     # Generate actions
     actions_chosen: List[float] = []

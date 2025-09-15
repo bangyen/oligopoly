@@ -4,6 +4,9 @@ This module tests the API integration for policy events, ensuring that
 POST /simulate accepts events and applies them only on specified rounds.
 """
 
+import atexit
+import os
+import tempfile
 from typing import Generator
 
 import pytest
@@ -17,8 +20,12 @@ from sim.models.models import Base
 # Test client
 client = TestClient(app)
 
-# Test database setup
-SQLALCHEMY_DATABASE_URL = "sqlite:///./data/test.db"
+# Create temporary database file
+temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+temp_file.close()
+
+# Test database setup - use temporary database
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{temp_file.name}"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
@@ -43,6 +50,16 @@ def setup_database() -> Generator[None, None, None]:
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+# Cleanup function to be called at module teardown
+def cleanup_temp_db():
+    """Clean up temporary database file."""
+    if os.path.exists(temp_file.name):
+        os.unlink(temp_file.name)
+
+
+atexit.register(cleanup_temp_db)
 
 
 def test_api_simulate_with_tax_event(setup_database: None) -> None:
