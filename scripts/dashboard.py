@@ -645,7 +645,18 @@ def single_run_tab(api_url: str) -> None:
 
             # Display raw data
             st.subheader("Raw Data")
-            st.dataframe(metrics_df, use_container_width=True)
+            # Format column names for better display
+            display_df = metrics_df.copy()
+            display_df.columns = [
+                "Round",
+                "Market Price",
+                "Total Quantity",
+                "Total Profit",
+                "HHI",
+                "Consumer Surplus",
+                "Number of Firms",
+            ]
+            st.dataframe(display_df, use_container_width=True)
 
             # Load and display events
             try:
@@ -1401,7 +1412,12 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
     for round_idx in range(rounds):
         row = {"Round": round_idx}
         for metric_name, values in deltas.items():
-            row[f"{metric_name.replace('_', ' ').title()} Delta"] = values[round_idx]
+            # Special handling for HHI to keep it all caps
+            if metric_name == "hhi":
+                display_name = "HHI Delta"
+            else:
+                display_name = f"{metric_name.replace('_', ' ').title()} Delta"
+            row[display_name] = values[round_idx]
         delta_data.append(row)
 
     delta_df = pd.DataFrame(delta_data)
@@ -1411,13 +1427,18 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
     st.subheader("Delta Summary Statistics")
     summary_data = []
     for metric_name, values in deltas.items():
+        # Special handling for HHI to keep it all caps
+        if metric_name == "hhi":
+            display_name = "HHI"
+        else:
+            display_name = metric_name.replace("_", " ").title()
         summary_data.append(
             {
-                "Metric": metric_name.replace("_", " ").title(),
+                "Metric": display_name,
                 "Mean Delta": f"{sum(values) / len(values):.4f}",
                 "Min Delta": f"{min(values):.4f}",
                 "Max Delta": f"{max(values):.4f}",
-                "Std Delta": f"{(sum((x - sum(values)/len(values))**2 for x in values) / len(values))**0.5:.4f}",
+                "STD Delta": f"{(sum((x - sum(values)/len(values))**2 for x in values) / len(values))**0.5:.4f}",
             }
         )
 
