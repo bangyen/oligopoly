@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sim.bertrand import bertrand_simulation
 from sim.cournot import cournot_simulation
 from sim.models import Result, Round, Run
+from sim.policy_shocks import apply_policy_shock, validate_policy_events
 
 
 def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> str:
@@ -48,9 +49,14 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
     params = config.get("params", {})
     firms = config.get("firms", [])
     seed = config.get("seed")
+    events = config.get("events", [])
 
     if not firms:
         raise ValueError("Config must contain 'firms' list")
+
+    # Validate policy events
+    if events:
+        validate_policy_events(events, rounds)
 
     # Set random seed if provided
     if seed is not None:
@@ -86,11 +92,20 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
             # Run simulation for this round
             if model == "cournot":
                 result = _run_cournot_round(params, costs, actions)
+            else:  # bertrand
+                result = _run_bertrand_round(params, costs, actions)
+
+            # Apply policy shocks for this round
+            for event in events:
+                if event.round_idx == round_idx:
+                    result = apply_policy_shock(result, event, costs)
+
+            # Extract results after policy shocks
+            if model == "cournot":
                 market_price = result.price
                 quantities = result.quantities
                 profits = result.profits
             else:  # bertrand
-                result = _run_bertrand_round(params, costs, actions)
                 market_price = result.prices[0]  # All firms have same price in Bertrand
                 quantities = result.quantities
                 profits = result.profits
