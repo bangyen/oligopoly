@@ -13,6 +13,6 @@ type: ## type-check
 	mypy .
 
 test: ## run tests
-	pytest
+	python -m pytest
 
 all: fmt lint type test
