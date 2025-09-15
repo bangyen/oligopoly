@@ -256,5 +256,181 @@ def create_strategy(strategy_type: str, **kwargs: Any) -> Strategy:
             seed=kwargs.get("seed"),
         )
 
+    elif strategy_type == "epsilongreedy":
+        required_params = ["min_action", "max_action", "step_size"]
+        for param in required_params:
+            if param not in kwargs:
+                raise ValueError(f"EpsilonGreedy strategy requires '{param}' parameter")
+
+        return EpsilonGreedy(
+            min_action=kwargs["min_action"],
+            max_action=kwargs["max_action"],
+            step_size=kwargs["step_size"],
+            epsilon_0=kwargs.get("epsilon_0", 0.1),
+            epsilon_min=kwargs.get("epsilon_min", 0.01),
+            learning_rate=kwargs.get("learning_rate", 0.1),
+            decay_rate=kwargs.get("decay_rate", 0.95),
+            seed=kwargs.get("seed"),
+        )
+
     else:
         raise ValueError(f"Unknown strategy type: {strategy_type}")
+
+
+@dataclass
+class EpsilonGreedy:
+    """ε-greedy strategy with discrete action grid and Q-learning.
+
+    This strategy implements a multi-armed bandit approach where firms learn
+    to choose actions from a discrete grid based on Q-values updated by immediate
+    rewards (profits). The exploration rate ε decays over time.
+    """
+
+    # Grid parameters
+    min_action: float
+    max_action: float
+    step_size: float
+
+    # Learning parameters
+    epsilon_0: float = 0.1  # Initial exploration rate
+    epsilon_min: float = 0.01  # Minimum exploration rate
+    learning_rate: float = 0.1  # Q-learning update rate
+    decay_rate: float = 0.95  # ε decay rate per round
+
+    # Optional parameters
+    seed: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        """Validate parameters and initialize Q-values and action grid."""
+        if self.min_action >= self.max_action:
+            raise ValueError(
+                f"Min action {self.min_action} must be less than max action {self.max_action}"
+            )
+        if self.step_size <= 0:
+            raise ValueError(f"Step size {self.step_size} must be positive")
+        if not 0 <= self.epsilon_0 <= 1:
+            raise ValueError(f"Epsilon_0 {self.epsilon_0} must be in [0, 1]")
+        if not 0 <= self.epsilon_min <= self.epsilon_0:
+            raise ValueError(
+                f"Epsilon_min {self.epsilon_min} must be in [0, epsilon_0]"
+            )
+        if not 0 < self.learning_rate <= 1:
+            raise ValueError(f"Learning rate {self.learning_rate} must be in (0, 1]")
+        if not 0 < self.decay_rate <= 1:
+            raise ValueError(f"Decay rate {self.decay_rate} must be in (0, 1]")
+
+        # Create discrete action grid
+        self.action_grid = self._create_action_grid()
+        self.num_actions = len(self.action_grid)
+
+        # Initialize Q-values for each action
+        self.q_values = [0.0] * self.num_actions
+
+        # Initialize random number generator
+        self._rng = random.Random(self.seed)
+
+        # Track current epsilon
+        self._current_epsilon = self.epsilon_0
+
+        # Track previous action for Q-value updates
+        self._previous_action_index: Optional[int] = None
+
+    def _create_action_grid(self) -> List[float]:
+        """Create discrete action grid from min to max with given step size."""
+        actions = []
+        current = self.min_action
+        while current <= self.max_action:
+            actions.append(current)
+            current += self.step_size
+        return actions
+
+    def _get_action_index(self, action: float) -> int:
+        """Get the index of the closest action in the grid."""
+        distances = [abs(action - grid_action) for grid_action in self.action_grid]
+        return distances.index(min(distances))
+
+    def _update_q_value(self, action_index: int, reward: float) -> None:
+        """Update Q-value for the given action using immediate reward."""
+        if 0 <= action_index < self.num_actions:
+            self.q_values[action_index] += self.learning_rate * (
+                reward - self.q_values[action_index]
+            )
+
+    def _decay_epsilon(self) -> None:
+        """Decay exploration rate while maintaining minimum."""
+        self._current_epsilon = max(
+            self.epsilon_min, self._current_epsilon * self.decay_rate
+        )
+
+    def _choose_action(self) -> float:
+        """Choose action using ε-greedy policy."""
+        if self._rng.random() < self._current_epsilon:
+            # Explore: choose random action
+            action_index = self._rng.randint(0, self.num_actions - 1)
+        else:
+            # Exploit: choose action with highest Q-value
+            max_q = max(self.q_values)
+            best_actions = [i for i, q in enumerate(self.q_values) if q == max_q]
+            action_index = self._rng.choice(best_actions)
+
+        return self.action_grid[action_index]
+
+    def next_action(
+        self,
+        round_num: int,
+        my_history: Sequence[Union[CournotResult, BertrandResult]],
+        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        bounds: Tuple[float, float],
+        market_params: Dict[str, Any],
+    ) -> float:
+        """Calculate next action using ε-greedy policy.
+
+        Args:
+            round_num: Current round number
+            my_history: Previous results for this firm
+            rival_histories: Previous results for rival firms (ignored)
+            bounds: Tuple of (min, max) action bounds (ignored - uses internal grid)
+            market_params: Additional market parameters (ignored)
+
+        Returns:
+            Action for this round
+        """
+        # Update Q-values based on previous round's reward
+        if round_num > 0 and my_history and self._previous_action_index is not None:
+            last_result = my_history[-1]
+
+            # Extract profit from last result
+            if isinstance(last_result, CournotResult):
+                profit = last_result.profits[0] if last_result.profits else 0.0
+            elif isinstance(last_result, BertrandResult):
+                profit = last_result.profits[0] if last_result.profits else 0.0
+            else:
+                profit = 0.0
+
+            # Update Q-value for the action we actually chose
+            self._update_q_value(self._previous_action_index, profit)
+
+        # Decay epsilon
+        self._decay_epsilon()
+
+        # Choose next action
+        action = self._choose_action()
+
+        # Store the action index for next round's Q-value update
+        self._previous_action_index = self._get_action_index(action)
+
+        # Clamp to bounds (though our grid should already be within bounds)
+        min_bound, max_bound = bounds
+        return max(min_bound, min(max_bound, action))
+
+    def get_q_values(self) -> List[float]:
+        """Get current Q-values for all actions."""
+        return self.q_values.copy()
+
+    def get_current_epsilon(self) -> float:
+        """Get current exploration rate."""
+        return self._current_epsilon
+
+    def get_action_grid(self) -> List[float]:
+        """Get the discrete action grid."""
+        return self.action_grid.copy()
