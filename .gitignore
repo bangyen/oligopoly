@@ -1,9 +1,8 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
+*.so
 .Python
 build/
 develop-eggs/
@@ -22,25 +21,7 @@ wheels/
 *.egg
 MANIFEST
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Environments
+# Virtual environments
 .env
 .venv
 env/
@@ -49,27 +30,22 @@ ENV/
 env.bak/
 venv.bak/
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# macOS
+# OS
 .DS_Store
-
-# Windows
 Thumbs.db
-ehthumbs.db
-Desktop.ini
 
-# Linux
-*~
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# Docker
+.dockerignore

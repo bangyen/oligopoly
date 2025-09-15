@@ -6,16 +6,16 @@ build-backend = "setuptools.build_meta"
 py-modules = []
 
 [project]
-name = "package-name"
+name = "oligopoly"
 version = "0.1.0"
-description = "A Python package template"
+description = "Oligopoly Market Simulation"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "Bangyen Pham", email = "bangyenp@gmail.com"},
 ]
-keywords = ["python", "template", "package"]
+keywords = ["oligopoly", "simulation", "economics", "fastapi"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -29,27 +29,33 @@ classifiers = [
 ]
 
 dependencies = [
-    "click>=8.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
+    "psycopg2-binary>=2.9.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0",
     "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
+    "ruff>=0.1.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
 ]
 
 [project.scripts]
-package-name = "package_name.cli:main"
+oligopoly = "main:app"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/package-name"
-Repository = "https://github.com/yourusername/package-name"
-Issues = "https://github.com/yourusername/package-name/issues"
+Homepage = "https://github.com/bangyen/oligopoly"
+Repository = "https://github.com/bangyen/oligopoly"
+Issues = "https://github.com/bangyen/oligopoly/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -61,10 +67,11 @@ where = ["src"]
 line-length = 88
 target-version = ['py38']
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.9"
