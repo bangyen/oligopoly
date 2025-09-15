@@ -7,9 +7,9 @@ and PostgreSQL database for managing schema changes.
 import os
 from logging.config import fileConfig
 
-from alembic import context  # type: ignore[attr-defined]
 from sqlalchemy import engine_from_config, pool
 
+from alembic import context  # type: ignore[attr-defined]
 from sim.models.models import Base
 
 # this is the Alembic Config object, which provides
