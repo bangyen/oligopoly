@@ -54,3 +54,6 @@ htmlcov/
 
 # Docker
 .dockerignore
+
+# Experiment artifacts
+artifacts/
