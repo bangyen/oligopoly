@@ -16,11 +16,10 @@ from sim.strategies.collusion_strategies import (
     OpportunisticStrategy,
 )
 
-from utils import (
+from .utils import (
     format_currency,
     format_list,
     print_demo_completion,
-    print_header,
     print_summary,
 )
 
@@ -47,7 +46,9 @@ def demo_cartel_stability() -> None:
         participating_firms=[0, 1, 2],
     )
 
-    print(f"Cartel formed: {manager.current_cartel.collusive_price} price, {manager.current_cartel.collusive_quantity} qty per firm")
+    print(
+        f"Cartel formed: {manager.current_cartel.collusive_price} price, {manager.current_cartel.collusive_quantity} qty per firm"
+    )
 
     # Simulate cartel compliance
     print("\nSimulating 3 rounds of compliance...")
@@ -58,25 +59,33 @@ def demo_cartel_stability() -> None:
         prices = [60.0, 60.0, 60.0]
         quantities = [8.0, 8.0, 8.0]
         bertrand_simulation(alpha=100.0, beta=1.0, costs=costs, prices=prices)
-        
-        profits = [(price - cost) * qty for price, cost, qty in zip(prices, costs, quantities)]
+
+        profits = [
+            (price - cost) * qty for price, cost, qty in zip(prices, costs, quantities)
+        ]
         profits_by_round.append(profits)
 
     # Show summary
-    avg_profits = [sum(round_profits[i] for round_profits in profits_by_round) / len(profits_by_round) 
-                   for i in range(3)]
+    avg_profits = [
+        sum(round_profits[i] for round_profits in profits_by_round)
+        / len(profits_by_round)
+        for i in range(3)
+    ]
     print(f"Average profits: {format_list(avg_profits)}")
-    
+
     total_quantity = sum([8.0, 8.0, 8.0])
     market_shares = [8.0 / total_quantity] * 3
     hhi = manager.calculate_hhi(market_shares)
     print(f"Market concentration (HHI): {hhi:.3f}")
 
-    print_summary("Results", [
-        "Stable collusive pricing maintained",
-        "High profits for all participants", 
-        "Perfect market concentration achieved"
-    ])
+    print_summary(
+        "Results",
+        [
+            "Stable collusive pricing maintained",
+            "High profits for all participants",
+            "Perfect market concentration achieved",
+        ],
+    )
 
 
 def demo_defection() -> None:
@@ -96,9 +105,10 @@ def demo_defection() -> None:
     print(f"Cartel formed: {format_currency(50.0)} price, 10 qty per firm")
 
     # Simulate compliance for 2 rounds
-    costs = [20.0, 20.0, 20.0]
     compliant_profit = (50.0 - 20.0) * 10.0
-    print(f"Rounds 1-2: All firms comply (profit: {format_currency(compliant_profit)} each)")
+    print(
+        f"Rounds 1-2: All firms comply (profit: {format_currency(compliant_profit)} each)"
+    )
 
     # Firm 1 defects
     defected = manager.detect_defection(
@@ -113,16 +123,21 @@ def demo_defection() -> None:
     if defected:
         defection_profit = (45.0 - 20.0) * 15.0  # Assume captures more demand
         profit_advantage = defection_profit - compliant_profit
-        
+
         print(f"\nRound 3: Firm 1 defects (price: {format_currency(45.0)})")
-        print(f"Defection profit: {format_currency(defection_profit)} (+{format_currency(profit_advantage)})")
+        print(
+            f"Defection profit: {format_currency(defection_profit)} (+{format_currency(profit_advantage)})"
+        )
         print(f"Defection count: {manager.get_firm_defection_count(1)}")
 
-    print_summary("Key Events", [
-        "Defection detected and logged",
-        "Significant profit advantage from undercutting",
-        "Event tracking system activated"
-    ])
+    print_summary(
+        "Key Events",
+        [
+            "Defection detected and logged",
+            "Significant profit advantage from undercutting",
+            "Event tracking system activated",
+        ],
+    )
 
 
 def demo_regulator_intervention() -> None:
@@ -139,8 +154,12 @@ def demo_regulator_intervention() -> None:
     )
     manager = CollusionManager(regulator_state)
 
-    price_threshold = regulator_state.baseline_price * regulator_state.price_threshold_multiplier
-    print(f"Regulator thresholds: HHI > {regulator_state.hhi_threshold}, Price > {format_currency(price_threshold)}")
+    price_threshold = (
+        regulator_state.baseline_price * regulator_state.price_threshold_multiplier
+    )
+    print(
+        f"Regulator thresholds: HHI > {regulator_state.hhi_threshold}, Price > {format_currency(price_threshold)}"
+    )
 
     # Form cartel
     manager.form_cartel(
@@ -158,7 +177,9 @@ def demo_regulator_intervention() -> None:
     hhi = manager.calculate_hhi(market_shares)
     avg_price = manager.calculate_average_price(prices, quantities)
 
-    print(f"\nMarket conditions: HHI = {hhi:.3f}, Avg price = {format_currency(avg_price)}")
+    print(
+        f"\nMarket conditions: HHI = {hhi:.3f}, Avg price = {format_currency(avg_price)}"
+    )
 
     # Check for intervention
     should_intervene, intervention_type, intervention_value = (
@@ -172,7 +193,7 @@ def demo_regulator_intervention() -> None:
 
     if should_intervene:
         print(f"✓ Regulator intervenes: {intervention_type} = {intervention_value}")
-        
+
         original_profits = [300.0, 250.0, 200.0]
         modified_profits = manager.apply_regulator_intervention(
             round_idx=5,
@@ -180,13 +201,18 @@ def demo_regulator_intervention() -> None:
             intervention_value=intervention_value,
             firm_profits=original_profits,
         )
-        print(f"Profit impact: {format_list(original_profits)} → {format_list(modified_profits)}")
+        print(
+            f"Profit impact: {format_list(original_profits)} → {format_list(modified_profits)}"
+        )
 
-    print_summary("Intervention Results", [
-        "High concentration detected (HHI > threshold)",
-        "Price cap intervention triggered",
-        "Market power constrained by regulation"
-    ])
+    print_summary(
+        "Intervention Results",
+        [
+            "High concentration detected (HHI > threshold)",
+            "Price cap intervention triggered",
+            "Market power constrained by regulation",
+        ],
+    )
 
 
 def demo_event_feed() -> None:
@@ -268,18 +294,33 @@ def demo_event_feed() -> None:
 
     # Summary statistics
     total_events = len(manager.events)
-    cartel_events = len([e for e in manager.events if e.event_type == CollusionEventType.CARTEL_FORMED])
-    defection_events = len([e for e in manager.events if e.event_type == CollusionEventType.FIRM_DEFECTED])
-    intervention_events = len([e for e in manager.events if e.event_type == CollusionEventType.REGULATOR_INTERVENED])
+    cartel_events = len(
+        [e for e in manager.events if e.event_type == CollusionEventType.CARTEL_FORMED]
+    )
+    defection_events = len(
+        [e for e in manager.events if e.event_type == CollusionEventType.FIRM_DEFECTED]
+    )
+    intervention_events = len(
+        [
+            e
+            for e in manager.events
+            if e.event_type == CollusionEventType.REGULATOR_INTERVENED
+        ]
+    )
 
-    print(f"\nEvent summary: {total_events} total ({cartel_events} formations, {defection_events} defections, {intervention_events} interventions)")
+    print(
+        f"\nEvent summary: {total_events} total ({cartel_events} formations, {defection_events} defections, {intervention_events} interventions)"
+    )
 
-    print_summary("Event Tracking Features", [
-        "Comprehensive event logging across all rounds",
-        "Defection detection and counting by firm",
-        "Regulatory intervention monitoring",
-        "Timeline reconstruction capability"
-    ])
+    print_summary(
+        "Event Tracking Features",
+        [
+            "Comprehensive event logging across all rounds",
+            "Defection detection and counting by firm",
+            "Regulatory intervention monitoring",
+            "Timeline reconstruction capability",
+        ],
+    )
 
 
 def demo_strategies() -> None:
@@ -302,7 +343,10 @@ def demo_strategies() -> None:
     strategies = [
         ("Cartel Strategy", CartelStrategy()),
         ("Collusive Strategy", CollusiveStrategy(defection_probability=0.3)),
-        ("Opportunistic Strategy", OpportunisticStrategy(profit_threshold_multiplier=1.2)),
+        (
+            "Opportunistic Strategy",
+            OpportunisticStrategy(profit_threshold_multiplier=1.2),
+        ),
     ]
 
     print("\nStrategy behaviors:")
@@ -344,12 +388,15 @@ def demo_strategies() -> None:
             advantage = defection_profit / cartel_profit
             print(f"  {name}: {advantage:.1f}x profit advantage from defection")
 
-    print_summary("Strategy Features", [
-        "Cartel-compliant behavior modeling",
-        "Probabilistic defection strategies",
-        "Profit-based opportunistic decisions",
-        "Integration with collusion management"
-    ])
+    print_summary(
+        "Strategy Features",
+        [
+            "Cartel-compliant behavior modeling",
+            "Probabilistic defection strategies",
+            "Profit-based opportunistic decisions",
+            "Integration with collusion management",
+        ],
+    )
 
 
 def main() -> None:
@@ -366,12 +413,13 @@ def main() -> None:
         print("\n=== DEMO COMPLETE ===")
         print_demo_completion(
             "Collusion and regulator dynamics",
-            "Cartel formation, defection detection, regulatory intervention, event logging, collusion strategies"
+            "Cartel formation, defection detection, regulatory intervention, event logging, collusion strategies",
         )
 
     except Exception as e:
         print(f"\nError during demo: {e}")
         import traceback
+
         traceback.print_exc()
 
 

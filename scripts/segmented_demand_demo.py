@@ -9,7 +9,7 @@ from sim.games.bertrand import bertrand_segmented_simulation
 from sim.games.cournot import cournot_segmented_simulation
 from sim.models.models import DemandSegment, SegmentedDemand
 
-from utils import format_currency, format_list, print_demo_completion
+from .utils import format_currency, format_list, print_demo_completion
 
 
 def main() -> None:
@@ -23,7 +23,7 @@ def main() -> None:
     ]
     segmented_demand = SegmentedDemand(segments=segments)
 
-    print(f"Market: 2 segments (α₁=100,β₁=1.0,w₁=0.6 | α₂=80,β₂=2.0,w₂=0.4)")
+    print("Market: 2 segments (α₁=100,β₁=1.0,w₁=0.6 | α₂=80,β₂=2.0,w₂=0.4)")
 
     # Test Bertrand competition
     print("\n=== Bertrand Competition ===")
@@ -54,11 +54,13 @@ def main() -> None:
         demand_20 = segment.demand(20.0)
         demand_30 = segment.demand(30.0)
         change_pct = (demand_30 - demand_20) / demand_20 * 100
-        print(f"  Segment {i+1}: Q(20)={demand_20:.1f}, Q(30)={demand_30:.1f} ({change_pct:+.0f}%)")
+        print(
+            f"  Segment {i+1}: Q(20)={demand_20:.1f}, Q(30)={demand_30:.1f} ({change_pct:+.0f}%)"
+        )
 
     print_demo_completion(
         "Segmented demand",
-        "Multi-segment markets, different elasticities, Bertrand & Cournot models"
+        "Multi-segment markets, different elasticities, Bertrand & Cournot models",
     )
 
 

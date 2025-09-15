@@ -12,16 +12,11 @@ The script shows how ε-greedy agents learn to optimize their actions
 based on immediate rewards (profits) while balancing exploration and exploitation.
 """
 
-from typing import List
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from sim.models.models import Base
 from sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
 from sim.strategies.strategies import EpsilonGreedy, Static, TitForTat
 
-from utils import (
+from .utils import (
     calculate_consumer_surplus,
     calculate_hhi,
     create_demo_database,
@@ -65,7 +60,9 @@ def run_epsilon_greedy_demo() -> None:
         EpsilonGreedy(**grid_params, seed=44),
     ]
 
-    print(f"Setup: {len(strategies)} firms, costs {initial_costs}, ε₀={grid_params['epsilon_0']}, α={grid_params['learning_rate']}")
+    print(
+        f"Setup: {len(strategies)} firms, costs {initial_costs}, ε₀={grid_params['epsilon_0']}, α={grid_params['learning_rate']}"
+    )
 
     # Run simulation with database
     db = create_demo_database()
@@ -186,16 +183,24 @@ def run_epsilon_greedy_demo() -> None:
 
         if pre_entry and post_entry:
             pre_avg_price = sum(float(r["price"]) for r in pre_entry) / len(pre_entry)
-            post_avg_price = sum(float(r["price"]) for r in post_entry) / len(post_entry)
+            post_avg_price = sum(float(r["price"]) for r in post_entry) / len(
+                post_entry
+            )
             pre_avg_hhi = sum(float(r["hhi"]) for r in pre_entry) / len(pre_entry)
             post_avg_hhi = sum(float(r["hhi"]) for r in post_entry) / len(post_entry)
             pre_avg_cs = sum(float(r["cs"]) for r in pre_entry) / len(pre_entry)
             post_avg_cs = sum(float(r["cs"]) for r in post_entry) / len(post_entry)
 
-            print(f"\nResults: 20 rounds (3 firms → 4 firms)")
-            print(f"Pre-entry: Price {format_currency(pre_avg_price)}, HHI {pre_avg_hhi:.0f}, CS {format_currency(pre_avg_cs)}")
-            print(f"Post-entry: Price {format_currency(post_avg_price)}, HHI {post_avg_hhi:.0f}, CS {format_currency(post_avg_cs)}")
-            print(f"Changes: Price {post_avg_price - pre_avg_price:+.1f}, HHI {post_avg_hhi - pre_avg_hhi:+.0f}, CS {post_avg_cs - pre_avg_cs:+.0f}")
+            print("\nResults: 20 rounds (3 firms → 4 firms)")
+            print(
+                f"Pre-entry: Price {format_currency(pre_avg_price)}, HHI {pre_avg_hhi:.0f}, CS {format_currency(pre_avg_cs)}"
+            )
+            print(
+                f"Post-entry: Price {format_currency(post_avg_price)}, HHI {post_avg_hhi:.0f}, CS {format_currency(post_avg_cs)}"
+            )
+            print(
+                f"Changes: Price {post_avg_price - pre_avg_price:+.1f}, HHI {post_avg_hhi - pre_avg_hhi:+.0f}, CS {post_avg_cs - pre_avg_cs:+.0f}"
+            )
 
         # Show learning progress for first firm
         firm_0_strategy = strategies[0]
@@ -203,8 +208,10 @@ def run_epsilon_greedy_demo() -> None:
         action_grid = firm_0_strategy.get_action_grid()
         best_idx = q_values.index(max(q_values))
         best_action = action_grid[best_idx]
-        
-        print(f"\nLearning (Firm 0): Final ε={firm_0_strategy.get_current_epsilon():.3f}, Best action={best_action:.1f} (Q={q_values[best_idx]:.1f})")
+
+        print(
+            f"\nLearning (Firm 0): Final ε={firm_0_strategy.get_current_epsilon():.3f}, Best action={best_action:.1f} (Q={q_values[best_idx]:.1f})"
+        )
 
     finally:
         db.close()
@@ -251,7 +258,9 @@ def run_baseline_comparison() -> None:
         ]
         price = final_round[0]["price"]
 
-        print(f"Baseline (Static/TitForTat): Price {format_currency(price)}, HHI {calculate_hhi(quantities):.0f}")
+        print(
+            f"Baseline (Static/TitForTat): Price {format_currency(price)}, HHI {calculate_hhi(quantities):.0f}"
+        )
         print(f"Profits: {format_list(profits)}")
 
     finally:
@@ -261,9 +270,9 @@ def run_baseline_comparison() -> None:
 if __name__ == "__main__":
     run_epsilon_greedy_demo()
     run_baseline_comparison()
-    
+
     print_demo_completion(
         "ε-Greedy learning",
-        "Q-learning, exploration-exploitation, firm entry dynamics, baseline comparison"
+        "Q-learning, exploration-exploitation, firm entry dynamics, baseline comparison",
     )
     print("Expected: Price ↓, HHI ↓, Consumer Surplus ↑ after entry")
