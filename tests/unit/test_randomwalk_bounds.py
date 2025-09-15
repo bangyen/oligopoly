@@ -29,7 +29,7 @@ def test_randomwalk_bounds() -> None:
             if current_action is not None:
                 # Create a mock result with the current action
                 if round_num % 2 == 0:
-                    result = CournotResult(
+                    result: Union[CournotResult, BertrandResult] = CournotResult(
                         price=10.0, quantities=[current_action], profits=[50.0]
                     )
                 else:

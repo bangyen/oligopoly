@@ -4,7 +4,7 @@ This module provides a minimal web interface for exploring simulation results,
 including price, quantity, profit, HHI, and consumer surplus over time.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -32,7 +32,7 @@ def load_run_data(
     try:
         response = requests.get(f"{api_base_url}/runs/{run_id}")
         response.raise_for_status()
-        return response.json()
+        return cast(Dict[str, Any], response.json())
     except requests.exceptions.RequestException as e:
         st.error(f"Failed to load run data: {e}")
         raise

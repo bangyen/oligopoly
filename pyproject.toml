@@ -51,6 +51,8 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
+    "types-requests>=2.31.0",
+    "types-python-dateutil>=2.8.0",
 ]
 
 [project.scripts]
@@ -86,6 +88,9 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+namespace_packages = true
+explicit_package_bases = true
+disable_error_code = ["import-untyped"]
 
 # Exclude test files from strict type checking
 [[tool.mypy.overrides]]
@@ -95,6 +100,32 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = "alembic.*"
 ignore_errors = true
+
+# Ignore missing imports for external libraries without stubs
+[[tool.mypy.overrides]]
+module = [
+    "fastapi.*",
+    "sqlalchemy.*",
+    "pydantic.*",
+    "alembic.*",
+    "psycopg2.*",
+    "streamlit.*",
+    "plotly.*",
+    "pandas.*",
+    "requests.*",
+    "uvicorn.*",
+    "httpx.*"
+]
+ignore_missing_imports = true
+
+# Allow untyped imports for local modules
+[[tool.mypy.overrides]]
+module = [
+    "sim.*",
+    "main"
+]
+ignore_missing_imports = false
+disable_error_code = ["import-untyped"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
