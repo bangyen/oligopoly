@@ -6,10 +6,11 @@ including demand curves, market structures, firm behavior, and simulation config
 
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
-from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import uuid
 
 Base = declarative_base()
 
@@ -82,6 +83,66 @@ class Firm(Base):
     
     # Relationship to market
     market = relationship("Market", back_populates="firms")
+
+
+class Run(Base):
+    """Simulation run tracking.
+    
+    Stores metadata about multi-round simulation runs including
+    the model type, number of rounds, and creation timestamp.
+    """
+    __tablename__ = "runs"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    model = Column(String(20), nullable=False)  # "cournot" or "bertrand"
+    rounds = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    rounds_data = relationship("Round", back_populates="run", cascade="all, delete-orphan")
+    results = relationship("Result", back_populates="run", cascade="all, delete-orphan")
+
+
+class Round(Base):
+    """Individual round within a simulation run.
+    
+    Tracks each round of a multi-round simulation for
+    time-series analysis and debugging.
+    """
+    __tablename__ = "rounds"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String(36), ForeignKey("runs.id"), nullable=False)
+    idx = Column(Integer, nullable=False)  # Round index (0-based)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    run = relationship("Run", back_populates="rounds_data")
+    results = relationship("Result", back_populates="round", cascade="all, delete-orphan")
+
+
+class Result(Base):
+    """Individual firm results for each round.
+    
+    Stores the action (quantity/price), market price, quantity sold,
+    and profit for each firm in each round of the simulation.
+    """
+    __tablename__ = "results"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    run_id = Column(String(36), ForeignKey("runs.id"), nullable=False)
+    round_id = Column(Integer, ForeignKey("rounds.id"), nullable=True)  # Optional FK to rounds
+    round_idx = Column(Integer, nullable=False)  # Round index (0-based)
+    firm_id = Column(Integer, nullable=False)  # Firm identifier within the run
+    action = Column(Float, nullable=False)  # Quantity (Cournot) or Price (Bertrand)
+    price = Column(Float, nullable=False)  # Market price for this round
+    qty = Column(Float, nullable=False)  # Quantity sold by this firm
+    profit = Column(Float, nullable=False)  # Profit earned by this firm
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    run = relationship("Run", back_populates="results")
+    round = relationship("Round", back_populates="results")
 
 
 class RunConfig(Base):
