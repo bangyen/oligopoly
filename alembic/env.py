@@ -15,7 +15,7 @@ from alembic import context  # type: ignore[attr-defined]
 # Add src to path so we can import our models
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from sim.models import Base
+from sim.models.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -21,9 +21,9 @@ sys.path.insert(0, "src")
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.models import Base
-from sim.strategies import EpsilonGreedy, Static, TitForTat
-from sim.strategy_runner import get_strategy_run_results, run_strategy_game
+from sim.models.models import Base
+from sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
+from sim.strategies.strategies import EpsilonGreedy, Static, TitForTat
 
 # Database setup (in-memory SQLite for demo)
 engine = create_engine("sqlite:///:memory:", echo=False)

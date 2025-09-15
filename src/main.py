@@ -13,13 +13,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from sim.metrics import (
+from sim.models.metrics import (
     calculate_round_metrics_bertrand,
     calculate_round_metrics_cournot,
 )
-from sim.models import Base
-from sim.policy_shocks import PolicyEvent, PolicyType
-from sim.runner import get_run_results, run_game
+from sim.models.models import Base
+from sim.policy.policy_shocks import PolicyEvent, PolicyType
+from sim.runners.runner import get_run_results, run_game
 
 # Database configuration
 DATABASE_URL = os.getenv(
