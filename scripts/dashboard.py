@@ -107,7 +107,8 @@ def display_event_feed(events_data: Dict[str, Any]) -> None:
     with st.container():
         for event in events:
             with st.expander(
-                f"Round {event['round_idx']}: {event['description']}", expanded=False
+                f"Round {int(event['round_idx']) + 1}: {event['description']}",
+                expanded=False,
             ):
                 col1, col2 = st.columns([3, 1])
 
@@ -115,7 +116,10 @@ def display_event_feed(events_data: Dict[str, Any]) -> None:
                     st.write(f"**Type:** {event['event_type']}")
                     st.write(f"**Description:** {event['description']}")
                     if event.get("firm_id") is not None:
-                        st.write(f"**Firm:** {event['firm_id']}")
+                        try:
+                            st.write(f"**Firm:** {int(event['firm_id']) + 1}")
+                        except Exception:
+                            st.write(f"**Firm:** {event['firm_id']}")
                     st.write(f"**Timestamp:** {event['created_at']}")
 
                 with col2:
@@ -154,26 +158,28 @@ def display_replay_controls(replay_data: Dict[str, Any]) -> None:
 
     # Initialize session state
     if "replay_frame" not in st.session_state:
+        # Internal zero-based index of the selected frame
         st.session_state.replay_frame = 0
     if "replay_playing" not in st.session_state:
         st.session_state.replay_playing = False
 
     # Frame selector
-    frame_idx = st.slider(
+    # One-based slider for user display; convert to zero-based internally
+    displayed_frame = st.slider(
         "Select Frame",
-        min_value=0,
-        max_value=max(0, total_frames - 1),
-        value=st.session_state.replay_frame,
+        min_value=1,
+        max_value=max(1, total_frames),
+        value=st.session_state.replay_frame + 1,
         key="frame_slider",
     )
 
     # Update session state when slider changes
-    if frame_idx != st.session_state.replay_frame:
-        st.session_state.replay_frame = frame_idx
+    if displayed_frame - 1 != st.session_state.replay_frame:
+        st.session_state.replay_frame = displayed_frame - 1
 
-    # Display current frame
-    if frame_idx < len(frames):
-        frame = frames[frame_idx]
+    # Display current frame (convert back to zero-based index)
+    if st.session_state.replay_frame < len(frames):
+        frame = frames[st.session_state.replay_frame]
         display_replay_frame(frame)
 
 
@@ -183,25 +189,27 @@ def display_replay_frame(frame: Dict[str, Any]) -> None:
     Args:
         frame: Dictionary containing frame data
     """
-    st.subheader(f"Frame {frame['round_idx']}")
+    st.subheader(f"Frame {int(frame['round_idx']) + 1}")
 
-    # Frame metrics
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
+    # Frame metrics (2x3 grid)
+    row1 = st.columns(3)
+    with row1[0]:
         st.metric("Market Price", f"${frame['market_price']:.2f}")
-
-    with col2:
+    with row1[1]:
         st.metric("Total Quantity", f"{frame['total_quantity']:.2f}")
-
-    with col3:
+    with row1[2]:
         st.metric("Total Profit", f"${frame['total_profit']:.2f}")
 
-    with col4:
+    row2 = st.columns(3)
+    with row2[0]:
         st.metric("HHI", f"{frame['hhi']:.3f}")
-
-    # Consumer surplus
-    st.metric("Consumer Surplus", f"${frame['consumer_surplus']:.2f}")
+    with row2[1]:
+        st.metric("Consumer Surplus", f"${frame['consumer_surplus']:.2f}")
+    with row2[2]:
+        firm_data_preview = frame.get("firm_data", {})
+        num_firms = len(firm_data_preview) if isinstance(firm_data_preview, dict) else 0
+        if num_firms > 0:
+            st.metric("Firms", f"{num_firms}")
 
     # Firm data
     st.subheader("Firm Actions")
@@ -210,7 +218,7 @@ def display_replay_frame(frame: Dict[str, Any]) -> None:
     if firm_data:
         firm_df = pd.DataFrame.from_dict(firm_data, orient="index")
         firm_df.columns = ["Action", "Price", "Quantity", "Profit"]
-        st.dataframe(firm_df)
+        st.dataframe(firm_df, hide_index=True)
 
     # Events in this frame
     events = frame.get("events", [])
@@ -284,7 +292,7 @@ def calculate_metrics_for_run(run_data: Dict[str, Any]) -> pd.DataFrame:
 
         metrics_data.append(
             {
-                "round": round_idx,
+                "round": round_idx + 1,
                 "market_price": (
                     market_price
                     if model == "cournot"
@@ -387,7 +395,7 @@ def create_metrics_charts(df: pd.DataFrame) -> None:
     )
     fig.update_xaxes(title_text="Round")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
@@ -407,7 +415,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
             if round_idx < len(firm_info["quantities"]):
                 firm_data.append(
                     {
-                        "round": round_idx,
+                        "round": round_idx + 1,
                         "firm_id": firm_idx,
                         "quantity": firm_info["quantities"][round_idx],
                         "price": (
@@ -453,7 +461,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
                 x=firm_df["round"],
                 y=firm_df["quantity"],
                 mode="lines+markers",
-                name=f"Firm {firm_id}",
+                name=f"Firm {firm_id + 1}",
             ),
             row=1,
             col=1,
@@ -465,7 +473,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
                 x=firm_df["round"],
                 y=firm_df["price"],
                 mode="lines+markers",
-                name=f"Firm {firm_id}",
+                name=f"Firm {firm_id + 1}",
                 showlegend=False,
             ),
             row=1,
@@ -478,7 +486,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
                 x=firm_df["round"],
                 y=firm_df["profit"],
                 mode="lines+markers",
-                name=f"Firm {firm_id}",
+                name=f"Firm {firm_id + 1}",
                 showlegend=False,
             ),
             row=2,
@@ -504,7 +512,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
                 )
                 market_share_data.append(
                     {
-                        "round": round_idx,
+                        "round": round_idx + 1,
                         "firm_id": firm_idx,
                         "market_share": market_share,
                     }
@@ -518,7 +526,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
                 x=firm_df["round"],
                 y=firm_df["market_share"],
                 mode="lines+markers",
-                name=f"Firm {firm_id}",
+                name=f"Firm {firm_id + 1}",
                 showlegend=False,
             ),
             row=2,
@@ -528,7 +536,7 @@ def create_firm_breakdown_chart(run_data: Dict[str, Any]) -> None:
     fig.update_layout(height=600, title_text="Individual Firm Performance")
     fig.update_xaxes(title_text="Round")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def main() -> None:
@@ -656,7 +664,7 @@ def single_run_tab(api_url: str) -> None:
                 "Consumer Surplus",
                 "Number of Firms",
             ]
-            st.dataframe(display_df, use_container_width=True)
+            st.dataframe(display_df, width="stretch", hide_index=True)
 
             # Load and display events
             try:
@@ -806,12 +814,14 @@ def heatmap_tab(api_url: str) -> None:
             "Firm I (Surface Computed For)",
             range(num_firms),
             help="Firm to compute profit surface for",
+            format_func=lambda i: str(i + 1),
         )
     with col2:
         firm_j = st.selectbox(
             "Firm J (Second Firm)",
             [i for i in range(num_firms) if i != firm_i],
             help="Second firm in the heatmap",
+            format_func=lambda i: str(i + 1),
         )
 
     # Grid configuration
@@ -987,7 +997,7 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
     action_label = "Quantity" if model == "cournot" else "Price"
 
     # Create profit heatmap
-    st.subheader(f"Profit Surface for Firm {firm_i}")
+    st.subheader(f"Profit Surface for Firm {firm_i + 1}")
 
     fig_profit = go.Figure(
         data=go.Heatmap(
@@ -1000,18 +1010,18 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
     )
 
     fig_profit.update_layout(
-        title=f"Profit Surface: Firm {firm_i} vs Firm {firm_j}",
-        xaxis_title=f"Firm {firm_j} {action_label}",
-        yaxis_title=f"Firm {firm_i} {action_label}",
+        title=f"Profit Surface: Firm {firm_i + 1} vs Firm {firm_j + 1}",
+        xaxis_title=f"Firm {firm_j + 1} {action_label}",
+        yaxis_title=f"Firm {firm_i + 1} {action_label}",
         width=600,
         height=500,
     )
 
-    st.plotly_chart(fig_profit, use_container_width=True)
+    st.plotly_chart(fig_profit, width="stretch")
 
     # Create market share heatmap for Bertrand
     if model == "bertrand" and market_share_surface:
-        st.subheader(f"Market Share Surface for Firm {firm_i}")
+        st.subheader(f"Market Share Surface for Firm {firm_i + 1}")
 
         fig_market_share = go.Figure(
             data=go.Heatmap(
@@ -1024,14 +1034,14 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
         )
 
         fig_market_share.update_layout(
-            title=f"Market Share Surface: Firm {firm_i} vs Firm {firm_j}",
-            xaxis_title=f"Firm {firm_j} {action_label}",
-            yaxis_title=f"Firm {firm_i} {action_label}",
+            title=f"Market Share Surface: Firm {firm_i + 1} vs Firm {firm_j + 1}",
+            xaxis_title=f"Firm {firm_j + 1} {action_label}",
+            yaxis_title=f"Firm {firm_i + 1} {action_label}",
             width=600,
             height=500,
         )
 
-        st.plotly_chart(fig_market_share, use_container_width=True)
+        st.plotly_chart(fig_market_share, width="stretch")
 
     # Display summary statistics
     st.subheader("Summary Statistics")
@@ -1058,11 +1068,16 @@ def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
 
     df_profit = pd.DataFrame(
         profit_surface,
-        index=[f"{action_label} {x:.1f}" for x in action_i_grid],
-        columns=[f"{action_label} {x:.1f}" for x in action_j_grid],
+        index=[round(x, 1) for x in action_i_grid],
+        columns=[round(x, 1) for x in action_j_grid],
     )
 
-    st.dataframe(df_profit, use_container_width=True)
+    # Axis titles for the raw data table
+    st.caption(
+        f"Rows: Firm {firm_i + 1} {action_label} -- Columns: Firm {firm_j + 1} {action_label}"
+    )
+    # Keep index visible for heatmap raw data to indicate Firm i actions
+    st.dataframe(df_profit, width="stretch", hide_index=False)
 
 
 def create_scenario_config_form(side: str) -> Dict[str, Any]:
@@ -1243,7 +1258,7 @@ def create_comparison_charts(comparison_data: Dict[str, Any]) -> None:
         ],
     )
 
-    rounds_list = list(range(rounds))
+    rounds_list = [i + 1 for i in range(rounds)]
 
     # Price chart
     fig.add_trace(
@@ -1395,7 +1410,7 @@ def create_comparison_charts(comparison_data: Dict[str, Any]) -> None:
     )
     fig.update_xaxes(title_text="Round")
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
@@ -1410,7 +1425,7 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
     # Create DataFrame for deltas
     delta_data = []
     for round_idx in range(rounds):
-        row = {"Round": round_idx}
+        row = {"Round": round_idx + 1}
         for metric_name, values in deltas.items():
             # Special handling for HHI to keep it all caps
             if metric_name == "hhi":
@@ -1421,7 +1436,7 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
         delta_data.append(row)
 
     delta_df = pd.DataFrame(delta_data)
-    st.dataframe(delta_df, use_container_width=True)
+    st.dataframe(delta_df, width="stretch", hide_index=True)
 
     # Summary statistics
     st.subheader("Delta Summary Statistics")
@@ -1443,7 +1458,7 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
         )
 
     summary_df = pd.DataFrame(summary_data)
-    st.dataframe(summary_df, use_container_width=True)
+    st.dataframe(summary_df, width="stretch", hide_index=True)
 
 
 if __name__ == "__main__":
