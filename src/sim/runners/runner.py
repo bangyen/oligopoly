@@ -106,7 +106,9 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                 quantities = result.quantities
                 profits = result.profits
             else:  # bertrand
-                market_price = result.prices[0]  # All firms have same price in Bertrand
+                # In Bertrand, each firm can have different prices, but we store the market-clearing price
+                # For simplicity, we'll use the minimum price as the market price
+                market_price = min(result.prices) if result.prices else 0.0
                 quantities = result.quantities
                 profits = result.profits
 
