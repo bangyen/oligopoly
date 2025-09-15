@@ -1,0 +1,79 @@
+[
+  {
+    "config_id": "cournot_baseline",
+    "model": "cournot",
+    "rounds": 10,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0},
+      {"cost": 20.0}
+    ]
+  },
+  {
+    "config_id": "cournot_high_cost",
+    "model": "cournot", 
+    "rounds": 10,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 30.0},
+      {"cost": 35.0},
+      {"cost": 40.0}
+    ]
+  },
+  {
+    "config_id": "bertrand_baseline",
+    "model": "bertrand",
+    "rounds": 10,
+    "params": {
+      "alpha": 100.0,
+      "beta": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0},
+      {"cost": 20.0}
+    ]
+  },
+  {
+    "config_id": "cournot_segmented",
+    "model": "cournot",
+    "rounds": 10,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0}
+    ],
+    "segments": [
+      {"alpha": 50.0, "beta": 0.5, "weight": 0.6},
+      {"alpha": 30.0, "beta": 0.3, "weight": 0.4}
+    ]
+  },
+  {
+    "config_id": "cournot_with_policy",
+    "model": "cournot",
+    "rounds": 10,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0},
+      {"cost": 20.0}
+    ],
+    "policies": [
+      {"round_idx": 2, "policy_type": "TAX", "value": 0.1},
+      {"round_idx": 5, "policy_type": "SUBSIDY", "value": 2.0}
+    ]
+  }
+]
