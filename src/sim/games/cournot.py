@@ -3,10 +3,13 @@
 This module implements the Cournot model of oligopoly competition where firms
 simultaneously choose quantities to maximize profits. The simulation computes
 market price based on total quantity supplied and calculates individual firm profits.
+Supports both single-segment and multi-segment demand models.
 """
 
 from dataclasses import dataclass
 from typing import List
+
+from ..models.models import SegmentedDemand
 
 
 @dataclass
@@ -71,6 +74,62 @@ def cournot_simulation(
     # Calculate market price: P = max(0, a - b * sum(q_i))
     total_quantity = sum(quantities)
     price = max(0.0, a - b * total_quantity)
+
+    # Calculate profits: π_i = (P - c_i) * q_i
+    profits = [(price - cost) * q for cost, q in zip(costs, quantities)]
+
+    return CournotResult(price=price, quantities=quantities.copy(), profits=profits)
+
+
+def cournot_segmented_simulation(
+    segmented_demand: SegmentedDemand, costs: List[float], quantities: List[float]
+) -> CournotResult:
+    """Run a one-round Cournot oligopoly simulation with segmented demand.
+
+    Computes market price based on segmented inverse demand where each segment
+    contributes to total demand based on its weight. Market price is determined
+    by the aggregate demand curve P = max(0, a_eff - b_eff * sum(q_i)) where
+    a_eff and b_eff are weighted averages of segment parameters.
+
+    Args:
+        segmented_demand: SegmentedDemand object with segment configurations
+        costs: List of marginal costs for each firm
+        quantities: List of quantities chosen by each firm
+
+    Returns:
+        CournotResult containing price, quantities, and profits
+
+    Raises:
+        ValueError: If quantities are negative or lists have mismatched lengths
+    """
+    # Validate inputs
+    validate_quantities(quantities)
+
+    if len(costs) != len(quantities):
+        raise ValueError(
+            f"Costs list length ({len(costs)}) must match quantities list length ({len(quantities)})"
+        )
+
+    # Calculate effective demand parameters as weighted averages
+    total_quantity = sum(quantities)
+
+    # For segmented demand, we need to find the price that clears the market
+    # This requires solving: total_quantity = sum(weight_k * (alpha_k - beta_k * price))
+    # Rearranging: total_quantity = sum(weight_k * alpha_k) - price * sum(weight_k * beta_k)
+    # So: price = (sum(weight_k * alpha_k) - total_quantity) / sum(weight_k * beta_k)
+
+    weighted_alpha = sum(
+        segment.weight * segment.alpha for segment in segmented_demand.segments
+    )
+    weighted_beta = sum(
+        segment.weight * segment.beta for segment in segmented_demand.segments
+    )
+
+    if weighted_beta <= 0:
+        raise ValueError("Weighted beta parameter must be positive")
+
+    # Calculate market price using effective parameters
+    price = max(0.0, (weighted_alpha - total_quantity) / weighted_beta)
 
     # Calculate profits: π_i = (P - c_i) * q_i
     profits = [(price - cost) * q for cost, q in zip(costs, quantities)]

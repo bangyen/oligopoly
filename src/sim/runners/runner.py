@@ -9,9 +9,9 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from sim.games.bertrand import bertrand_simulation
-from sim.games.cournot import cournot_simulation
-from sim.models.models import Result, Round, Run
+from sim.games.bertrand import bertrand_segmented_simulation, bertrand_simulation
+from sim.games.cournot import cournot_segmented_simulation, cournot_simulation
+from sim.models.models import DemandSegment, Result, Round, Run, SegmentedDemand
 from sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
 
 
@@ -140,18 +140,52 @@ def _run_cournot_round(
     params: Dict[str, Any], costs: List[float], quantities: List[float]
 ) -> Any:
     """Run a single Cournot round."""
-    a = params.get("a", 100.0)
-    b = params.get("b", 1.0)
-    return cournot_simulation(a, b, costs, quantities)
+    # Check if segmented demand is configured
+    segments_config = params.get("segments")
+    if segments_config:
+        # Create segmented demand
+        segments = []
+        for segment_config in segments_config:
+            segment = DemandSegment(
+                alpha=float(segment_config["alpha"]),
+                beta=float(segment_config["beta"]),
+                weight=float(segment_config["weight"]),
+            )
+            segments.append(segment)
+
+        segmented_demand = SegmentedDemand(segments=segments)
+        return cournot_segmented_simulation(segmented_demand, costs, quantities)
+    else:
+        # Use traditional single-segment demand
+        a = params.get("a", 100.0)
+        b = params.get("b", 1.0)
+        return cournot_simulation(a, b, costs, quantities)
 
 
 def _run_bertrand_round(
     params: Dict[str, Any], costs: List[float], prices: List[float]
 ) -> Any:
     """Run a single Bertrand round."""
-    alpha = params.get("alpha", 100.0)
-    beta = params.get("beta", 1.0)
-    return bertrand_simulation(alpha, beta, costs, prices)
+    # Check if segmented demand is configured
+    segments_config = params.get("segments")
+    if segments_config:
+        # Create segmented demand
+        segments = []
+        for segment_config in segments_config:
+            segment = DemandSegment(
+                alpha=float(segment_config["alpha"]),
+                beta=float(segment_config["beta"]),
+                weight=float(segment_config["weight"]),
+            )
+            segments.append(segment)
+
+        segmented_demand = SegmentedDemand(segments=segments)
+        return bertrand_segmented_simulation(segmented_demand, costs, prices)
+    else:
+        # Use traditional single-segment demand
+        alpha = params.get("alpha", 100.0)
+        beta = params.get("beta", 1.0)
+        return bertrand_simulation(alpha, beta, costs, prices)
 
 
 def _update_actions(

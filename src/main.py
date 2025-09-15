@@ -4,6 +4,7 @@ This module provides the main FastAPI application with endpoints
 for health checks and simulation management.
 """
 
+import math
 import os
 from typing import Any, Dict, Generator, List, Optional
 
@@ -40,6 +41,20 @@ if not os.getenv("TESTING"):
 
 
 # Pydantic models for API
+class DemandSegmentConfig(BaseModel):
+    """Configuration for a single demand segment."""
+
+    alpha: float = Field(
+        ..., gt=0, description="Intercept parameter for segment demand curve"
+    )
+    beta: float = Field(
+        ..., gt=0, description="Slope parameter for segment demand curve"
+    )
+    weight: float = Field(
+        ..., gt=0, le=1, description="Market share weight for this segment"
+    )
+
+
 class FirmConfig(BaseModel):
     """Configuration for a single firm in the simulation."""
 
@@ -70,6 +85,10 @@ class SimulationRequest(BaseModel):
     )
     firms: List[FirmConfig] = Field(
         ..., min_length=1, max_length=10, description="Firm configurations"
+    )
+    segments: Optional[List[DemandSegmentConfig]] = Field(
+        None,
+        description="Segmented demand configuration (overrides single-segment params)",
     )
     seed: Optional[int] = Field(None, description="Random seed for reproducibility")
     events: Optional[List[PolicyEventRequest]] = Field(
@@ -138,7 +157,7 @@ async def simulate(
     """
     try:
         # Convert Pydantic models to dict format expected by run_game
-        config = {
+        config: Dict[str, Any] = {
             "params": request.params,
             "firms": [{"cost": firm.cost} for firm in request.firms],
             "seed": request.seed,
@@ -155,6 +174,21 @@ async def simulate(
                 else []
             ),
         }
+
+        # Add segments configuration if provided
+        if request.segments:
+            # Validate that segment weights sum to 1
+            total_weight = sum(segment.weight for segment in request.segments)
+            if not math.isclose(total_weight, 1.0, abs_tol=1e-6):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Segment weights must sum to 1.0, got {total_weight:.6f}",
+                )
+
+            config["params"]["segments"] = [
+                {"alpha": segment.alpha, "beta": segment.beta, "weight": segment.weight}
+                for segment in request.segments
+            ]
 
         # Run the simulation
         run_id = run_game(
