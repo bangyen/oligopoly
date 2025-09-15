@@ -30,7 +30,7 @@ def assert_bertrand_output_format(result: BertrandResult, expected_firms: int) -
 
 def assert_cournot_output_format(result: CournotResult, expected_firms: int) -> None:
     """Verify Cournot simulation output structure.
-    
+
     Args:
         result: Cournot simulation result
         expected_firms: Expected number of firms
@@ -38,7 +38,7 @@ def assert_cournot_output_format(result: CournotResult, expected_firms: int) -> 
     assert result.price >= 0
     assert len(result.quantities) == expected_firms
     assert len(result.profits) == expected_firms
-    
+
     # Verify all quantities are non-negative
     assert all(q >= 0 for q in result.quantities)
 
