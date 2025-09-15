@@ -5,13 +5,19 @@ This script demonstrates how to use the experiment runner to run batch simulatio
 and export results to CSV files.
 """
 
+import sys
 from pathlib import Path
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+# Add the project root to the Python path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import json
+
+from scripts.utils import (
+    create_experiment_database,
+    print_experiment_summary,
+)
 from sim.experiments.runner import ExperimentRunner
-from sim.models.models import Base
 
 
 def create_demo_config() -> str:
@@ -44,8 +50,6 @@ def create_demo_config() -> str:
         },
     ]
 
-    import json
-
     with open(config_path, "w") as f:
         json.dump(config_data, f, indent=2)
 
@@ -54,29 +58,21 @@ def create_demo_config() -> str:
 
 def run_demo() -> None:
     """Run the experiment runner demo."""
-    print("=== Oligopoly Experiment Runner Demo ===\n")
+    print("=== Oligopoly Experiment Runner Demo ===")
 
     # Create demo configuration
-    print("1. Creating demo experiment configuration...")
+    print("1. Creating demo experiment configuration")
     config_path = create_demo_config()
     print(f"   Configuration saved to: {config_path}")
 
     # Setup database
-    print("\n2. Setting up database...")
+    print("2. Setting up database")
     db_path = "data/demo_experiments.db"
-    Path(db_path).parent.mkdir(exist_ok=True)
-
-    engine = create_engine(f"sqlite:///{db_path}")
-    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-
-    db = session_local()
+    db = create_experiment_database(db_path)
 
     try:
         # Create experiment runner
-        print("\n3. Running experiments...")
+        print("3. Running experiments")
         runner = ExperimentRunner("artifacts")
 
         # Load experiments
@@ -90,39 +86,14 @@ def run_demo() -> None:
         print(f"\n4. Results saved to: {csv_path}")
 
         # Show summary
-        print("\n5. Summary:")
+        print("5. Summary")
         import csv
 
         with open(csv_path) as f:
             reader = csv.DictReader(f)
             rows = list(reader)
 
-        print(f"   Total runs: {len(rows)}")
-
-        # Show results by configuration
-        config_results: dict[str, list[dict[str, str]]] = {}
-        for row in rows:
-            config_id = row["config_id"]
-            if config_id not in config_results:
-                config_results[config_id] = []
-            config_results[config_id].append(row)
-
-        for config_id, results in config_results.items():
-            print(f"\n   Configuration: {config_id}")
-            print(f"     Runs: {len(results)}")
-
-            # Calculate averages across seeds
-            avg_prices = [float(r["avg_price"]) for r in results]
-            avg_hhis = [float(r["avg_hhi"]) for r in results]
-            avg_cs = [float(r["avg_cs"]) for r in results]
-            total_profits = [float(r["total_profit"]) for r in results]
-
-            print(f"     Average Price: ${sum(avg_prices)/len(avg_prices):.2f}")
-            print(f"     Average HHI: {sum(avg_hhis)/len(avg_hhis):.3f}")
-            print(f"     Average CS: ${sum(avg_cs)/len(avg_cs):.2f}")
-            print(
-                f"     Average Total Profit: ${sum(total_profits)/len(total_profits):.2f}"
-            )
+        print_experiment_summary(rows)
 
         print("\n=== Demo Complete ===")
         print(f"Check the CSV file for detailed results: {csv_path}")

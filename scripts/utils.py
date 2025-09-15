@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Common utilities for demo scripts.
+"""Common utilities for demo and experiment scripts.
 
 This module provides shared functionality for formatting output,
-calculating metrics, and managing database connections across demo scripts.
+calculating metrics, and managing database connections across demo and experiment scripts.
 """
 
-from typing import Any, List
+from pathlib import Path
+from typing import Any, Dict, List
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from sim.models.models import Base
 
@@ -79,3 +80,82 @@ def print_round_results(results: dict, label: str) -> None:
         print(
             f"   Round {round_data['round']}: Price {format_currency(round_data['price'])}, Profit {format_currency(round_data['total_profit'])}"
         )
+
+
+# Experiment-specific utilities
+def create_experiment_database(db_path: str) -> Session:
+    """Create and return a database session for experiments.
+
+    Args:
+        db_path: Path to the database file
+
+    Returns:
+        Database session
+    """
+    # Ensure parent directory exists
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # Create engine and session
+    engine = create_engine(f"sqlite:///{db_path}")
+    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+
+    return session_local()
+
+
+def print_experiment_summary(results: List[Dict[str, Any]]) -> None:
+    """Print a formatted experiment summary.
+
+    Args:
+        results: List of experiment result dictionaries
+    """
+    print("\nSummary:")
+    print(f"  Total runs: {len(results)}")
+
+    # Group results by configuration
+    config_results: Dict[str, List[Dict[str, Any]]] = {}
+    for result in results:
+        config_id = result["config_id"]
+        if config_id not in config_results:
+            config_results[config_id] = []
+        config_results[config_id].append(result)
+
+    # Print summary for each configuration
+    for config_id, config_runs in config_results.items():
+        print(f"\n  Configuration: {config_id}")
+        print(f"    Runs: {len(config_runs)}")
+
+        # Calculate averages
+        avg_prices = [float(r["avg_price"]) for r in config_runs]
+        avg_hhis = [float(r["avg_hhi"]) for r in config_runs]
+        avg_cs = [float(r["avg_cs"]) for r in config_runs]
+        total_profits = [float(r["total_profit"]) for r in config_runs]
+
+        print(f"    Average Price: {format_currency(sum(avg_prices)/len(avg_prices))}")
+        print(f"    Average HHI: {sum(avg_hhis)/len(avg_hhis):.3f}")
+        print(f"    Average CS: {format_currency(sum(avg_cs)/len(avg_cs))}")
+        print(
+            f"    Average Total Profit: {format_currency(sum(total_profits)/len(total_profits))}"
+        )
+
+
+def print_verbose_summary(results: List[Dict[str, Any]]) -> None:
+    """Print a detailed experiment summary for verbose mode.
+
+    Args:
+        results: List of experiment result dictionaries
+    """
+    print("\nDetailed Summary:")
+    print(f"  Total runs: {len(results)}")
+
+    # Count by configuration
+    config_counts: Dict[str, int] = {}
+    for result in results:
+        config_id = result["config_id"]
+        config_counts[config_id] = config_counts.get(config_id, 0) + 1
+
+    print("  Configurations:")
+    for config_id, count in config_counts.items():
+        print(f"    {config_id}: {count} runs")

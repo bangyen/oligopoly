@@ -5,14 +5,15 @@ This script provides a CLI for running experiment batches from JSON configuratio
 """
 
 import argparse
+import csv
 import sys
 from pathlib import Path
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
+from scripts.utils import (
+    create_experiment_database,
+    print_verbose_summary,
+)
 from sim.experiments.runner import run_experiment_batch_from_file
-from sim.models.models import Base
 
 
 def main() -> None:
@@ -81,15 +82,7 @@ Examples:
 
     # Setup database
     db_path = Path(args.db)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-
-    engine = create_engine(f"sqlite:///{db_path}")
-    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-
-    db = session_local()
+    db = create_experiment_database(str(db_path))
 
     try:
         if args.verbose:
@@ -113,24 +106,13 @@ Examples:
 
         # Show summary
         if args.verbose:
-            import csv
-
             with open(csv_path) as f:
                 reader = csv.DictReader(f)
                 rows = list(reader)
 
-            print("\nSummary:")
-            print(f"  Total runs: {len(rows)}")
+            print_verbose_summary(rows)
 
-            # Count by config
-            config_counts: dict[str, int] = {}
-            for row in rows:
-                config_id = row["config_id"]
-                config_counts[config_id] = config_counts.get(config_id, 0) + 1
-
-            print("  Configurations:")
-            for config_id, count in config_counts.items():
-                print(f"    {config_id}: {count} runs")
+        print("\n=== Experiment Complete ===")
 
     except Exception as e:
         print(f"Error running experiments: {e}")
