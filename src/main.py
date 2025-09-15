@@ -5,7 +5,7 @@ for health checks and simulation management.
 """
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -68,7 +68,7 @@ class SimulationResponse(BaseModel):
 
 
 # Database dependency
-def get_db() -> Session:
+def get_db() -> Generator[Session, None, None]:
     """Get database session dependency."""
     db = SessionLocal()
     try:

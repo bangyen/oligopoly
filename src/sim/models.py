@@ -64,7 +64,7 @@ class Market(Base):  # type: ignore[misc,valid-type]
 
     def get_demand(self) -> Demand:
         """Get the demand curve for this market."""
-        return Demand(a=self.demand_a, b=self.demand_b)
+        return Demand(a=float(self.demand_a), b=float(self.demand_b))
 
 
 class Firm(Base):  # type: ignore[misc,valid-type]
