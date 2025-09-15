@@ -148,6 +148,59 @@ class CollusiveStrategy:
             defection_quantity = cartel_quantity * overproduce_factor
             return max(min_bound, min(max_bound, defection_quantity))
 
+    def next_action(
+        self,
+        round_num: int,
+        my_history: Sequence[Union[CournotResult, BertrandResult]],
+        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        bounds: Tuple[float, float],
+        market_params: Dict[str, Any],
+        collusion_manager: Optional[CollusionManager] = None,
+        my_cost: Optional[float] = None,
+    ) -> float:
+        """Calculate next action based on collusion state and defection probability.
+
+        Args:
+            round_num: Current round number
+            my_history: Previous results for this firm
+            rival_histories: Previous results for rival firms
+            bounds: Tuple of (min, max) action bounds
+            market_params: Additional market parameters
+            collusion_manager: Collusion manager (optional)
+            my_cost: Firm's marginal cost (optional)
+
+        Returns:
+            Action to take this round
+        """
+        min_bound, max_bound = bounds
+
+        # If cartel is active, decide whether to follow or defect
+        if collusion_manager and collusion_manager.is_cartel_active():
+            cartel = collusion_manager.current_cartel
+            if cartel:
+                # Check if we should defect
+                if self.should_defect(
+                    round_num, my_history, rival_histories, collusion_manager
+                ):
+                    # Defect by undercutting/overproducing
+                    model_type = market_params.get("model_type", "cournot")
+                    return self.calculate_defection_action(
+                        cartel.collusive_price,
+                        cartel.collusive_quantity,
+                        bounds,
+                        model_type,
+                    )
+                else:
+                    # Follow cartel agreement
+                    model_type = market_params.get("model_type", "cournot")
+                    if model_type == "bertrand":
+                        return max(min_bound, min(max_bound, cartel.collusive_price))
+                    else:  # cournot
+                        return max(min_bound, min(max_bound, cartel.collusive_quantity))
+
+        # No cartel active, use midpoint of bounds
+        return (min_bound + max_bound) / 2.0
+
 
 @dataclass
 class CartelStrategy:
