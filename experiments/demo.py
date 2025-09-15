@@ -5,12 +5,7 @@ This script demonstrates how to use the experiment runner to run batch simulatio
 and export results to CSV files.
 """
 
-import os
-import sys
 from pathlib import Path
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

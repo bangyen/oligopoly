@@ -5,14 +5,9 @@ This script shows how to use the new segmented demand features in both
 Bertrand and Cournot competition models.
 """
 
-import os
-import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
-from src.sim.games.bertrand import bertrand_segmented_simulation
-from src.sim.games.cournot import cournot_segmented_simulation
-from src.sim.models.models import DemandSegment, SegmentedDemand
+from sim.games.bertrand import bertrand_segmented_simulation
+from sim.games.cournot import cournot_segmented_simulation
+from sim.models.models import DemandSegment, SegmentedDemand
 
 
 def main() -> None:

@@ -5,15 +5,10 @@ and PostgreSQL database for managing schema changes.
 """
 
 import os
-import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
-
 from alembic import context  # type: ignore[attr-defined]
-
-# Add src to path so we can import our models
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
+from sqlalchemy import engine_from_config, pool
 
 from sim.models.models import Base
 

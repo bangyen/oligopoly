@@ -4,14 +4,9 @@ Tests the full demo scenario with directional assertions about market outcomes
 after entry of a 4th firm at round 10.
 """
 
-import sys
 from typing import List
 
 import pytest
-
-# Add src to path for imports
-sys.path.insert(0, "src")
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

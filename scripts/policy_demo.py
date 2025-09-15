@@ -5,12 +5,7 @@ This script demonstrates how different policy interventions affect
 simulation outcomes by running simulations with and without policy shocks.
 """
 
-import os
-import sys
 from typing import Any, Dict
-
-# Add src to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
