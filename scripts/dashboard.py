@@ -530,13 +530,16 @@ def main() -> None:
     st.markdown("Visualize market dynamics, concentration, and consumer welfare")
 
     # Create tabs
-    tab1, tab2 = st.tabs(["📈 Single Run", "⚖️ Comparison"])
+    tab1, tab2, tab3 = st.tabs(["📈 Single Run", "⚖️ Comparison", "🔥 Heatmaps"])
 
     with tab1:
         single_run_tab()
 
     with tab2:
         comparison_tab()
+
+    with tab3:
+        heatmap_tab()
 
 
 def single_run_tab() -> None:
@@ -719,6 +722,309 @@ def comparison_tab() -> None:
                 st.error(f"Error running comparison: {e}")
         else:
             st.error("Please configure both scenarios before running comparison")
+
+
+def heatmap_tab() -> None:
+    """Heatmap visualization tab."""
+    st.header("🔥 Strategy/Action Space Heatmaps")
+    st.markdown(
+        "Visualize profit surfaces and market share surfaces for different firm actions"
+    )
+
+    # API URL configuration
+    api_url = st.sidebar.text_input(
+        "API URL", value="http://localhost:8000", help="Base URL for the oligopoly API"
+    )
+
+    # Model selection
+    model = st.selectbox(
+        "Competition Model",
+        ["cournot", "bertrand"],
+        help="Choose between Cournot (quantity) or Bertrand (price) competition",
+    )
+
+    # Firm configuration
+    st.subheader("🏢 Firm Configuration")
+    num_firms = st.slider("Number of Firms", min_value=2, max_value=10, value=3)
+
+    # Dynamic firm cost inputs
+    costs = []
+    for i in range(num_firms):
+        cost = st.number_input(
+            f"Firm {i} Cost",
+            min_value=0.0,
+            value=10.0 + i * 2.0,
+            step=0.1,
+            key=f"cost_{i}",
+        )
+        costs.append(cost)
+
+    # Heatmap configuration
+    st.subheader("🔥 Heatmap Configuration")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        firm_i = st.selectbox(
+            "Firm i (surface computed for)",
+            range(num_firms),
+            help="Firm to compute profit surface for",
+        )
+    with col2:
+        firm_j = st.selectbox(
+            "Firm j (second firm)",
+            [i for i in range(num_firms) if i != firm_i],
+            help="Second firm in the heatmap",
+        )
+
+    # Grid configuration
+    grid_size = st.slider(
+        "Grid Size",
+        min_value=5,
+        max_value=30,
+        value=15,
+        help="Number of grid points per dimension (higher = more detailed but slower)",
+    )
+
+    # Action range
+    if model == "cournot":
+        action_label = "Quantity"
+        default_min, default_max = 0.0, 50.0
+    else:  # bertrand
+        action_label = "Price"
+        default_min, default_max = 0.0, 100.0
+
+    col1, col2 = st.columns(2)
+    with col1:
+        min_action = st.number_input(
+            f"Min {action_label}",
+            min_value=0.0,
+            value=default_min,
+            step=1.0,
+            key="min_action",
+        )
+    with col2:
+        max_action = st.number_input(
+            f"Max {action_label}",
+            min_value=min_action + 1.0,
+            value=default_max,
+            step=1.0,
+            key="max_action",
+        )
+
+    # Other firms' actions
+    st.subheader("🔧 Other Firms' Actions")
+    other_actions = []
+    other_firms = [i for i in range(num_firms) if i != firm_i and i != firm_j]
+
+    for i, firm_idx in enumerate(other_firms):
+        action = st.number_input(
+            f"Firm {firm_idx} {action_label}",
+            min_value=0.0,
+            value=20.0,
+            step=1.0,
+            key=f"other_action_{i}",
+        )
+        other_actions.append(action)
+
+    # Market parameters
+    st.subheader("📊 Market Parameters")
+
+    if model == "cournot":
+        col1, col2 = st.columns(2)
+        with col1:
+            a = st.number_input(
+                "Demand Intercept (a)", min_value=1.0, value=100.0, step=1.0
+            )
+        with col2:
+            b = st.number_input("Demand Slope (b)", min_value=0.1, value=1.0, step=0.1)
+        params = {"a": a, "b": b}
+    else:  # bertrand
+        col1, col2 = st.columns(2)
+        with col1:
+            alpha = st.number_input(
+                "Demand Intercept (α)", min_value=1.0, value=100.0, step=1.0
+            )
+        with col2:
+            beta = st.number_input(
+                "Demand Slope (β)", min_value=0.1, value=1.0, step=0.1
+            )
+        params = {"alpha": alpha, "beta": beta}
+
+    # Generate heatmap button
+    if st.button("🔥 Generate Heatmap", type="primary"):
+        try:
+            with st.spinner("Computing heatmap..."):
+                heatmap_data = compute_heatmap(
+                    model=model,
+                    firm_i=firm_i,
+                    firm_j=firm_j,
+                    grid_size=grid_size,
+                    action_range=(min_action, max_action),
+                    other_actions=other_actions,
+                    params=params,
+                    costs=costs,
+                    api_url=api_url,
+                )
+
+            if heatmap_data:
+                st.success(
+                    f"Heatmap computed in {heatmap_data['computation_time_ms']:.1f}ms"
+                )
+                display_heatmap(heatmap_data, model)
+
+        except Exception as e:
+            st.error(f"Error computing heatmap: {e}")
+
+
+def compute_heatmap(
+    model: str,
+    firm_i: int,
+    firm_j: int,
+    grid_size: int,
+    action_range: tuple,
+    other_actions: list,
+    params: dict,
+    costs: list,
+    api_url: str = "http://localhost:8000",
+) -> Optional[Dict[str, Any]]:
+    """Compute heatmap data using the API.
+
+    Args:
+        model: Competition model ("cournot" or "bertrand")
+        firm_i: Index of firm to compute surface for
+        firm_j: Index of second firm
+        grid_size: Number of grid points per dimension
+        action_range: Tuple of (min, max) action values
+        other_actions: List of fixed actions for other firms
+        params: Market parameters
+        costs: List of firm costs
+        api_url: Base URL for the API
+
+    Returns:
+        Dictionary containing heatmap data or None if failed
+    """
+    try:
+        # Prepare request data
+        request_data = {
+            "model": model,
+            "firm_i": firm_i,
+            "firm_j": firm_j,
+            "grid_size": grid_size,
+            "action_range": action_range,
+            "other_actions": other_actions,
+            "params": params,
+            "firms": [{"cost": cost} for cost in costs],
+        }
+
+        # Make API request
+        response = requests.post(f"{api_url}/heatmap", json=request_data)
+        response.raise_for_status()
+
+        return response.json()  # type: ignore
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"API request failed: {e}")
+        return None
+    except Exception as e:
+        st.error(f"Unexpected error: {e}")
+        return None
+
+
+def display_heatmap(heatmap_data: Dict[str, Any], model: str) -> None:
+    """Display heatmap visualization.
+
+    Args:
+        heatmap_data: Dictionary containing heatmap data from API
+        model: Competition model type
+    """
+    # Extract data
+    profit_surface = heatmap_data["profit_surface"]
+    market_share_surface = heatmap_data.get("market_share_surface")
+    action_i_grid = heatmap_data["action_i_grid"]
+    action_j_grid = heatmap_data["action_j_grid"]
+    firm_i = heatmap_data["firm_i"]
+    firm_j = heatmap_data["firm_j"]
+
+    # Determine action labels
+    action_label = "Quantity" if model == "cournot" else "Price"
+
+    # Create profit heatmap
+    st.subheader(f"💰 Profit Surface for Firm {firm_i}")
+
+    fig_profit = go.Figure(
+        data=go.Heatmap(
+            z=profit_surface,
+            x=action_j_grid,
+            y=action_i_grid,
+            colorscale="Viridis",
+            colorbar=dict(title="Profit"),
+        )
+    )
+
+    fig_profit.update_layout(
+        title=f"Profit Surface: Firm {firm_i} vs Firm {firm_j}",
+        xaxis_title=f"Firm {firm_j} {action_label}",
+        yaxis_title=f"Firm {firm_i} {action_label}",
+        width=600,
+        height=500,
+    )
+
+    st.plotly_chart(fig_profit, use_container_width=True)
+
+    # Create market share heatmap for Bertrand
+    if model == "bertrand" and market_share_surface:
+        st.subheader(f"📊 Market Share Surface for Firm {firm_i}")
+
+        fig_market_share = go.Figure(
+            data=go.Heatmap(
+                z=market_share_surface,
+                x=action_j_grid,
+                y=action_i_grid,
+                colorscale="Blues",
+                colorbar=dict(title="Market Share"),
+            )
+        )
+
+        fig_market_share.update_layout(
+            title=f"Market Share Surface: Firm {firm_i} vs Firm {firm_j}",
+            xaxis_title=f"Firm {firm_j} {action_label}",
+            yaxis_title=f"Firm {firm_i} {action_label}",
+            width=600,
+            height=500,
+        )
+
+        st.plotly_chart(fig_market_share, use_container_width=True)
+
+    # Display summary statistics
+    st.subheader("📈 Summary Statistics")
+
+    import numpy as np
+
+    profit_array = np.array(profit_surface)
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Max Profit", f"{profit_array.max():.2f}")
+    with col2:
+        st.metric("Min Profit", f"{profit_array.min():.2f}")
+    with col3:
+        st.metric("Mean Profit", f"{profit_array.mean():.2f}")
+    with col4:
+        st.metric("Std Profit", f"{profit_array.std():.2f}")
+
+    # Display raw data
+    st.subheader("📋 Raw Data")
+
+    # Create DataFrame for profit surface
+    import pandas as pd
+
+    df_profit = pd.DataFrame(
+        profit_surface,
+        index=[f"{action_label} {x:.1f}" for x in action_i_grid],
+        columns=[f"{action_label} {x:.1f}" for x in action_j_grid],
+    )
+
+    st.dataframe(df_profit, use_container_width=True)
 
 
 def create_scenario_config_form(side: str) -> Dict[str, Any]:
