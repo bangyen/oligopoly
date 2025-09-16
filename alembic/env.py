@@ -9,7 +9,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context  # type: ignore[attr-defined]
+from alembic import context
 from sim.models.models import Base
 
 # this is the Alembic Config object, which provides

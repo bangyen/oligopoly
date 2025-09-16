@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# type: ignore
 """Demo script for ε-greedy agents in oligopoly simulation.
 
 This script demonstrates the ε-greedy strategy implementation with:
@@ -13,6 +12,8 @@ based on immediate rewards (profits) while balancing exploration and exploitatio
 """
 
 
+from typing import List, TypedDict, cast
+
 from sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
 from sim.strategies.strategies import EpsilonGreedy, Static, TitForTat
 
@@ -24,6 +25,17 @@ from .utils import (
     format_list,
     print_demo_completion,
 )
+
+
+class RoundData(TypedDict):
+    """Type definition for round data structure."""
+
+    round: int
+    quantities: List[float]
+    price: float
+    profits: List[float]
+    hhi: float
+    cs: float
 
 
 def run_epsilon_greedy_demo() -> None:
@@ -182,14 +194,22 @@ def run_epsilon_greedy_demo() -> None:
         post_entry = rounds_10_19[3:]  # Rounds 13-19 (after entry effects)
 
         if pre_entry and post_entry:
-            pre_avg_price = sum(float(r["price"]) for r in pre_entry) / len(pre_entry)
-            post_avg_price = sum(float(r["price"]) for r in post_entry) / len(
-                post_entry
+            # Cast to proper types for MyPy
+            pre_entry_typed = [cast(RoundData, r) for r in pre_entry]
+            post_entry_typed = [cast(RoundData, r) for r in post_entry]
+
+            pre_avg_price = sum(r["price"] for r in pre_entry_typed) / len(
+                pre_entry_typed
             )
-            pre_avg_hhi = sum(float(r["hhi"]) for r in pre_entry) / len(pre_entry)
-            post_avg_hhi = sum(float(r["hhi"]) for r in post_entry) / len(post_entry)
-            pre_avg_cs = sum(float(r["cs"]) for r in pre_entry) / len(pre_entry)
-            post_avg_cs = sum(float(r["cs"]) for r in post_entry) / len(post_entry)
+            post_avg_price = sum(r["price"] for r in post_entry_typed) / len(
+                post_entry_typed
+            )
+            pre_avg_hhi = sum(r["hhi"] for r in pre_entry_typed) / len(pre_entry_typed)
+            post_avg_hhi = sum(r["hhi"] for r in post_entry_typed) / len(
+                post_entry_typed
+            )
+            pre_avg_cs = sum(r["cs"] for r in pre_entry_typed) / len(pre_entry_typed)
+            post_avg_cs = sum(r["cs"] for r in post_entry_typed) / len(post_entry_typed)
 
             print("\nResults: 20 rounds (3 firms → 4 firms)")
             print(

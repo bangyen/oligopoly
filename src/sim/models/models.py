@@ -117,7 +117,7 @@ class SegmentedDemand:
         return f"SegmentedDemand(segments={len(self.segments)})"
 
 
-class Market(Base):  # type: ignore[misc,valid-type]
+class Market(Base):  # type: ignore
     """Market configuration and parameters for simulation.
 
     Stores market-level parameters including demand curve coefficients,
@@ -166,7 +166,7 @@ class Market(Base):  # type: ignore[misc,valid-type]
         return SegmentedDemand(segments=demand_segments)
 
 
-class Firm(Base):  # type: ignore[misc,valid-type]
+class Firm(Base):  # type: ignore
     """Individual firm participating in the market.
 
     Represents a firm with its cost structure and strategic parameters.
@@ -186,7 +186,7 @@ class Firm(Base):  # type: ignore[misc,valid-type]
     market = relationship("Market", back_populates="firms")
 
 
-class Run(Base):  # type: ignore[misc,valid-type]
+class Run(Base):  # type: ignore
     """Simulation run tracking.
 
     Stores metadata about multi-round simulation runs including
@@ -211,7 +211,7 @@ class Run(Base):  # type: ignore[misc,valid-type]
     )
 
 
-class Round(Base):  # type: ignore[misc,valid-type]
+class Round(Base):  # type: ignore
     """Individual round within a simulation run.
 
     Tracks each round of a multi-round simulation for
@@ -232,7 +232,7 @@ class Round(Base):  # type: ignore[misc,valid-type]
     )
 
 
-class Result(Base):  # type: ignore[misc,valid-type]
+class Result(Base):  # type: ignore
     """Individual firm results for each round.
 
     Stores the action (quantity/price), market price, quantity sold,
@@ -259,7 +259,7 @@ class Result(Base):  # type: ignore[misc,valid-type]
     round = relationship("Round", back_populates="results")
 
 
-class Event(Base):  # type: ignore[misc,valid-type]
+class Event(Base):  # type: ignore
     """Comprehensive event tracking for simulation runs.
 
     Stores all types of events that occur during simulation including collusion,
@@ -282,7 +282,7 @@ class Event(Base):  # type: ignore[misc,valid-type]
     run = relationship("Run", back_populates="events")
 
 
-class CollusionEvent(Base):  # type: ignore[misc,valid-type]
+class CollusionEvent(Base):  # type: ignore
     """Legacy collusion events table for backward compatibility.
 
     This table is maintained for existing data but new events should use
@@ -304,7 +304,7 @@ class CollusionEvent(Base):  # type: ignore[misc,valid-type]
     run = relationship("Run", back_populates="collusion_events")
 
 
-class RunConfig(Base):  # type: ignore[misc,valid-type]
+class RunConfig(Base):  # type: ignore
     """Configuration for simulation runs.
 
     Stores parameters that control how simulations are executed,

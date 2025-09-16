@@ -972,7 +972,7 @@ def compute_heatmap(
         response = requests.post(f"{api_url}/heatmap", json=request_data)
         response.raise_for_status()
 
-        return response.json()  # type: ignore
+        return cast(Dict[str, Any], response.json())
 
     except requests.exceptions.RequestException as e:
         st.error(f"API request failed: {e}")
