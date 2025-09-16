@@ -8,7 +8,7 @@ Create Date: 2024-01-01 00:00:00.000000
 
 import sqlalchemy as sa
 
-from alembic import op  # type: ignore[attr-defined]
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "001"
