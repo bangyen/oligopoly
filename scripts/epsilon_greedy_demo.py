@@ -198,18 +198,17 @@ def run_epsilon_greedy_demo() -> None:
             pre_entry_typed = [cast(RoundData, r) for r in pre_entry]
             post_entry_typed = [cast(RoundData, r) for r in post_entry]
 
-            pre_avg_price = sum(r["price"] for r in pre_entry_typed) / len(
-                pre_entry_typed
-            )
-            post_avg_price = sum(r["price"] for r in post_entry_typed) / len(
-                post_entry_typed
-            )
-            pre_avg_hhi = sum(r["hhi"] for r in pre_entry_typed) / len(pre_entry_typed)
-            post_avg_hhi = sum(r["hhi"] for r in post_entry_typed) / len(
-                post_entry_typed
-            )
-            pre_avg_cs = sum(r["cs"] for r in pre_entry_typed) / len(pre_entry_typed)
-            post_avg_cs = sum(r["cs"] for r in post_entry_typed) / len(post_entry_typed)
+            pre_size = len(pre_entry)
+            post_size = len(post_entry)
+
+            pre_avg_price = sum(r["price"] for r in pre_entry_typed) / pre_size
+            post_avg_price = sum(r["price"] for r in post_entry_typed) / post_size
+
+            pre_avg_hhi = sum(r["hhi"] for r in pre_entry_typed) / pre_size
+            post_avg_hhi = sum(r["hhi"] for r in post_entry_typed) / post_size
+
+            pre_avg_cs = sum(r["cs"] for r in pre_entry_typed) / pre_size
+            post_avg_cs = sum(r["cs"] for r in post_entry_typed) / post_size
 
             print("\nResults: 20 rounds (3 firms → 4 firms)")
             print(
