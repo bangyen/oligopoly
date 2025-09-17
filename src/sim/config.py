@@ -4,11 +4,15 @@ from functools import lru_cache
 from typing import List
 
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False
+    )
 
     # App info
     app_name: str = Field(default="Oligopoly Simulation")
@@ -30,11 +34,6 @@ class Settings(BaseSettings):
     # Simulation
     max_rounds: int = Field(default=1000, ge=1, le=10000)
     max_firms: int = Field(default=20, ge=1, le=100)
-
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
 
 
 @lru_cache
