@@ -12,6 +12,44 @@ if TYPE_CHECKING:
     from src.sim.models.models import SegmentedDemand
 
 
+def should_firm_exit(
+    price: float, marginal_cost: float, min_profit_threshold: float = 0.0
+) -> bool:
+    """Determine if firm should exit when price <= marginal cost.
+
+    Args:
+        price: Market price
+        marginal_cost: Firm's marginal cost
+        min_profit_threshold: Minimum profit threshold for staying in market
+
+    Returns:
+        True if firm should exit, False otherwise
+    """
+    return price <= marginal_cost + min_profit_threshold
+
+
+def validate_profitable_production(
+    quantities: List[float], costs: List[float], price: float
+) -> List[float]:
+    """Ensure firms don't produce when price < marginal cost.
+
+    Args:
+        quantities: Current firm quantities
+        costs: Firm marginal costs
+        price: Market price
+
+    Returns:
+        Adjusted quantities with unprofitable firms set to zero
+    """
+    adjusted_quantities = []
+    for qty, cost in zip(quantities, costs):
+        if should_firm_exit(price, cost):
+            adjusted_quantities.append(0.0)  # Exit market
+        else:
+            adjusted_quantities.append(qty)
+    return adjusted_quantities
+
+
 def cournot_nash_equilibrium(
     a: float, b: float, costs: List[float]
 ) -> Tuple[List[float], float, List[float]]:
@@ -19,6 +57,8 @@ def cournot_nash_equilibrium(
 
     For n firms with costs c_i and demand P = a - b*Q, the Nash equilibrium
     quantities are: q_i* = (a - (n+1)*c_i + sum(c_j for j≠i)) / (b*(n+1))
+
+    Firms with costs above the equilibrium price will exit the market.
 
     Args:
         a: Demand intercept parameter
@@ -32,21 +72,57 @@ def cournot_nash_equilibrium(
     if n == 0:
         return [], 0.0, []
 
-    # Calculate Nash equilibrium quantities
-    total_cost = sum(costs)
-    quantities = []
+    # Start with all firms and iteratively remove unprofitable ones
+    active_firms = list(range(n))
+    quantities = [0.0] * n
+    price = 0.0
 
-    for i, cost_i in enumerate(costs):
-        # q_i* = (a - (n+1)*c_i + sum(c_j for j≠i)) / (b*(n+1))
-        # This simplifies to: (a - n*c_i + total_cost - c_i) / (b*(n+1))
-        q_i = (a - (n + 1) * cost_i + total_cost) / (b * (n + 1))
-        quantities.append(max(0.0, q_i))  # Ensure non-negative
+    # Iterate until no more firms exit
+    max_iterations = n  # Prevent infinite loops
+    for iteration in range(max_iterations):
+        if not active_firms:
+            break
 
-    # Calculate equilibrium price
-    total_quantity = sum(quantities)
-    price = max(0.0, a - b * total_quantity)
+        # Calculate Nash equilibrium for active firms only
+        active_costs = [costs[i] for i in active_firms]
+        active_total_cost = sum(active_costs)
+        active_n = len(active_firms)
 
-    # Calculate equilibrium profits
+        # Calculate quantities for active firms
+        active_quantities = []
+        for i, cost_i in enumerate(active_costs):
+            # q_i* = (a - (n+1)*c_i + sum(c_j for j≠i)) / (b*(n+1))
+            q_i = (a - (active_n + 1) * cost_i + active_total_cost) / (
+                b * (active_n + 1)
+            )
+            active_quantities.append(max(0.0, q_i))
+
+        # Calculate equilibrium price
+        total_quantity = sum(active_quantities)
+        price = max(0.0, a - b * total_quantity)
+
+        # Check which firms should exit
+        firms_to_remove = []
+        for i, firm_idx in enumerate(active_firms):
+            if should_firm_exit(price, costs[firm_idx]):
+                firms_to_remove.append(i)
+                quantities[firm_idx] = 0.0
+            else:
+                quantities[firm_idx] = active_quantities[i]
+
+        # If no firms can be profitable, break to avoid infinite loop
+        if len(active_firms) == len(firms_to_remove):
+            break
+
+        # Remove unprofitable firms
+        for i in reversed(firms_to_remove):  # Reverse to maintain indices
+            active_firms.pop(i)
+
+        # If no firms exit, we've reached equilibrium
+        if not firms_to_remove:
+            break
+
+    # Calculate final profits
     profits = [(price - cost) * q for cost, q in zip(costs, quantities)]
 
     return quantities, price, profits
@@ -281,7 +357,7 @@ def validate_market_clearing(
     """Validate and adjust actions to ensure market clearing conditions.
 
     Ensures that:
-    - Cournot: Total quantity doesn't exceed demand at zero price
+    - Cournot: Total quantity doesn't exceed demand at zero price AND firms don't produce at losses
     - Bertrand: Prices are above marginal costs
 
     Args:
@@ -305,6 +381,8 @@ def validate_market_clearing(
                 segment["weight"] * segment["beta"] for segment in segments_config
             )
             max_total_qty = weighted_alpha / weighted_beta
+            a = weighted_alpha
+            b = weighted_beta
         else:
             # Standard demand
             a = params.get("a", 100.0)
@@ -317,6 +395,13 @@ def validate_market_clearing(
             # Scale down all quantities proportionally
             scale_factor = max_total_qty / total_qty
             actions = [qty * scale_factor for qty in actions]
+
+        # Calculate market price and ensure profitable production
+        total_quantity = sum(actions)
+        price = max(0.0, a - b * total_quantity)
+
+        # Remove unprofitable firms
+        actions = validate_profitable_production(actions, costs, price)
 
     else:  # bertrand
         # Ensure all prices are above marginal costs

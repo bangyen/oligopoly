@@ -85,10 +85,48 @@ class SegmentedDemand:
     segments: list[DemandSegment]  # List of consumer segments
 
     def __post_init__(self) -> None:
-        """Validate segment weights sum to 1."""
+        """Validate segment weights sum to 1 and parameters are economically reasonable."""
         total_weight = sum(segment.weight for segment in self.segments)
         if not math.isclose(total_weight, 1.0, abs_tol=1e-6):
             raise ValueError(f"Segment weights must sum to 1.0, got {total_weight:.6f}")
+
+        # Validate that all segments have positive parameters
+        for i, segment in enumerate(self.segments):
+            if segment.alpha <= 0:
+                raise ValueError(
+                    f"Segment {i} alpha parameter must be positive, got {segment.alpha}"
+                )
+            if segment.beta <= 0:
+                raise ValueError(
+                    f"Segment {i} beta parameter must be positive, got {segment.beta}"
+                )
+            if segment.weight <= 0 or segment.weight > 1:
+                raise ValueError(
+                    f"Segment {i} weight must be in (0, 1], got {segment.weight}"
+                )
+
+        # Validate that effective demand parameters are reasonable
+        weighted_alpha = sum(
+            segment.weight * segment.alpha for segment in self.segments
+        )
+        weighted_beta = sum(segment.weight * segment.beta for segment in self.segments)
+
+        if weighted_alpha <= 0:
+            raise ValueError(
+                f"Effective alpha parameter must be positive, got {weighted_alpha}"
+            )
+        if weighted_beta <= 0:
+            raise ValueError(
+                f"Effective beta parameter must be positive, got {weighted_beta}"
+            )
+
+        # Check for unrealistic elasticity (beta too high relative to alpha)
+        max_elasticity_ratio = 2.0  # beta/alpha should not exceed this ratio
+        for i, segment in enumerate(self.segments):
+            if segment.beta / segment.alpha > max_elasticity_ratio:
+                raise ValueError(
+                    f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta/segment.alpha:.3f} > {max_elasticity_ratio}"
+                )
 
     def total_demand(self, price: float) -> float:
         """Calculate total market demand at given price.

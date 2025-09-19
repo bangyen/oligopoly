@@ -22,14 +22,18 @@ class TestCournotPrice:
         assert result.price == 100.0
 
     def test_cournot_price_high_quantity(self) -> None:
-        """Test price calculation when quantity drives price to zero."""
+        """Test price calculation when quantity drives price to zero - firm should exit."""
         result = cournot_simulation(a=100, b=1, costs=[10], quantities=[150])
-        assert result.price == 0.0
+        # Firm should exit when price would be 0, so price = 100 (no production)
+        assert result.price == 100.0
+        assert result.quantities[0] == 0.0  # Firm exits
 
     def test_cournot_price_exact_boundary(self) -> None:
-        """Test price calculation at exact boundary where P=0."""
+        """Test price calculation at exact boundary where P=0 - firm should exit."""
         result = cournot_simulation(a=100, b=1, costs=[10], quantities=[100])
-        assert result.price == 0.0
+        # Firm should exit when price would be 0, so price = 100 (no production)
+        assert result.price == 100.0
+        assert result.quantities[0] == 0.0  # Firm exits
 
     def test_cournot_price_multiple_firms(self) -> None:
         """Test price calculation with multiple firms."""

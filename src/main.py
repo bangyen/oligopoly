@@ -310,6 +310,30 @@ async def simulate(
         HTTPException: If simulation fails or configuration is invalid
     """
     try:
+        # Validate firm costs are economically reasonable
+        costs = [firm.cost for firm in request.firms]
+        if any(cost <= 0 for cost in costs):
+            raise HTTPException(
+                status_code=400,
+                detail="All firm costs must be positive",
+            )
+
+        # Check if costs are too high relative to demand parameters
+        if request.model == "cournot":
+            a = request.params.get("a", 100.0)
+            if any(cost >= a for cost in costs):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Firm costs cannot exceed demand intercept (a={a}). Firms with costs >= {a} would never be profitable.",
+                )
+        elif request.model == "bertrand":
+            alpha = request.params.get("alpha", 100.0)
+            if any(cost >= alpha for cost in costs):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Firm costs cannot exceed demand intercept (alpha={alpha}). Firms with costs >= {alpha} would never be profitable.",
+                )
+
         # Convert Pydantic models to dict format expected by run_game
         config: Dict[str, Any] = {
             "params": request.params,
@@ -338,6 +362,33 @@ async def simulate(
                     status_code=400,
                     detail=f"Segment weights must sum to 1.0, got {total_weight:.6f}",
                 )
+
+            # Validate segment parameters are economically reasonable
+            for i, segment in enumerate(request.segments):
+                if segment.alpha <= 0:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Segment {i} alpha parameter must be positive, got {segment.alpha}",
+                    )
+                if segment.beta <= 0:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Segment {i} beta parameter must be positive, got {segment.beta}",
+                    )
+                if segment.weight <= 0 or segment.weight > 1:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Segment {i} weight must be in (0, 1], got {segment.weight}",
+                    )
+
+            # Check for unrealistic elasticity
+            max_elasticity_ratio = 2.0
+            for i, segment in enumerate(request.segments):
+                if segment.beta / segment.alpha > max_elasticity_ratio:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta/segment.alpha:.3f} > {max_elasticity_ratio}",
+                    )
 
             config["params"]["segments"] = [
                 {"alpha": segment.alpha, "beta": segment.beta, "weight": segment.weight}

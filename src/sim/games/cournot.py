@@ -51,6 +51,8 @@ def cournot_simulation(
     Computes market price based on inverse demand P = max(0, a - b * sum(q_i))
     and calculates individual firm profits π_i = (P - c_i) * q_i.
 
+    Firms with costs above the market price will exit (quantity set to 0).
+
     Args:
         a: Maximum price parameter for demand curve
         b: Price sensitivity parameter for demand curve
@@ -75,10 +77,23 @@ def cournot_simulation(
     total_quantity = sum(quantities)
     price = max(0.0, a - b * total_quantity)
 
-    # Calculate profits: π_i = (P - c_i) * q_i
-    profits = [(price - cost) * q for cost, q in zip(costs, quantities)]
+    # Ensure firms don't produce at losses - exit unprofitable firms
+    from src.sim.strategies.nash_strategies import validate_profitable_production
 
-    return CournotResult(price=price, quantities=quantities.copy(), profits=profits)
+    adjusted_quantities = validate_profitable_production(quantities, costs, price)
+
+    # Recalculate price with adjusted quantities
+    adjusted_total_quantity = sum(adjusted_quantities)
+    adjusted_price = max(0.0, a - b * adjusted_total_quantity)
+
+    # Calculate profits: π_i = (P - c_i) * q_i
+    profits = [
+        (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
+    ]
+
+    return CournotResult(
+        price=adjusted_price, quantities=adjusted_quantities, profits=profits
+    )
 
 
 def cournot_segmented_simulation(
@@ -131,10 +146,25 @@ def cournot_segmented_simulation(
     # Calculate market price using effective parameters
     price = max(0.0, (weighted_alpha - total_quantity) / weighted_beta)
 
-    # Calculate profits: π_i = (P - c_i) * q_i
-    profits = [(price - cost) * q for cost, q in zip(costs, quantities)]
+    # Ensure firms don't produce at losses - exit unprofitable firms
+    from src.sim.strategies.nash_strategies import validate_profitable_production
 
-    return CournotResult(price=price, quantities=quantities.copy(), profits=profits)
+    adjusted_quantities = validate_profitable_production(quantities, costs, price)
+
+    # Recalculate price with adjusted quantities
+    adjusted_total_quantity = sum(adjusted_quantities)
+    adjusted_price = max(
+        0.0, (weighted_alpha - adjusted_total_quantity) / weighted_beta
+    )
+
+    # Calculate profits: π_i = (P - c_i) * q_i
+    profits = [
+        (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
+    ]
+
+    return CournotResult(
+        price=adjusted_price, quantities=adjusted_quantities, profits=profits
+    )
 
 
 def parse_costs(costs_str: str) -> List[float]:
