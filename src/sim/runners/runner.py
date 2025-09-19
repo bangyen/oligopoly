@@ -75,6 +75,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
     try:
         # Extract firm costs and cost structure
         costs = [firm["cost"] for firm in firms]
+        fixed_costs = [firm.get("fixed_cost", 0.0) for firm in firms]
         num_firms = len(costs)
 
         # Validate economic parameters
@@ -96,13 +97,15 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                     segment["weight"] * segment["beta"] for segment in segments_config
                 )
                 nash_quantities, _, _ = cournot_nash_equilibrium(
-                    weighted_alpha, weighted_beta, costs
+                    weighted_alpha, weighted_beta, costs, fixed_costs
                 )
             else:
                 # Standard demand
                 a = params.get("a", 100.0)
                 b = params.get("b", 1.0)
-                nash_quantities, _, _ = cournot_nash_equilibrium(a, b, costs)
+                nash_quantities, _, _ = cournot_nash_equilibrium(
+                    a, b, costs, fixed_costs
+                )
 
             # Add small randomness around Nash equilibrium (reduced from ±2 to ±1)
             actions = [max(0.1, qty + random.uniform(-1, 1)) for qty in nash_quantities]
@@ -127,9 +130,9 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
             # Run simulation for this round
             if model == "cournot":
-                result = _run_cournot_round(params, costs, actions)
+                result = _run_cournot_round(params, costs, actions, fixed_costs)
             else:  # bertrand
-                result = _run_bertrand_round(params, costs, actions)
+                result = _run_bertrand_round(params, costs, actions, fixed_costs)
 
             # Apply policy shocks for this round
             for event in events:
@@ -186,7 +189,10 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
 
 def _run_cournot_round(
-    params: Dict[str, Any], costs: List[float], quantities: List[float]
+    params: Dict[str, Any],
+    costs: List[float],
+    quantities: List[float],
+    fixed_costs: List[float],
 ) -> Any:
     """Run a single Cournot round."""
     # Check if segmented demand is configured
@@ -203,16 +209,21 @@ def _run_cournot_round(
             segments.append(segment)
 
         segmented_demand = SegmentedDemand(segments=segments)
-        return cournot_segmented_simulation(segmented_demand, costs, quantities)
+        return cournot_segmented_simulation(
+            segmented_demand, costs, quantities, fixed_costs
+        )
     else:
         # Use traditional single-segment demand
         a = params.get("a", 100.0)
         b = params.get("b", 1.0)
-        return cournot_simulation(a, b, costs, quantities)
+        return cournot_simulation(a, b, costs, quantities, fixed_costs)
 
 
 def _run_bertrand_round(
-    params: Dict[str, Any], costs: List[float], prices: List[float]
+    params: Dict[str, Any],
+    costs: List[float],
+    prices: List[float],
+    fixed_costs: List[float],
 ) -> Any:
     """Run a single Bertrand round."""
     # Check if segmented demand is configured
@@ -229,12 +240,14 @@ def _run_bertrand_round(
             segments.append(segment)
 
         segmented_demand = SegmentedDemand(segments=segments)
-        return bertrand_segmented_simulation(segmented_demand, costs, prices)
+        return bertrand_segmented_simulation(
+            segmented_demand, costs, prices, fixed_costs
+        )
     else:
         # Use traditional single-segment demand
         alpha = params.get("alpha", 100.0)
         beta = params.get("beta", 1.0)
-        return bertrand_simulation(alpha, beta, costs, prices)
+        return bertrand_simulation(alpha, beta, costs, prices, fixed_costs)
 
 
 def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:

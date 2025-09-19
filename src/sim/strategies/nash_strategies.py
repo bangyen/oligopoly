@@ -6,7 +6,7 @@ equilibrium outcomes.
 """
 
 import random
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from src.sim.models.models import SegmentedDemand
@@ -51,7 +51,7 @@ def validate_profitable_production(
 
 
 def cournot_nash_equilibrium(
-    a: float, b: float, costs: List[float]
+    a: float, b: float, costs: List[float], fixed_costs: Optional[List[float]] = None
 ) -> Tuple[List[float], float, List[float]]:
     """Calculate Cournot Nash equilibrium quantities, price, and profits.
 
@@ -59,11 +59,13 @@ def cournot_nash_equilibrium(
     quantities are: q_i* = (a - (n+1)*c_i + sum(c_j for j≠i)) / (b*(n+1))
 
     Firms with costs above the equilibrium price will exit the market.
+    Fixed costs are included in profit calculations but not in quantity optimization.
 
     Args:
         a: Demand intercept parameter
         b: Demand slope parameter
         costs: List of marginal costs for each firm
+        fixed_costs: Optional list of fixed costs for each firm
 
     Returns:
         Tuple of (equilibrium_quantities, equilibrium_price, equilibrium_profits)
@@ -71,6 +73,14 @@ def cournot_nash_equilibrium(
     n = len(costs)
     if n == 0:
         return [], 0.0, []
+
+    # Default fixed costs to zero if not provided
+    if fixed_costs is None:
+        fixed_costs = [0.0] * n
+    elif len(fixed_costs) != n:
+        raise ValueError(
+            f"Fixed costs length ({len(fixed_costs)}) must match costs length ({n})"
+        )
 
     # Start with all firms and iteratively remove unprofitable ones
     active_firms = list(range(n))
@@ -101,14 +111,20 @@ def cournot_nash_equilibrium(
         total_quantity = sum(active_quantities)
         price = max(0.0, a - b * total_quantity)
 
-        # Check which firms should exit
+        # Check which firms should exit (considering both marginal cost and fixed cost)
         firms_to_remove = []
         for i, firm_idx in enumerate(active_firms):
+            # Firm exits if price <= marginal cost OR if profit < 0 (including fixed costs)
             if should_firm_exit(price, costs[firm_idx]):
                 firms_to_remove.append(i)
                 quantities[firm_idx] = 0.0
             else:
                 quantities[firm_idx] = active_quantities[i]
+                # Check if firm can cover fixed costs
+                profit_without_fixed = (price - costs[firm_idx]) * active_quantities[i]
+                if profit_without_fixed < fixed_costs[firm_idx]:
+                    firms_to_remove.append(i)
+                    quantities[firm_idx] = 0.0
 
         # If no firms can be profitable, break to avoid infinite loop
         if len(active_firms) == len(firms_to_remove):
@@ -122,8 +138,10 @@ def cournot_nash_equilibrium(
         if not firms_to_remove:
             break
 
-    # Calculate final profits
-    profits = [(price - cost) * q for cost, q in zip(costs, quantities)]
+    # Calculate final profits including fixed costs
+    profits = [
+        (price - cost) * q - fc for cost, q, fc in zip(costs, quantities, fixed_costs)
+    ]
 
     return quantities, price, profits
 
@@ -412,6 +430,16 @@ def validate_market_clearing(
         # Calculate market price and ensure profitable production
         total_quantity = sum(actions)
         price = max(0.0, a - b * total_quantity)
+
+        # Ensure minimum viable price (prevent zero prices)
+        min_viable_price = min(costs) + 0.1  # Small margin above lowest cost
+        if price < min_viable_price and total_quantity > 0:
+            # Adjust quantities to achieve minimum viable price
+            target_quantity = (a - min_viable_price) / b
+            if target_quantity > 0:
+                scale_factor = target_quantity / total_quantity
+                actions = [qty * scale_factor for qty in actions]
+                price = min_viable_price
 
         # Remove unprofitable firms
         actions = validate_profitable_production(actions, costs, price)

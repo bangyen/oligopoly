@@ -371,26 +371,53 @@ async def simulate(
     try:
         # Validate firm costs are economically reasonable
         costs = [firm.cost for firm in request.firms]
+        fixed_costs = [firm.fixed_cost for firm in request.firms]
+
         if any(cost <= 0 for cost in costs):
             raise HTTPException(
                 status_code=400,
                 detail="All firm costs must be positive",
             )
 
+        if any(fc < 0 for fc in fixed_costs):
+            raise HTTPException(
+                status_code=400,
+                detail="All fixed costs must be non-negative",
+            )
+
         # Check if costs are too high relative to demand parameters
         if request.model == "cournot":
             a = request.params.get("a", 100.0)
+            b = request.params.get("b", 1.0)
+
             if any(cost >= a for cost in costs):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Firm costs cannot exceed demand intercept (a={a}). Firms with costs >= {a} would never be profitable.",
                 )
+
+            # Check if demand slope is too flat (creates unrealistic conditions)
+            if b < 0.1:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Demand slope (b={b}) is too flat. This creates unrealistic market conditions. Use b >= 0.1.",
+                )
+
         elif request.model == "bertrand":
             alpha = request.params.get("alpha", 100.0)
+            beta = request.params.get("beta", 1.0)
+
             if any(cost >= alpha for cost in costs):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Firm costs cannot exceed demand intercept (alpha={alpha}). Firms with costs >= {alpha} would never be profitable.",
+                )
+
+            # Check if demand slope is too flat
+            if beta < 0.1:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Demand slope (beta={beta}) is too flat. This creates unrealistic market conditions. Use beta >= 0.1.",
                 )
 
         # Convert Pydantic models to dict format expected by run_game
