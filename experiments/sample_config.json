@@ -54,8 +54,8 @@
       {"cost": 15.0}
     ],
     "segments": [
-      {"alpha": 50.0, "beta": 0.5, "weight": 0.6},
-      {"alpha": 30.0, "beta": 0.3, "weight": 0.4}
+      {"alpha": 60.0, "beta": 0.6, "weight": 0.6},
+      {"alpha": 40.0, "beta": 0.4, "weight": 0.4}
     ]
   },
   {

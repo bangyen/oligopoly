@@ -67,7 +67,7 @@ class TestPriceElasticityDifferences:
         ]
         segmented_demand = SegmentedDemand(segments=segments)
 
-        costs = [10.0, 15.0, 20.0]
+        costs = [5.0, 10.0, 15.0]  # Lower costs to prevent exits
 
         # Test with low quantities (higher price)
         quantities_low = [10.0, 15.0, 20.0]  # Total: 45
@@ -75,8 +75,8 @@ class TestPriceElasticityDifferences:
             segmented_demand, costs, quantities_low
         )
 
-        # Test with high quantities (lower price)
-        quantities_high = [30.0, 35.0, 40.0]  # Total: 105
+        # Test with high quantities (lower price) - but not so high that firms exit
+        quantities_high = [20.0, 25.0, 30.0]  # Total: 75 (still profitable)
         result_high = cournot_segmented_simulation(
             segmented_demand, costs, quantities_high
         )
@@ -89,10 +89,10 @@ class TestPriceElasticityDifferences:
         weighted_beta = 0.5 * 1.0 + 0.5 * 2.0  # 1.5
 
         # At low quantities (45): P = (100 - 45) / 1.5 = 36.67
-        # At high quantities (105): P = (100 - 105) / 1.5 = -3.33 -> 0 (max constraint)
+        # At high quantities (75): P = (100 - 75) / 1.5 = 16.67
 
         expected_price_low = max(0.0, (weighted_alpha - 45.0) / weighted_beta)
-        expected_price_high = max(0.0, (weighted_alpha - 105.0) / weighted_beta)
+        expected_price_high = max(0.0, (weighted_alpha - 75.0) / weighted_beta)
 
         assert math.isclose(result_low.price, expected_price_low, abs_tol=1e-10)
         assert math.isclose(result_high.price, expected_price_high, abs_tol=1e-10)
