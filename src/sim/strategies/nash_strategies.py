@@ -408,3 +408,66 @@ def validate_market_clearing(
         actions = [max(cost + 0.1, price) for price, cost in zip(actions, costs)]
 
     return actions
+
+
+def validate_economic_parameters(
+    model: str, params: Dict[str, Any], costs: List[float]
+) -> None:
+    """Validate that economic parameters create a viable market.
+
+    Args:
+        model: "cournot" or "bertrand"
+        params: Market parameters
+        costs: Firm marginal costs
+
+    Raises:
+        ValueError: If parameters create economically impossible conditions
+    """
+    if model == "cournot":
+        # Check if segmented demand
+        segments_config = params.get("segments")
+        if segments_config:
+            # For segmented demand, calculate effective parameters
+            weighted_alpha = sum(
+                segment["weight"] * segment["alpha"] for segment in segments_config
+            )
+            weighted_beta = sum(
+                segment["weight"] * segment["beta"] for segment in segments_config
+            )
+            a = weighted_alpha
+            b = weighted_beta
+        else:
+            a = params.get("a", 100.0)
+            b = params.get("b", 1.0)
+
+        # Check if any firm can be profitable
+        min_cost = min(costs)
+        if min_cost >= a:
+            raise ValueError(
+                f"All firm costs ({costs}) exceed demand intercept ({a}). "
+                "No firm can be profitable in this market."
+            )
+
+        # Check if demand is too flat (low b)
+        if b < 0.1:
+            raise ValueError(
+                f"Demand slope ({b}) is too flat. This creates unrealistic market conditions."
+            )
+
+    else:  # bertrand
+        alpha = params.get("alpha", 100.0)
+        beta = params.get("beta", 1.0)
+
+        # Check if any firm can be profitable
+        min_cost = min(costs)
+        if min_cost >= alpha:
+            raise ValueError(
+                f"All firm costs ({costs}) exceed demand intercept ({alpha}). "
+                "No firm can be profitable in this market."
+            )
+
+        # Check if demand is too flat (low beta)
+        if beta < 0.1:
+            raise ValueError(
+                f"Demand slope ({beta}) is too flat. This creates unrealistic market conditions."
+            )

@@ -132,8 +132,10 @@ class TestMarketSharesCournot:
     def test_cournot_shares_zero_total(self):
         """Test market shares when total quantity is zero."""
         quantities = [0.0, 0.0, 0.0]
-        with pytest.raises(ValueError, match="Total quantity cannot be zero"):
-            calculate_market_shares_cournot(quantities)
+        shares = calculate_market_shares_cournot(quantities)
+        # When total quantity is zero, all firms get equal shares
+        expected_shares = [1.0 / 3, 1.0 / 3, 1.0 / 3]
+        assert shares == expected_shares
 
 
 class TestMarketSharesBertrand:
@@ -209,5 +211,7 @@ class TestMarketSharesBertrand:
         """Test market shares when total revenue is zero."""
         prices = [0.0, 0.0, 0.0]
         quantities = [0.0, 0.0, 0.0]
-        with pytest.raises(ValueError, match="Total revenue cannot be zero"):
-            calculate_market_shares_bertrand(prices, quantities)
+        shares = calculate_market_shares_bertrand(prices, quantities)
+        # When total revenue is zero, all firms get equal shares
+        expected_shares = [1.0 / 3, 1.0 / 3, 1.0 / 3]
+        assert shares == expected_shares

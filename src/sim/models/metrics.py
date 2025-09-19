@@ -47,6 +47,7 @@ def calculate_market_shares_cournot(quantities: List[float]) -> List[float]:
     """Calculate market shares from quantities in Cournot competition.
 
     In Cournot competition, market share is quantity share: q_i / sum(q_j).
+    If total quantity is zero (all firms exited), returns equal shares.
 
     Args:
         quantities: List of quantities produced by each firm
@@ -55,7 +56,7 @@ def calculate_market_shares_cournot(quantities: List[float]) -> List[float]:
         List of market shares (proportions)
 
     Raises:
-        ValueError: If quantities are negative or total is zero
+        ValueError: If quantities are negative
     """
     if not quantities:
         raise ValueError("Quantities list cannot be empty")
@@ -67,7 +68,8 @@ def calculate_market_shares_cournot(quantities: List[float]) -> List[float]:
 
     total_qty = sum(quantities)
     if total_qty == 0:
-        raise ValueError("Total quantity cannot be zero")
+        # All firms have zero quantity - return equal shares
+        return [1.0 / len(quantities)] * len(quantities)
 
     # Calculate shares
     shares = [qty / total_qty for qty in quantities]
@@ -80,6 +82,7 @@ def calculate_market_shares_bertrand(
     """Calculate market shares from revenue in Bertrand competition.
 
     In Bertrand competition, market share is revenue share: (p_i * q_i) / sum(p_j * q_j).
+    If total revenue is zero (all firms have zero sales), returns equal shares.
 
     Args:
         prices: List of prices set by each firm
@@ -89,7 +92,7 @@ def calculate_market_shares_bertrand(
         List of market shares (proportions)
 
     Raises:
-        ValueError: If prices/quantities are negative or total revenue is zero
+        ValueError: If prices/quantities are negative
     """
     if not prices or not quantities:
         raise ValueError("Prices and quantities lists cannot be empty")
@@ -111,7 +114,8 @@ def calculate_market_shares_bertrand(
     total_revenue = sum(revenues)
 
     if total_revenue == 0:
-        raise ValueError("Total revenue cannot be zero")
+        # All firms have zero revenue - return equal shares
+        return [1.0 / len(prices)] * len(prices)
 
     # Calculate shares
     shares = [revenue / total_revenue for revenue in revenues]
