@@ -75,33 +75,18 @@ class DemandSegmentConfig(BaseModel):
 
 
 class ProductCharacteristicsConfig(BaseModel):
-    """Configuration for product characteristics in differentiated competition."""
+    """Simplified configuration for product characteristics."""
 
     quality: float = Field(default=1.0, gt=0, description="Product quality level")
-    location: float = Field(
-        default=0.5, ge=0, le=1, description="Product location (0-1 scale)"
-    )
-    brand_strength: float = Field(default=1.0, gt=0, description="Brand loyalty factor")
-    innovation_level: float = Field(
-        default=0.0, ge=0, description="Innovation/R&D level"
-    )
+    # Removed complex parameters: location, brand_strength, innovation_level
 
 
 class FirmConfig(BaseModel):
-    """Configuration for a single firm in the simulation."""
+    """Simplified configuration for a single firm in the simulation."""
 
     cost: float = Field(..., gt=0, description="Marginal cost of production")
     fixed_cost: float = Field(default=0.0, ge=0, description="Fixed cost per period")
-    capacity_limit: Optional[float] = Field(
-        default=None, gt=0, description="Maximum production capacity"
-    )
-    economies_of_scale: float = Field(
-        default=1.0, gt=0, description="Economies of scale factor (1.0 = no economies)"
-    )
-    product_characteristics: Optional[ProductCharacteristicsConfig] = Field(
-        default=None,
-        description="Product characteristics for differentiated competition",
-    )
+    # Removed complex parameters: capacity_limit, economies_of_scale, product_characteristics
 
 
 class PolicyEventRequest(BaseModel):
@@ -117,42 +102,29 @@ class PolicyEventRequest(BaseModel):
 
 
 class AdvancedStrategyConfig(BaseModel):
-    """Configuration for advanced learning strategies."""
+    """Simplified configuration for learning strategies."""
 
     strategy_type: str = Field(
         ...,
-        pattern="^(fictitious_play|deep_q_learning|behavioral)$",
-        description="Type of advanced strategy",
+        pattern="^(fictitious_play|q_learning)$",
+        description="Type of learning strategy (removed complex options)",
     )
     learning_rate: float = Field(default=0.1, gt=0, le=1, description="Learning rate")
-    exploration_rate: float = Field(
-        default=0.1, ge=0, le=1, description="Exploration rate"
-    )
     memory_length: int = Field(
-        default=20, gt=0, description="Memory length for learning"
-    )
-    rationality_level: float = Field(
-        default=0.8, ge=0, le=1, description="Rationality level (behavioral strategy)"
+        default=10, gt=0, description="Memory length for learning (reduced from 20)"
     )
 
 
 class EnhancedDemandConfig(BaseModel):
-    """Configuration for enhanced demand functions."""
+    """Simplified configuration for demand functions."""
 
     demand_type: str = Field(
         default="linear",
-        pattern="^(linear|ces|network|dynamic|multi_segment)$",
-        description="Type of demand function",
+        pattern="^(linear|ces)$",
+        description="Type of demand function (simplified to essential options)",
     )
     elasticity: float = Field(
-        default=2.0, gt=1, description="Elasticity of substitution (CES)"
-    )
-    network_strength: float = Field(
-        default=0.1, ge=0, description="Network effects strength"
-    )
-    growth_rate: float = Field(default=0.02, description="Demand growth rate (dynamic)")
-    volatility: float = Field(
-        default=0.1, ge=0, description="Demand volatility (dynamic)"
+        default=2.0, gt=1, description="Elasticity of substitution (CES only)"
     )
 
 
@@ -185,7 +157,7 @@ class SimulationRequest(BaseModel):
         default_factory=list, description="Policy events to apply during simulation"
     )
     advanced_strategies: Optional[List[AdvancedStrategyConfig]] = Field(
-        default=None, description="Advanced learning strategies for firms"
+        default=None, description="Simplified learning strategies for firms"
     )
     market_evolution: Optional[MarketEvolutionConfig] = Field(
         default=None, description="Market evolution configuration"
@@ -428,8 +400,6 @@ async def simulate(
                 {
                     "cost": firm.cost,
                     "fixed_cost": firm.fixed_cost,
-                    "capacity_limit": firm.capacity_limit,
-                    "economies_of_scale": firm.economies_of_scale,
                 }
                 for firm in request.firms
             ],
@@ -526,24 +496,11 @@ async def simulate_differentiated_bertrand(
         HTTPException: If simulation fails or configuration is invalid
     """
     try:
-        # Validate that all firms have product characteristics
-        for i, firm in enumerate(request.firms):
-            if not firm.product_characteristics:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Firm {i} must have product characteristics for differentiated competition",
-                )
-
-        # Convert to internal format
+        # For simplified version, use default quality for all firms
+        # In the future, this could be extended to support quality differentiation
         products = [
-            ProductCharacteristics(
-                quality=firm.product_characteristics.quality,
-                location=firm.product_characteristics.location,
-                brand_strength=firm.product_characteristics.brand_strength,
-                innovation_level=firm.product_characteristics.innovation_level,
-            )
+            ProductCharacteristics(quality=1.0)  # Default quality
             for firm in request.firms
-            if firm.product_characteristics is not None
         ]
 
         costs = [firm.cost for firm in request.firms]

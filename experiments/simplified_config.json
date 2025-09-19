@@ -1,0 +1,87 @@
+[
+  {
+    "config_id": "cournot_baseline",
+    "model": "cournot",
+    "rounds": 10,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0},
+      {"cost": 20.0}
+    ]
+  },
+  {
+    "config_id": "bertrand_baseline",
+    "model": "bertrand",
+    "rounds": 10,
+    "params": {
+      "alpha": 100.0,
+      "beta": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 12.0},
+      {"cost": 14.0}
+    ]
+  },
+  {
+    "config_id": "cournot_with_learning",
+    "model": "cournot",
+    "rounds": 20,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0}
+    ],
+    "advanced_strategies": [
+      {
+        "strategy_type": "fictitious_play",
+        "learning_rate": 0.1,
+        "memory_length": 10
+      }
+    ]
+  },
+  {
+    "config_id": "cournot_with_evolution",
+    "model": "cournot",
+    "rounds": 20,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0}
+    ],
+    "market_evolution": {
+      "growth_rate": 0.02,
+      "entry_cost": 100.0,
+      "exit_threshold": -50.0,
+      "innovation_rate": 0.1
+    }
+  },
+  {
+    "config_id": "cournot_with_policy",
+    "model": "cournot",
+    "rounds": 10,
+    "params": {
+      "a": 100.0,
+      "b": 1.0
+    },
+    "firms": [
+      {"cost": 10.0},
+      {"cost": 15.0},
+      {"cost": 20.0}
+    ],
+    "events": [
+      {"round_idx": 2, "policy_type": "TAX", "value": 0.1},
+      {"round_idx": 5, "policy_type": "SUBSIDY", "value": 2.0}
+    ]
+  }
+]
