@@ -264,6 +264,10 @@ def cournot_segmented_simulation(
         0.0, (weighted_alpha - adjusted_total_quantity) / weighted_beta
     )
 
+    # Ensure minimum viable price to prevent zero prices
+    min_viable_price = min(costs) + 0.1 if costs else 0.1
+    adjusted_price = max(adjusted_price, min_viable_price)
+
     # Calculate profits: π_i = (P - c_i) * q_i - FC_i
     if fixed_costs:
         if len(fixed_costs) != len(adjusted_quantities):

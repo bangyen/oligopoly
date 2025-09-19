@@ -8,9 +8,9 @@
       "b": 0.8
     },
     "firms": [
-      {"cost": 8.0, "fixed_cost": 15.0},
-      {"cost": 10.0, "fixed_cost": 20.0},
-      {"cost": 12.0, "fixed_cost": 25.0}
+      {"cost": 8.0, "fixed_cost": 2.0},
+      {"cost": 10.0, "fixed_cost": 2.5},
+      {"cost": 12.0, "fixed_cost": 3.0}
     ]
   },
   {
@@ -22,9 +22,9 @@
       "b": 0.3
     },
     "firms": [
-      {"cost": 15.0, "fixed_cost": 25.0},
-      {"cost": 20.0, "fixed_cost": 30.0},
-      {"cost": 25.0, "fixed_cost": 35.0}
+      {"cost": 15.0, "fixed_cost": 4.0},
+      {"cost": 20.0, "fixed_cost": 5.0},
+      {"cost": 25.0, "fixed_cost": 6.0}
     ]
   },
   {
@@ -36,9 +36,9 @@
       "beta": 1.0
     },
     "firms": [
-      {"cost": 6.0, "fixed_cost": 10.0},
-      {"cost": 7.0, "fixed_cost": 12.0},
-      {"cost": 8.0, "fixed_cost": 14.0}
+      {"cost": 6.0, "fixed_cost": 1.5},
+      {"cost": 7.0, "fixed_cost": 1.8},
+      {"cost": 8.0, "fixed_cost": 2.0}
     ]
   },
   {
@@ -50,13 +50,28 @@
       "b": 0.8
     },
     "firms": [
-      {"cost": 8.0, "fixed_cost": 15.0},
-      {"cost": 10.0, "fixed_cost": 20.0},
-      {"cost": 12.0, "fixed_cost": 25.0}
+      {"cost": 8.0, "fixed_cost": 2.0},
+      {"cost": 10.0, "fixed_cost": 2.5},
+      {"cost": 12.0, "fixed_cost": 3.0}
     ],
     "policies": [
       {"round_idx": 2, "policy_type": "TAX", "value": 0.1},
       {"round_idx": 5, "policy_type": "SUBSIDY", "value": 2.0}
+    ]
+  },
+  {
+    "config_id": "cournot_segmented",
+    "model": "cournot",
+    "rounds": 10,
+    "params": {
+      "segments": [
+        {"alpha": 100.0, "beta": 1.0, "weight": 0.5},
+        {"alpha": 80.0, "beta": 0.8, "weight": 0.5}
+      ]
+    },
+    "firms": [
+      {"cost": 8.0, "fixed_cost": 2.0},
+      {"cost": 10.0, "fixed_cost": 2.5}
     ]
   }
 ]
