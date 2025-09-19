@@ -318,11 +318,9 @@ class DeepQLearningStrategy:
         market_state: MarketState,
         my_history: Sequence[Union[CournotResult, BertrandResult]],
         bounds: Tuple[float, float],
-    ) -> np.ndarray[np.float64, Any]:
+    ) -> np.ndarray[Any, Any]:
         """Extract features from market state for Q-function."""
-        features: np.ndarray[np.float64, Any] = np.zeros(
-            self.feature_dim, dtype=np.float64
-        )
+        features = np.zeros(self.feature_dim, dtype=np.float64)
 
         # Market features
         features[0] = market_state.total_demand / 100.0  # Normalized demand
