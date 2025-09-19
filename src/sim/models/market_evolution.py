@@ -157,18 +157,45 @@ class MarketEvolutionEngine:
             demand_params["alpha"] *= growth_factor
 
     def _evolve_technology(self, costs: List[float], qualities: List[float]) -> None:
-        """Evolve overall technology level (simplified)."""
-        # Simple technology improvement using innovation_rate
-        if self.rng.random() < self.config.innovation_rate:
-            tech_improvement = 0.01  # Fixed small improvement
+        """Evolve overall technology level with realistic spillovers."""
+        # Technology improvement probability depends on market concentration
+        # More concentrated markets have higher innovation incentives
+        if not costs:
+            return
+
+        # Calculate market concentration (HHI proxy)
+        total_cost = sum(costs)
+        if total_cost > 0:
+            cost_shares = [c / total_cost for c in costs]
+            concentration = sum(s**2 for s in cost_shares)  # HHI-like measure
+        else:
+            concentration = 1.0  # Monopoly case
+
+        # Innovation probability increases with concentration but has diminishing returns
+        innovation_prob = min(0.3, self.config.innovation_rate * (0.5 + concentration))
+
+        if self.rng.random() < innovation_prob:
+            # Technology improvement varies with market size and concentration
+            base_improvement = 0.005 + 0.01 * concentration  # 0.5-1.5% improvement
+            tech_improvement = self.rng.uniform(
+                0.5 * base_improvement, 1.5 * base_improvement
+            )
+
             self.state.technology_level *= 1.0 + tech_improvement
 
-            # Technology affects all firms equally
+            # Technology spillovers are asymmetric - larger firms benefit more
             for i in range(len(costs)):
-                # Costs decrease with technology
-                costs[i] *= 1.0 - tech_improvement
-                # Qualities increase with technology
-                qualities[i] *= 1.0 + tech_improvement
+                if costs[i] > 0:
+                    # Larger firms (lower costs) get better spillovers
+                    firm_spillover = (
+                        1.0 - (costs[i] / max(costs)) * 0.3
+                    )  # 70-100% of improvement
+                    effective_improvement = tech_improvement * firm_spillover
+
+                    # Costs decrease with technology
+                    costs[i] = max(0.1, costs[i] * (1.0 - effective_improvement))
+                    # Qualities increase with technology
+                    qualities[i] *= 1.0 + effective_improvement
 
     def _evolve_entry_exit(
         self,
@@ -206,11 +233,34 @@ class MarketEvolutionEngine:
             current_costs.pop(i)
             current_qualities.pop(i)
 
-        # Entry decisions (simplified)
-        # Simple entry rule: 10% chance per round if market is profitable
-        if current_firms and self.rng.random() < 0.1:
+        # Entry decisions with economic realism
+        if current_firms:
+            # Entry probability depends on market profitability and concentration
             avg_profit = np.mean(current_profits)
-            if avg_profit > self.config.entry_cost:
+            market_size = self.state.total_market_size
+
+            # Calculate market concentration
+            total_cost = sum(current_costs)
+            if total_cost > 0:
+                cost_shares = [c / total_cost for c in current_costs]
+                concentration = sum(s**2 for s in cost_shares)
+            else:
+                concentration = 1.0
+
+            # Entry is more likely in profitable, less concentrated markets
+            # Scale entry cost with market size
+            scaled_entry_cost = float(self.config.entry_cost * (market_size / 100.0))
+            entry_probability = min(
+                0.2,
+                max(
+                    0.01,
+                    float(
+                        (avg_profit / scaled_entry_cost) * (1.0 - concentration) * 0.1
+                    ),
+                ),
+            )
+
+            if self.rng.random() < entry_probability and avg_profit > scaled_entry_cost:
                 new_firm_id = max(current_firms) + 1 if current_firms else 0
                 new_firms.append(new_firm_id)
                 self.state.add_firm(new_firm_id)

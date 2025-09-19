@@ -13,6 +13,7 @@ from ..models.models import SegmentedDemand
 from ..validation.economic_validation import (
     EconomicValidationError,
     enforce_economic_constraints,
+    validate_cost_structure,
     validate_demand_parameters,
     validate_simulation_result,
 )
@@ -84,6 +85,7 @@ def cournot_simulation(
     validate_quantities(quantities)
     try:
         validate_demand_parameters(a, b, 0.0, 0.0)  # Only validate Cournot params
+        validate_cost_structure(costs, fixed_costs)
     except EconomicValidationError as e:
         raise ValueError(str(e))
 
@@ -138,31 +140,52 @@ def cournot_simulation(
 
     # Validate economic consistency
     try:
-        validate_simulation_result(
-            prices=[adjusted_price]
-            * len(adjusted_quantities),  # All firms face same price in Cournot
-            quantities=adjusted_quantities,
-            costs=costs,
-            profits=profits,
-            market_price=adjusted_price,
-            demand_params=(a, b),
-            fixed_costs=fixed_costs,
-            strict=False,  # Don't raise exceptions, just warn
+        validation_result = validate_simulation_result(
+            "cournot",
+            [adjusted_price],
+            adjusted_quantities,
+            profits,
+            costs,
+            {"a": a, "b": b},
         )
-    except EconomicValidationError:
+
+        # Log warnings if any
+        if validation_result.warnings:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            for warning in validation_result.warnings:
+                logger.warning(f"Economic validation warning: {warning}")
+
+    except EconomicValidationError as e:
+        # Log warning but don't fail the simulation
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Economic validation warning: {e}")
+
         # If validation fails, enforce constraints
-        enforced_prices, enforced_quantities, enforced_profits = (
-            enforce_economic_constraints(
-                prices=[adjusted_price] * len(adjusted_quantities),
-                quantities=adjusted_quantities,
-                costs=costs,
-                fixed_costs=fixed_costs,
-            )
+        enforced_quantities = enforce_economic_constraints(
+            adjusted_quantities,
+            costs,
+            adjusted_price,
         )
 
         # Recalculate market price with enforced quantities
         enforced_total_quantity = sum(enforced_quantities)
         enforced_price = max(0.0, a - b * enforced_total_quantity)
+
+        # Recalculate profits with enforced quantities
+        if fixed_costs:
+            enforced_profits = [
+                (enforced_price - cost) * q - fc
+                for cost, q, fc in zip(costs, enforced_quantities, fixed_costs)
+            ]
+        else:
+            enforced_profits = [
+                (enforced_price - cost) * q
+                for cost, q in zip(costs, enforced_quantities)
+            ]
 
         result = CournotResult(
             price=enforced_price,
@@ -199,6 +222,10 @@ def cournot_segmented_simulation(
     """
     # Validate inputs
     validate_quantities(quantities)
+    try:
+        validate_cost_structure(costs, fixed_costs)
+    except EconomicValidationError as e:
+        raise ValueError(str(e))
 
     if len(costs) != len(quantities):
         raise ValueError(
@@ -252,9 +279,36 @@ def cournot_segmented_simulation(
             (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
         ]
 
-    return CournotResult(
+    result = CournotResult(
         price=adjusted_price, quantities=adjusted_quantities, profits=profits
     )
+
+    # Validate segmented demand result
+    try:
+        validation_result = validate_simulation_result(
+            "cournot",
+            [adjusted_price],
+            adjusted_quantities,
+            profits,
+            costs,
+            {"a": weighted_alpha, "b": weighted_beta},
+        )
+
+        # Log warnings if any
+        if validation_result.warnings:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            for warning in validation_result.warnings:
+                logger.warning(f"Segmented demand validation warning: {warning}")
+
+    except EconomicValidationError as e:
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Segmented demand validation warning: {e}")
+
+    return result
 
 
 def parse_costs(costs_str: str) -> List[float]:
