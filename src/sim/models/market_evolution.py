@@ -177,15 +177,26 @@ class MarketEvolutionEngine:
         current_costs: List[float],
         current_qualities: List[float],
     ) -> List[int]:
-        """Handle entry and exit of firms."""
+        """Handle entry and exit of firms with economic constraints."""
         new_firms = current_firms.copy()
 
-        # Exit decisions (simplified)
+        # Exit decisions with economic constraints
         firms_to_exit = []
-        for i, (firm_id, profit) in enumerate(zip(current_firms, current_profits)):
-            if profit < self.config.exit_threshold:
-                # Simple exit rule: 50% chance if below threshold
-                if self.rng.random() < 0.5:
+        for i, (firm_id, profit, cost) in enumerate(
+            zip(current_firms, current_profits, current_costs)
+        ):
+            # Firm must exit if:
+            # 1. Profit is below exit threshold (can't cover fixed costs)
+            # 2. Profit is negative and below a reasonable threshold
+            should_exit = (
+                profit < self.config.exit_threshold
+                or profit < -cost * 0.1  # Exit if losing more than 10% of marginal cost
+            )
+
+            if should_exit:
+                # Higher probability of exit for more unprofitable firms
+                exit_probability = min(0.9, 0.3 + abs(profit) / max(cost, 1.0) * 0.1)
+                if self.rng.random() < exit_probability:
                     firms_to_exit.append(i)
 
         # Remove exiting firms

@@ -18,6 +18,7 @@ from src.sim.strategies.nash_strategies import (
     validate_economic_parameters,
     validate_market_clearing,
 )
+from src.sim.validation import validate_simulation_config
 
 
 def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> str:
@@ -58,6 +59,12 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
     if not firms:
         raise ValueError("Config must contain 'firms' list")
+
+    # Validate simulation configuration for economic consistency
+    try:
+        validate_simulation_config(config)
+    except Exception as e:
+        raise ValueError(f"Invalid simulation configuration: {e}")
 
     # Validate policy events
     if events:

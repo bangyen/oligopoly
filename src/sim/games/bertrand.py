@@ -11,6 +11,12 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from ..models.models import SegmentedDemand
+from ..validation.economic_validation import (
+    EconomicValidationError,
+    enforce_economic_constraints,
+    validate_demand_parameters,
+    validate_simulation_result,
+)
 
 
 @dataclass
@@ -180,6 +186,12 @@ def bertrand_simulation(
     """
     # Validate inputs
     validate_prices(prices)
+    try:
+        validate_demand_parameters(
+            0.0, 0.0, alpha, beta
+        )  # Only validate Bertrand params
+    except EconomicValidationError as e:
+        raise ValueError(str(e))
 
     if len(costs) != len(prices):
         raise ValueError(
@@ -221,12 +233,55 @@ def bertrand_simulation(
             (price - cost) * q for price, cost, q in zip(prices, costs, quantities)
         ]
 
-    return BertrandResult(
+    # Create result
+    result = BertrandResult(
         total_demand=total_demand,
         prices=prices.copy(),
         quantities=quantities,
         profits=profits,
     )
+
+    # Validate economic consistency
+    try:
+        # For Bertrand, market price is the minimum price
+        market_price = min(prices) if prices else 0.0
+        validate_simulation_result(
+            prices=prices,
+            quantities=quantities,
+            costs=costs,
+            profits=profits,
+            market_price=market_price,
+            demand_params=(
+                alpha,
+                beta,
+            ),  # Note: Bertrand uses (alpha, beta) as (a, b) equivalent
+            fixed_costs=fixed_costs,
+            strict=False,  # Don't raise exceptions, just warn
+        )
+    except EconomicValidationError:
+        # If validation fails, enforce constraints
+        enforced_prices, enforced_quantities, enforced_profits = (
+            enforce_economic_constraints(
+                prices=prices,
+                quantities=quantities,
+                costs=costs,
+                fixed_costs=fixed_costs,
+            )
+        )
+
+        # Recalculate demand with enforced prices
+        enforced_quantities, enforced_total_demand = allocate_demand(
+            enforced_prices, costs, alpha, beta
+        )
+
+        result = BertrandResult(
+            total_demand=enforced_total_demand,
+            prices=enforced_prices,
+            quantities=enforced_quantities,
+            profits=enforced_profits,
+        )
+
+    return result
 
 
 def bertrand_segmented_simulation(
