@@ -15,6 +15,7 @@ from src.sim.models.models import DemandSegment, Result, Round, Run, SegmentedDe
 from src.sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
 from src.sim.strategies.nash_strategies import (
     adaptive_nash_strategy,
+    validate_economic_parameters,
     validate_market_clearing,
 )
 
@@ -75,6 +76,9 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
         # Extract firm costs
         costs = [firm["cost"] for firm in firms]
         num_firms = len(costs)
+
+        # Validate economic parameters
+        validate_economic_parameters(model, params, costs)
 
         # Initialize firm actions using Nash equilibrium as starting point
         if model == "cournot":
