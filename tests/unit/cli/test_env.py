@@ -12,7 +12,7 @@ def test_database_url_env_var() -> None:
     """Test that DATABASE_URL environment variable is read correctly."""
     # Test with default value
     with patch.dict(os.environ, {}, clear=True):
-        from main import DATABASE_URL
+        from src.main import DATABASE_URL
 
         assert DATABASE_URL == "postgresql://user:password@localhost/oligopoly"
 
@@ -22,10 +22,10 @@ def test_database_url_env_var() -> None:
         # Need to reload the module to pick up the new env var
         import importlib
 
-        import main
+        import src.main
 
-        importlib.reload(main)
-        assert main.DATABASE_URL == custom_url
+        importlib.reload(src.main)
+        assert src.main.DATABASE_URL == custom_url
 
 
 def test_alembic_migration_smoke() -> None:

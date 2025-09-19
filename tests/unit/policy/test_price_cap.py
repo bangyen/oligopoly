@@ -9,9 +9,9 @@ import math
 
 import pytest
 
-from sim.games.bertrand import BertrandResult
-from sim.games.cournot import CournotResult
-from sim.policy.policy_shocks import apply_price_cap_shock
+from src.sim.games.bertrand import BertrandResult
+from src.sim.games.cournot import CournotResult
+from src.sim.policy.policy_shocks import apply_price_cap_shock
 
 
 def test_price_cap_cournot_no_cap_needed() -> None:
@@ -165,7 +165,7 @@ def test_price_cap_unsupported_result_type() -> None:
     price_cap = 60.0
 
     with pytest.raises(ValueError, match="Unsupported result type"):
-        apply_price_cap_shock(result, price_cap, costs)
+        apply_price_cap_shock(result, price_cap, costs)  # type: ignore[arg-type]
 
 
 def test_price_cap_single_firm() -> None:

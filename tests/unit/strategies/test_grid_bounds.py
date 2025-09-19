@@ -6,7 +6,7 @@ and that Q-values contain no NaN values.
 
 import math
 
-from sim.strategies.strategies import EpsilonGreedy
+from src.sim.strategies.strategies import EpsilonGreedy
 
 
 class TestGridBounds:

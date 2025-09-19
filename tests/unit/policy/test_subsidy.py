@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from sim.policy.policy_shocks import apply_subsidy_shock
+from src.sim.policy.policy_shocks import apply_subsidy_shock
 
 
 def test_subsidy_shock_basic() -> None:

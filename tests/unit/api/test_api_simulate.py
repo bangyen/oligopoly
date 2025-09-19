@@ -6,7 +6,7 @@ to ensure proper functionality, validation, and persistence.
 
 from fastapi.testclient import TestClient
 
-from main import app, get_db
+from src.main import app, get_db
 from tests.utils import override_get_db_for_testing
 
 # Override the database dependency for testing

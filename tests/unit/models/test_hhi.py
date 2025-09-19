@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from sim.models.metrics import (
+from src.sim.models.metrics import (
     calculate_hhi,
     calculate_market_shares_bertrand,
     calculate_market_shares_cournot,

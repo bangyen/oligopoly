@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from sim.models.metrics import calculate_consumer_surplus
+from src.sim.models.metrics import calculate_consumer_surplus
 
 
 class TestConsumerSurplus:

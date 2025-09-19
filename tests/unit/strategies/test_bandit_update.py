@@ -6,8 +6,8 @@ and that positive rewards increase Q-values within tolerance.
 
 import math
 
-from sim.games.cournot import CournotResult
-from sim.strategies.strategies import EpsilonGreedy
+from src.sim.games.cournot import CournotResult
+from src.sim.strategies.strategies import EpsilonGreedy
 
 
 class TestBanditUpdate:
