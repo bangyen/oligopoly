@@ -1,128 +1,124 @@
 # Oligopoly Simulation
 
-A minimal FastAPI + SQLAlchemy + Docker Compose repository for simulating oligopoly market competition.
+A comprehensive platform for simulating oligopoly market competition with advanced economic models, learning strategies, and policy analysis capabilities.
 
 ## Features
 
-- **FastAPI** web framework with automatic API documentation
-- **SQLAlchemy** ORM with PostgreSQL database
-- **Alembic** for database migrations
-- **Docker Compose** for easy development setup
-- **Economic models** for oligopoly market simulation
+- **Cournot & Bertrand Competition**: Quantity and price-based competition models
+- **Advanced Learning**: Fictitious Play, Deep Q-Learning, Nash strategies
+- **Collusion Analysis**: Detection, punishment mechanisms, regulatory intervention
+- **Policy Shocks**: Taxes, subsidies, price caps, market interventions
+- **Enhanced Models**: Capacity constraints, fixed costs, product differentiation
+- **Batch Experiments**: Statistical analysis with multiple configurations and seeds
+- **Interactive Dashboard**: Streamlit-based visualization and analysis
+- **FastAPI + SQLAlchemy**: Modern web framework with database support
 
 ## Quick Start
 
-### Prerequisites
-
-- Docker and Docker Compose
-- Python 3.8+ (for local development)
-
-### Running the Application
-
-1. **Start the services:**
-   ```bash
-   docker compose up --build
-   ```
-
-2. **Access the application:**
-   - API: http://localhost:8000
-   - Interactive docs: http://localhost:8000/docs
-   - Health check: http://localhost:8000/healthz
-
-### Running Tests
-
+### Docker (Recommended)
 ```bash
-python -m pytest -q
+# Start all services
+docker compose up --build
+
+# Access the application
+# API: http://localhost:8000
+# Docs: http://localhost:8000/docs
+# Dashboard: streamlit run scripts/dashboard.py
+```
+
+### Local Development
+```bash
+# Install dependencies
+pip install -e ".[dev]"
+
+# Start database
+docker compose up db
+
+# Run migrations
+alembic upgrade head
+
+# Start application
+uvicorn src.main:app --reload
+```
+
+## Usage Examples
+
+### Basic Simulation
+```python
+from sim.games.cournot import cournot_simulation
+from sim.models.models import Demand, Firm
+
+# Define market and firms
+demand = Demand(a=100.0, b=1.0)
+firms = [Firm(cost=10.0), Firm(cost=15.0)]
+
+# Run simulation
+result = cournot_simulation(demand, firms)
+print(f"Price: {result.price:.2f}, Profits: {result.profits}")
+```
+
+### Learning Strategies
+```python
+from sim.strategies.advanced_strategies import FictitiousPlayStrategy
+from sim.runners.strategy_runner import run_strategy_game
+
+strategies = [FictitiousPlayStrategy(learning_rate=0.1) for _ in range(2)]
+result = run_strategy_game(
+    model="cournot", rounds=50, strategies=strategies,
+    costs=[10.0, 15.0], params={"a": 100.0, "b": 1.0},
+    bounds=(0.0, 50.0), db=db
+)
+```
+
+### Batch Experiments
+```bash
+# Run experiments with multiple seeds
+python experiments/cli.py experiments/sample_config.json --seeds 5
 ```
 
 ## Project Structure
 
 ```
-oligopoly/
-├── src/
-│   ├── sim/
-│   │   ├── __init__.py
-│   │   └── models.py          # Economic models (Demand, Market, Firm, RunConfig)
-│   └── main.py               # FastAPI application
-├── tests/
-│   └── unit/
-│       ├── test_health.py    # Health endpoint tests
-│       ├── test_models.py    # Model tests
-│       └── test_env.py       # Environment configuration tests
-├── alembic/                  # Database migrations
-├── docker-compose.yml        # Docker services configuration
-├── Dockerfile               # Application container
-└── pyproject.toml           # Project configuration
+src/sim/
+├── games/           # Cournot, Bertrand, enhanced simulation
+├── strategies/      # Nash, learning, collusion strategies  
+├── models/          # Economic models, demand functions
+├── runners/         # Simulation orchestrators
+├── policy/          # Policy shocks and interventions
+├── experiments/     # Batch experiment runner
+└── cli/             # Command-line interfaces
 ```
-
-## Economic Models
-
-### Demand Curve
-Linear inverse demand function: `P(Q) = a - b*Q`
-
-- `a`: Maximum price when quantity is zero
-- `b`: Slope of demand curve (price sensitivity to quantity)
-
-### Market Structure
-- **Market**: Contains demand parameters and firm configuration
-- **Firm**: Individual firms with cost structures
-- **RunConfig**: Simulation parameters and convergence criteria
-
-## API Endpoints
-
-- `GET /healthz` - Health check endpoint
-- `GET /` - Basic API information
-- `GET /docs` - Interactive API documentation
 
 ## Development
 
-### Local Development Setup
-
-1. **Install dependencies:**
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-2. **Start PostgreSQL:**
-   ```bash
-   docker compose up db
-   ```
-
-3. **Run migrations:**
-   ```bash
-   alembic upgrade head
-   ```
-
-4. **Start the application:**
-   ```bash
-   uvicorn src.main:app --reload
-   ```
-
-### Database Migrations
-
 ```bash
-# Create a new migration
-alembic revision --autogenerate -m "Description"
+# Code quality checks
+make all
 
-# Apply migrations
-alembic upgrade head
+# Run tests
+python -m pytest
 
-# Rollback migrations
-alembic downgrade -1
+# Format code
+black .
+
+# Demo scripts
+python scripts/strategy_demo.py
+python scripts/collusion_demo.py
 ```
 
-## Testing
+## API Endpoints
 
-The project includes comprehensive tests for:
+- `GET /healthz` - Health check
+- `POST /simulate` - Run single simulation
+- `GET /heatmap/cournot` - Generate competition heatmaps
+- `POST /analyze/collusion` - Analyze collusion patterns
 
-- **Health endpoint**: Verifies `/healthz` returns `{"ok": true}`
-- **Economic models**: Tests `Demand` class with integer/float values and stable `repr()`
-- **Environment**: Tests `DATABASE_URL` environment variable handling and Alembic migrations
+## Research Applications
 
-Run tests with:
-```bash
-python -m pytest -q
-```
+- **Academic Research**: Test oligopoly theory predictions
+- **Policy Analysis**: Evaluate regulatory interventions
+- **Market Analysis**: Understand competitive dynamics
+- **Strategy Development**: Test competitive strategies
 
 ## License
 
