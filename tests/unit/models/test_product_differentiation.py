@@ -209,7 +209,9 @@ class TestVerticalDifferentiation:
 class TestDifferentiatedBertrandSimulation:
     """Test differentiated Bertrand simulation."""
 
-    def test_differentiated_bertrand_simulation(self) -> None:
+    def test_differentiated_bertrand_simulation(
+        self, use_capacity_constraints=False
+    ) -> None:
         """Test differentiated Bertrand simulation."""
         prices = [20.0, 25.0]
         products = [

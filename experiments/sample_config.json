@@ -4,13 +4,13 @@
     "model": "cournot",
     "rounds": 10,
     "params": {
-      "a": 150.0,
-      "b": 0.5
+      "a": 120.0,
+      "b": 0.8
     },
     "firms": [
-      {"cost": 5.0, "fixed_cost": 10.0},
       {"cost": 8.0, "fixed_cost": 15.0},
-      {"cost": 12.0, "fixed_cost": 20.0}
+      {"cost": 10.0, "fixed_cost": 20.0},
+      {"cost": 12.0, "fixed_cost": 25.0}
     ]
   },
   {
@@ -32,13 +32,13 @@
     "model": "bertrand",
     "rounds": 10,
     "params": {
-      "alpha": 120.0,
-      "beta": 0.8
+      "alpha": 100.0,
+      "beta": 1.0
     },
     "firms": [
-      {"cost": 8.0, "fixed_cost": 12.0},
-      {"cost": 10.0, "fixed_cost": 15.0},
-      {"cost": 12.0, "fixed_cost": 18.0}
+      {"cost": 6.0, "fixed_cost": 10.0},
+      {"cost": 7.0, "fixed_cost": 12.0},
+      {"cost": 8.0, "fixed_cost": 14.0}
     ]
   },
   {
@@ -46,13 +46,13 @@
     "model": "cournot",
     "rounds": 10,
     "params": {
-      "a": 150.0,
-      "b": 0.5
+      "a": 120.0,
+      "b": 0.8
     },
     "firms": [
-      {"cost": 5.0, "fixed_cost": 10.0},
       {"cost": 8.0, "fixed_cost": 15.0},
-      {"cost": 12.0, "fixed_cost": 20.0}
+      {"cost": 10.0, "fixed_cost": 20.0},
+      {"cost": 12.0, "fixed_cost": 25.0}
     ],
     "policies": [
       {"round_idx": 2, "policy_type": "TAX", "value": 0.1},

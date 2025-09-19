@@ -181,13 +181,23 @@ def validate_simulation_result(
         if profit < -costs[i] * 0.5:  # Losing more than 50% of marginal cost
             warnings_list.append(f"Firm {i} has excessive losses: {profit:.2f}")
 
-    # 3. Check market concentration
+    # 3. Check market concentration with more nuanced thresholds
     if hhi > 0.8:
         warnings_list.append(f"Market highly concentrated: HHI = {hhi:.3f}")
+    elif hhi > 0.6:
+        warnings_list.append(f"Market moderately concentrated: HHI = {hhi:.3f}")
     elif hhi < 0.1 and len(quantities) > 2:
         warnings_list.append(f"Market unusually competitive: HHI = {hhi:.3f}")
+    elif hhi < 0.2 and len(quantities) > 3:
+        warnings_list.append(f"Market very competitive: HHI = {hhi:.3f}")
 
-    # 4. Check price-cost margins
+    # Additional check for Bertrand competition - should not be perfect monopoly
+    if model == "bertrand" and hhi > 0.95:
+        warnings_list.append(
+            f"Bertrand competition showing unrealistic monopoly: HHI = {hhi:.3f}"
+        )
+
+    # 4. Check price-cost margins with more realistic thresholds
     if model == "cournot":
         for i, (price, cost, qty) in enumerate(
             zip([market_price] * len(costs), costs, quantities)
@@ -196,16 +206,20 @@ def validate_simulation_result(
                 margin = (price - cost) / price if price > 0 else 0
                 if margin < 0:
                     errors_list.append(f"Firm {i} selling below marginal cost")
-                elif margin > 0.8:  # 80% margin seems excessive
+                elif margin > 0.6:  # 60% margin seems excessive for Cournot
                     warnings_list.append(f"Firm {i} has very high margin: {margin:.1%}")
+                elif margin > 0.4:  # 40% margin is high but acceptable
+                    warnings_list.append(f"Firm {i} has high margin: {margin:.1%}")
     else:  # Bertrand
         for i, (price, cost, qty) in enumerate(zip(prices, costs, quantities)):
             if qty > 0:
                 margin = (price - cost) / price if price > 0 else 0
                 if margin < 0:
                     errors_list.append(f"Firm {i} selling below marginal cost")
-                elif margin > 0.5:  # 50% margin for Bertrand
+                elif margin > 0.3:  # 30% margin for Bertrand (more competitive)
                     warnings_list.append(f"Firm {i} has high margin: {margin:.1%}")
+                elif margin > 0.2:  # 20% margin is high but acceptable for Bertrand
+                    warnings_list.append(f"Firm {i} has moderate margin: {margin:.1%}")
 
     # 5. Check for market failure
     if total_quantity <= 0:

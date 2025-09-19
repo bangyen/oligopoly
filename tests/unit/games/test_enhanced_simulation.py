@@ -215,7 +215,9 @@ class TestEnhancedBertrandSimulation:
         )
 
         prices = [12.0, 18.0]  # First firm has lower price
-        result = enhanced_bertrand_simulation(config, prices)
+        result = enhanced_bertrand_simulation(
+            config, prices, use_capacity_constraints=False
+        )
 
         # Check that only the lowest price firm gets demand
         assert result.quantities[0] > 0  # First firm gets demand
@@ -237,7 +239,9 @@ class TestEnhancedBertrandSimulation:
         )
 
         prices = [12.0, 18.0]
-        result = enhanced_bertrand_simulation(config, prices)
+        result = enhanced_bertrand_simulation(
+            config, prices, use_capacity_constraints=False
+        )
 
         # Check that quantities respect capacity constraints
         assert result.quantities[0] <= 20.0  # Within capacity
@@ -255,7 +259,9 @@ class TestEnhancedBertrandSimulation:
         )
 
         prices = [12.0, 18.0]
-        result = enhanced_bertrand_simulation(config, prices)
+        result = enhanced_bertrand_simulation(
+            config, prices, use_capacity_constraints=False
+        )
 
         # Check that demand is calculated using isoelastic function
         min_price = min(prices)

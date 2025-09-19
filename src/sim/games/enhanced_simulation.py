@@ -106,7 +106,9 @@ def enhanced_cournot_simulation(
 
 
 def enhanced_bertrand_simulation(
-    config: EnhancedSimulationConfig, prices: List[float]
+    config: EnhancedSimulationConfig,
+    prices: List[float],
+    use_capacity_constraints: bool = True,
 ) -> BertrandResult:
     """Enhanced Bertrand simulation with advanced economic features.
 
@@ -143,6 +145,7 @@ def enhanced_bertrand_simulation(
             prices=prices,
             fixed_costs=fixed_costs,
             capacity_limits=capacity_limits_filtered,
+            use_capacity_constraints=use_capacity_constraints,
         )
 
     elif config.demand_type == "isoelastic":
