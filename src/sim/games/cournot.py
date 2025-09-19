@@ -7,7 +7,7 @@ Supports both single-segment and multi-segment demand models.
 """
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 from ..models.models import SegmentedDemand
 
@@ -44,20 +44,28 @@ def validate_quantities(quantities: List[float]) -> None:
 
 
 def cournot_simulation(
-    a: float, b: float, costs: List[float], quantities: List[float]
+    a: float,
+    b: float,
+    costs: List[float],
+    quantities: List[float],
+    fixed_costs: Optional[List[float]] = None,
+    capacity_limits: Optional[List[float]] = None,
 ) -> CournotResult:
     """Run a one-round Cournot oligopoly simulation.
 
     Computes market price based on inverse demand P = max(0, a - b * sum(q_i))
-    and calculates individual firm profits π_i = (P - c_i) * q_i.
+    and calculates individual firm profits π_i = (P - c_i) * q_i - FC_i.
 
     Firms with costs above the market price will exit (quantity set to 0).
+    Production is constrained by capacity limits if provided.
 
     Args:
         a: Maximum price parameter for demand curve
         b: Price sensitivity parameter for demand curve
         costs: List of marginal costs for each firm
         quantities: List of quantities chosen by each firm
+        fixed_costs: Optional list of fixed costs for each firm
+        capacity_limits: Optional list of capacity limits for each firm
 
     Returns:
         CournotResult containing price, quantities, and profits
@@ -73,12 +81,23 @@ def cournot_simulation(
             f"Costs list length ({len(costs)}) must match quantities list length ({len(quantities)})"
         )
 
+    # Apply capacity constraints if provided
+    if capacity_limits:
+        if len(capacity_limits) != len(quantities):
+            raise ValueError(
+                f"Capacity limits length ({len(capacity_limits)}) must match quantities length ({len(quantities)})"
+            )
+        quantities = [
+            min(qty, cap) if cap is not None else qty
+            for qty, cap in zip(quantities, capacity_limits)
+        ]
+
     # Calculate market price: P = max(0, a - b * sum(q_i))
     total_quantity = sum(quantities)
     price = max(0.0, a - b * total_quantity)
 
     # Ensure firms don't produce at losses - exit unprofitable firms
-    from src.sim.strategies.nash_strategies import validate_profitable_production
+    from ..strategies.nash_strategies import validate_profitable_production
 
     adjusted_quantities = validate_profitable_production(quantities, costs, price)
 
@@ -86,10 +105,20 @@ def cournot_simulation(
     adjusted_total_quantity = sum(adjusted_quantities)
     adjusted_price = max(0.0, a - b * adjusted_total_quantity)
 
-    # Calculate profits: π_i = (P - c_i) * q_i
-    profits = [
-        (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
-    ]
+    # Calculate profits: π_i = (P - c_i) * q_i - FC_i
+    if fixed_costs:
+        if len(fixed_costs) != len(adjusted_quantities):
+            raise ValueError(
+                f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(adjusted_quantities)})"
+            )
+        profits = [
+            (adjusted_price - cost) * q - fc
+            for cost, q, fc in zip(costs, adjusted_quantities, fixed_costs)
+        ]
+    else:
+        profits = [
+            (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
+        ]
 
     return CournotResult(
         price=adjusted_price, quantities=adjusted_quantities, profits=profits
@@ -147,7 +176,7 @@ def cournot_segmented_simulation(
     price = max(0.0, (weighted_alpha - total_quantity) / weighted_beta)
 
     # Ensure firms don't produce at losses - exit unprofitable firms
-    from src.sim.strategies.nash_strategies import validate_profitable_production
+    from ..strategies.nash_strategies import validate_profitable_production
 
     adjusted_quantities = validate_profitable_production(quantities, costs, price)
 

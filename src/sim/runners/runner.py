@@ -73,7 +73,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
     db.flush()  # Get the run_id
 
     try:
-        # Extract firm costs
+        # Extract firm costs and cost structure
         costs = [firm["cost"] for firm in firms]
         num_firms = len(costs)
 

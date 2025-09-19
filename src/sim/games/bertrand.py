@@ -8,7 +8,7 @@ Supports both single-segment and multi-segment demand models.
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from ..models.models import SegmentedDemand
 
@@ -151,19 +151,26 @@ def allocate_segmented_demand(
 
 
 def bertrand_simulation(
-    alpha: float, beta: float, costs: List[float], prices: List[float]
+    alpha: float,
+    beta: float,
+    costs: List[float],
+    prices: List[float],
+    fixed_costs: Optional[List[float]] = None,
+    capacity_limits: Optional[List[float]] = None,
 ) -> BertrandResult:
     """Run a one-round Bertrand oligopoly simulation.
 
     Computes market demand allocation based on price competition where firms
     with the lowest price capture all demand, with ties splitting equally.
-    Calculates individual firm profits π_i = (p_i - c_i) * q_i.
+    Calculates individual firm profits π_i = (p_i - c_i) * q_i - FC_i.
 
     Args:
         alpha: Intercept parameter for demand curve Q(p) = max(0, α - β*p)
         beta: Slope parameter for demand curve Q(p) = max(0, α - β*p)
         costs: List of marginal costs for each firm
         prices: List of prices chosen by each firm
+        fixed_costs: Optional list of fixed costs for each firm
+        capacity_limits: Optional list of capacity limits for each firm
 
     Returns:
         BertrandResult containing demand, prices, quantities, and profits
@@ -188,8 +195,31 @@ def bertrand_simulation(
     # Allocate demand based on Bertrand competition
     quantities, total_demand = allocate_demand(prices, costs, alpha, beta)
 
-    # Calculate profits: π_i = (p_i - c_i) * q_i
-    profits = [(price - cost) * q for price, cost, q in zip(prices, costs, quantities)]
+    # Apply capacity constraints if provided
+    if capacity_limits:
+        if len(capacity_limits) != len(quantities):
+            raise ValueError(
+                f"Capacity limits length ({len(capacity_limits)}) must match quantities length ({len(quantities)})"
+            )
+        quantities = [
+            min(qty, cap) if cap is not None else qty
+            for qty, cap in zip(quantities, capacity_limits)
+        ]
+
+    # Calculate profits: π_i = (p_i - c_i) * q_i - FC_i
+    if fixed_costs:
+        if len(fixed_costs) != len(quantities):
+            raise ValueError(
+                f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(quantities)})"
+            )
+        profits = [
+            (price - cost) * q - fc
+            for price, cost, q, fc in zip(prices, costs, quantities, fixed_costs)
+        ]
+    else:
+        profits = [
+            (price - cost) * q for price, cost, q in zip(prices, costs, quantities)
+        ]
 
     return BertrandResult(
         total_demand=total_demand,

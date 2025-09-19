@@ -8,6 +8,7 @@ import math
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declarative_base, relationship
@@ -41,6 +42,143 @@ class Demand:
     def __repr__(self) -> str:
         """Stable string representation for testing and debugging."""
         return f"Demand(a={self.a}, b={self.b})"
+
+
+@dataclass
+class IsoelasticDemand:
+    """Isoelastic demand curve: P(Q) = A * Q^(-1/ε).
+
+    Represents demand with constant price elasticity ε.
+    This is more realistic for many markets than linear demand.
+    """
+
+    A: float  # Scale parameter
+    elasticity: float  # Price elasticity of demand (must be > 1)
+
+    def __post_init__(self) -> None:
+        """Validate that elasticity is greater than 1 for economic realism."""
+        if self.elasticity <= 1.0:
+            raise ValueError(
+                f"Elasticity must be > 1 for economic realism, got {self.elasticity}"
+            )
+
+    def price(self, quantity: float) -> float:
+        """Calculate market price for given total quantity.
+
+        Args:
+            quantity: Total quantity supplied by all firms
+
+        Returns:
+            Market price based on isoelastic demand function
+        """
+        if quantity <= 0:
+            return float("inf")
+        return float(self.A * (quantity ** (-1 / self.elasticity)))
+
+    def __repr__(self) -> str:
+        """Stable string representation for testing and debugging."""
+        return f"IsoelasticDemand(A={self.A}, elasticity={self.elasticity})"
+
+
+@dataclass
+class CostStructure:
+    """Enhanced cost structure for firms including fixed costs and capacity constraints.
+
+    This represents a more realistic cost function that includes:
+    - Marginal costs (variable costs per unit)
+    - Fixed costs (sunk costs that don't vary with output)
+    - Capacity constraints (maximum production limits)
+    - Economies of scale (cost reduction with higher output)
+    """
+
+    marginal_cost: float  # Variable cost per unit
+    fixed_cost: float = 0.0  # Fixed cost per period
+    capacity_limit: Optional[float] = None  # Maximum production capacity
+    economies_of_scale: float = 1.0  # Cost reduction factor (1.0 = no economies)
+
+    def __post_init__(self) -> None:
+        """Validate cost structure parameters."""
+        if self.marginal_cost <= 0:
+            raise ValueError(
+                f"Marginal cost must be positive, got {self.marginal_cost}"
+            )
+        if self.fixed_cost < 0:
+            raise ValueError(f"Fixed cost must be non-negative, got {self.fixed_cost}")
+        if self.capacity_limit is not None and self.capacity_limit <= 0:
+            raise ValueError(
+                f"Capacity limit must be positive, got {self.capacity_limit}"
+            )
+        if self.economies_of_scale <= 0:
+            raise ValueError(
+                f"Economies of scale must be positive, got {self.economies_of_scale}"
+            )
+
+    def total_cost(self, quantity: float) -> float:
+        """Calculate total cost for given quantity.
+
+        Args:
+            quantity: Production quantity
+
+        Returns:
+            Total cost including fixed and variable costs
+        """
+        if quantity <= 0:
+            return self.fixed_cost
+
+        # Apply capacity constraint
+        effective_quantity = (
+            min(quantity, self.capacity_limit) if self.capacity_limit else quantity
+        )
+
+        # Calculate variable cost with economies of scale
+        if self.economies_of_scale == 1.0:
+            variable_cost = self.marginal_cost * effective_quantity
+        else:
+            # Economies of scale: cost per unit decreases with quantity
+            variable_cost = self.marginal_cost * (
+                effective_quantity**self.economies_of_scale
+            )
+
+        return self.fixed_cost + variable_cost
+
+    def average_cost(self, quantity: float) -> float:
+        """Calculate average cost per unit.
+
+        Args:
+            quantity: Production quantity
+
+        Returns:
+            Average cost per unit
+        """
+        if quantity <= 0:
+            return float("inf")
+        return float(self.total_cost(quantity) / quantity)
+
+    def marginal_cost_at_quantity(self, quantity: float) -> float:
+        """Calculate marginal cost at given quantity (accounting for economies of scale).
+
+        Args:
+            quantity: Production quantity
+
+        Returns:
+            Marginal cost at this quantity
+        """
+        if quantity <= 0:
+            return self.marginal_cost
+
+        if self.economies_of_scale == 1.0:
+            return self.marginal_cost
+        else:
+            # Marginal cost decreases with economies of scale
+            return float(
+                self.marginal_cost
+                * self.economies_of_scale
+                * (quantity ** (self.economies_of_scale - 1))
+            )
+
+    def __repr__(self) -> str:
+        """Stable string representation for testing and debugging."""
+        return f"CostStructure(mc={self.marginal_cost}, fc={self.fixed_cost}, cap={self.capacity_limit}, scale={self.economies_of_scale})"
 
 
 @dataclass
@@ -216,12 +354,24 @@ class Firm(Base):  # type: ignore
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
-    cost = Column(Float, nullable=False)  # Marginal cost
+    cost = Column(Float, nullable=False)  # Marginal cost (legacy field)
+    fixed_cost = Column(Float, default=0.0)  # Fixed cost per period
+    capacity_limit = Column(Float, nullable=True)  # Maximum production capacity
+    economies_of_scale = Column(Float, default=1.0)  # Economies of scale factor
     market_id = Column(Integer, ForeignKey("markets.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationship to market
     market = relationship("Market", back_populates="firms")
+
+    def get_cost_structure(self) -> CostStructure:
+        """Get the cost structure for this firm."""
+        return CostStructure(
+            marginal_cost=float(self.cost),
+            fixed_cost=float(self.fixed_cost),
+            capacity_limit=float(self.capacity_limit) if self.capacity_limit else None,
+            economies_of_scale=float(self.economies_of_scale),
+        )
 
 
 class Run(Base):  # type: ignore

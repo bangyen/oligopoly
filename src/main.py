@@ -71,6 +71,13 @@ class FirmConfig(BaseModel):
     """Configuration for a single firm in the simulation."""
 
     cost: float = Field(..., gt=0, description="Marginal cost of production")
+    fixed_cost: float = Field(default=0.0, ge=0, description="Fixed cost per period")
+    capacity_limit: Optional[float] = Field(
+        default=None, gt=0, description="Maximum production capacity"
+    )
+    economies_of_scale: float = Field(
+        default=1.0, gt=0, description="Economies of scale factor (1.0 = no economies)"
+    )
 
 
 class PolicyEventRequest(BaseModel):
@@ -101,6 +108,11 @@ class SimulationRequest(BaseModel):
     segments: Optional[List[DemandSegmentConfig]] = Field(
         None,
         description="Segmented demand configuration (overrides single-segment params)",
+    )
+    demand_type: str = Field(
+        default="linear",
+        pattern="^(linear|isoelastic)$",
+        description="Type of demand function",
     )
     seed: Optional[int] = Field(None, description="Random seed for reproducibility")
     events: Optional[List[PolicyEventRequest]] = Field(
@@ -337,7 +349,16 @@ async def simulate(
         # Convert Pydantic models to dict format expected by run_game
         config: Dict[str, Any] = {
             "params": request.params,
-            "firms": [{"cost": firm.cost} for firm in request.firms],
+            "firms": [
+                {
+                    "cost": firm.cost,
+                    "fixed_cost": firm.fixed_cost,
+                    "capacity_limit": firm.capacity_limit,
+                    "economies_of_scale": firm.economies_of_scale,
+                }
+                for firm in request.firms
+            ],
+            "demand_type": request.demand_type,
             "seed": request.seed,
             "events": (
                 [
