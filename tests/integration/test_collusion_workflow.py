@@ -8,10 +8,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.collusion import CollusionManager, RegulatorState
-from sim.models.models import Base, CollusionEvent, Run
-from sim.runners.collusion_runner import run_collusion_game
-from sim.strategies.collusion_strategies import (
+from src.sim.collusion import CollusionManager, RegulatorState
+from src.sim.models.models import Base, CollusionEvent, Run
+from src.sim.runners.collusion_runner import run_collusion_game
+from src.sim.strategies.collusion_strategies import (
     CartelStrategy,
     CollusiveStrategy,
     OpportunisticStrategy,

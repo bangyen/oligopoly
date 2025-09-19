@@ -10,9 +10,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from sim.logging import get_logger, log_execution_time
-from sim.models.models import Event, Run
-from sim.monitoring import get_metrics_summary
+from src.sim.logging import get_logger, log_execution_time
+from src.sim.models.models import Event, Run
+from src.sim.monitoring import get_metrics_summary
 
 from .database import get_db
 
@@ -53,9 +53,9 @@ async def list_runs(db: Session = Depends(get_db)) -> List[RunSummary]:
             # Convert to response format
             run_summaries = [
                 RunSummary(
-                    id=run.id,
-                    model=run.model,
-                    rounds=run.rounds,
+                    id=str(run.id),
+                    model=str(run.model),
+                    rounds=int(run.rounds),
                     created_at=run.created_at.isoformat(),
                     status="completed",  # All runs in DB are completed
                 )
@@ -82,14 +82,14 @@ async def get_run_detail(run_id: str, db: Session = Depends(get_db)) -> RunDetai
                 raise HTTPException(status_code=404, detail="Run not found")
 
             # Get results
-            from sim.runners.runner import get_run_results
+            from src.sim.runners.runner import get_run_results
 
             results = get_run_results(run_id, db)
 
             return RunDetail(
-                id=run.id,
-                model=run.model,
-                rounds=run.rounds,
+                id=str(run.id),
+                model=str(run.model),
+                rounds=int(run.rounds),
                 created_at=run.created_at.isoformat(),
                 updated_at=run.updated_at.isoformat(),
                 results=results,
@@ -117,14 +117,14 @@ async def get_run_metrics(
                 raise HTTPException(status_code=404, detail="Run not found")
 
             # Get results
-            from sim.runners.runner import get_run_results
+            from src.sim.runners.runner import get_run_results
 
             results = get_run_results(run_id, db)
             if not results:
                 raise HTTPException(status_code=404, detail="Run results not found")
 
             # Calculate metrics
-            from sim.models.metrics import (
+            from src.sim.models.metrics import (
                 calculate_consumer_surplus,
                 calculate_hhi,
             )
@@ -144,7 +144,11 @@ async def get_run_metrics(
 
                 # Calculate metrics for this round
                 hhi = calculate_hhi(quantities)
-                cs = calculate_consumer_surplus(quantities, price)
+                total_quantity = sum(quantities)
+                # For consumer surplus, we need the demand curve parameters
+                # Using a simple approximation with price intercept = price + total_quantity
+                price_intercept = price + total_quantity
+                cs = calculate_consumer_surplus(price_intercept, price, total_quantity)
 
                 metrics.append(
                     {
@@ -179,7 +183,7 @@ async def get_run_replay(run_id: str, db: Session = Depends(get_db)) -> Dict[str
                 raise HTTPException(status_code=404, detail="Run not found")
 
             # Get results
-            from sim.runners.runner import get_run_results
+            from src.sim.runners.runner import get_run_results
 
             results = get_run_results(run_id, db)
             if not results:
@@ -189,7 +193,7 @@ async def get_run_replay(run_id: str, db: Session = Depends(get_db)) -> Dict[str
             events = db.query(Event).filter(Event.run_id == run_id).all()
 
             # Create replay data
-            replay_data = {
+            replay_data: Dict[str, Any] = {
                 "run_id": run_id,
                 "model": run.model,
                 "rounds": run.rounds,
@@ -273,7 +277,7 @@ async def health_check(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """Get application health status."""
     with log_execution_time(logger, "health check"):
         try:
-            from sim.monitoring import get_health_status
+            from src.sim.monitoring import get_health_status
 
             health = get_health_status(db)
             return {
@@ -327,15 +331,25 @@ async def generate_heatmap(
                         detail="Missing required Cournot parameters: a, b",
                     )
 
-                from sim.heatmap.cournot_heatmap import generate_cournot_heatmap
+                from src.sim.heatmap.cournot_heatmap import (
+                    compute_cournot_heatmap,
+                    create_quantity_grid,
+                )
 
-                profit_surface, action_i_grid, action_j_grid = generate_cournot_heatmap(
-                    firm_i=firm_i,
-                    firm_j=firm_j,
-                    costs=costs,
-                    grid_size=grid_size,
+                # Create quantity grids
+                q_i_grid = create_quantity_grid(0.0, 100.0, grid_size)
+                q_j_grid = create_quantity_grid(0.0, 100.0, grid_size)
+                other_quantities = [0.0] * (len(costs) - 2)  # Other firms produce 0
+
+                profit_surface, action_i_grid, action_j_grid = compute_cournot_heatmap(
                     a=params["a"],
                     b=params["b"],
+                    costs=costs,
+                    firm_i=firm_i,
+                    firm_j=firm_j,
+                    q_i_grid=q_i_grid,
+                    q_j_grid=q_j_grid,
+                    other_quantities=other_quantities,
                 )
 
                 response_data = {
@@ -355,20 +369,30 @@ async def generate_heatmap(
                         detail="Missing required Bertrand parameters: alpha, beta",
                     )
 
-                from sim.heatmap.bertrand_heatmap import generate_bertrand_heatmap
+                from src.sim.heatmap.bertrand_heatmap import (
+                    compute_bertrand_heatmap,
+                    create_price_grid,
+                )
+
+                # Create price grids
+                p_i_grid = create_price_grid(0.0, 200.0, grid_size)
+                p_j_grid = create_price_grid(0.0, 200.0, grid_size)
+                other_prices = [0.0] * (len(costs) - 2)  # Other firms price at 0
 
                 (
                     profit_surface,
                     market_share_surface,
                     action_i_grid,
                     action_j_grid,
-                ) = generate_bertrand_heatmap(
-                    firm_i=firm_i,
-                    firm_j=firm_j,
-                    costs=costs,
-                    grid_size=grid_size,
+                ) = compute_bertrand_heatmap(
                     alpha=params["alpha"],
                     beta=params["beta"],
+                    costs=costs,
+                    firm_i=firm_i,
+                    firm_j=firm_j,
+                    p_i_grid=p_i_grid,
+                    p_j_grid=p_j_grid,
+                    other_prices=other_prices,
                 )
 
                 response_data = {

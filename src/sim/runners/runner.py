@@ -9,10 +9,14 @@ from typing import Any, Dict, List
 
 from sqlalchemy.orm import Session
 
-from sim.games.bertrand import bertrand_segmented_simulation, bertrand_simulation
-from sim.games.cournot import cournot_segmented_simulation, cournot_simulation
-from sim.models.models import DemandSegment, Result, Round, Run, SegmentedDemand
-from sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
+from src.sim.games.bertrand import bertrand_segmented_simulation, bertrand_simulation
+from src.sim.games.cournot import cournot_segmented_simulation, cournot_simulation
+from src.sim.models.models import DemandSegment, Result, Round, Run, SegmentedDemand
+from src.sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
+from src.sim.strategies.nash_strategies import (
+    adaptive_nash_strategy,
+    validate_market_clearing,
+)
 
 
 def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> str:
@@ -72,16 +76,41 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
         costs = [firm["cost"] for firm in firms]
         num_firms = len(costs)
 
-        # Initialize firm actions (quantities for Cournot, prices for Bertrand)
+        # Initialize firm actions using Nash equilibrium as starting point
         if model == "cournot":
-            # Start with equal quantities plus some randomness
-            total_quantity = params.get("initial_total_qty", 100.0)
-            base_qty = total_quantity / num_firms
-            actions = [base_qty + random.uniform(-5, 5) for _ in range(num_firms)]
+            # Start near Nash equilibrium quantities
+            from src.sim.strategies.nash_strategies import cournot_nash_equilibrium
+
+            # Check if segmented demand
+            segments_config = params.get("segments")
+            if segments_config:
+                # For segmented demand, calculate Nash equilibrium using effective parameters
+                weighted_alpha = sum(
+                    segment["weight"] * segment["alpha"] for segment in segments_config
+                )
+                weighted_beta = sum(
+                    segment["weight"] * segment["beta"] for segment in segments_config
+                )
+                nash_quantities, _, _ = cournot_nash_equilibrium(
+                    weighted_alpha, weighted_beta, costs
+                )
+            else:
+                # Standard demand
+                a = params.get("a", 100.0)
+                b = params.get("b", 1.0)
+                nash_quantities, _, _ = cournot_nash_equilibrium(a, b, costs)
+
+            # Add some randomness around Nash equilibrium
+            actions = [qty + random.uniform(-2, 2) for qty in nash_quantities]
         else:  # bertrand
-            # Start with equal prices plus some randomness
-            initial_price = params.get("initial_price", 50.0)
-            actions = [initial_price + random.uniform(-2, 2) for _ in range(num_firms)]
+            # Start near Nash equilibrium prices
+            alpha = params.get("alpha", 100.0)
+            beta = params.get("beta", 1.0)
+            from src.sim.strategies.nash_strategies import bertrand_nash_equilibrium
+
+            nash_prices, _, _, _ = bertrand_nash_equilibrium(alpha, beta, costs)
+            # Add some randomness around Nash equilibrium
+            actions = [price + random.uniform(-1, 1) for price in nash_prices]
 
         # Run simulation rounds
         for round_idx in range(rounds):
@@ -126,8 +155,13 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                 )
                 db.add(result_record)
 
-            # Update actions for next round (simple adaptive strategy)
-            actions = _update_actions(model, actions, profits, costs, params)
+            # Update actions for next round using Nash equilibrium strategy
+            actions = adaptive_nash_strategy(
+                model, actions, profits, costs, params, round_idx, rounds
+            )
+
+            # Validate market clearing conditions
+            actions = validate_market_clearing(model, actions, costs, params)
 
         # Commit all changes
         db.commit()
@@ -188,52 +222,6 @@ def _run_bertrand_round(
         alpha = params.get("alpha", 100.0)
         beta = params.get("beta", 1.0)
         return bertrand_simulation(alpha, beta, costs, prices)
-
-
-def _update_actions(
-    model: str,
-    current_actions: List[float],
-    profits: List[float],
-    costs: List[float],
-    params: Dict[str, Any],
-) -> List[float]:
-    """Update firm actions for the next round using adaptive strategies.
-
-    Implements simple profit-based adaptation where firms adjust their
-    actions based on recent performance.
-    """
-    new_actions = []
-
-    for i, (action, profit, cost) in enumerate(zip(current_actions, profits, costs)):
-        if model == "cournot":
-            # Cournot: adjust quantity based on profit
-            if profit > 0:
-                # Increase quantity if profitable
-                adjustment = params.get("quantity_adjustment", 0.1) * action
-                new_action = action + adjustment
-            else:
-                # Decrease quantity if unprofitable
-                adjustment = params.get("quantity_adjustment", 0.1) * action
-                new_action = max(0.1, action - adjustment)
-        else:  # bertrand
-            # Bertrand: adjust price based on profit
-            if profit > 0:
-                # Decrease price to gain market share
-                adjustment = params.get("price_adjustment", 0.05) * action
-                new_action = max(cost + 0.1, action - adjustment)
-            else:
-                # Increase price if unprofitable
-                adjustment = params.get("price_adjustment", 0.05) * action
-                new_action = action + adjustment
-
-        # Add some randomness
-        noise_factor = params.get("noise_factor", 0.02)
-        noise = random.uniform(-noise_factor, noise_factor) * new_action
-        new_action = max(0.1, new_action + noise)
-
-        new_actions.append(new_action)
-
-    return new_actions
 
 
 def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:

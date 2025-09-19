@@ -4,15 +4,15 @@ Tests the full demo scenario with directional assertions about market outcomes
 after entry of a 4th firm at round 10.
 """
 
-from typing import List
+from typing import List, cast
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.models.models import Base
-from sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
-from sim.strategies.strategies import EpsilonGreedy
+from src.sim.models.models import Base
+from src.sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
+from src.sim.strategies.strategies import EpsilonGreedy, Strategy
 
 
 def calculate_hhi(quantities: List[float]) -> float:
@@ -76,7 +76,7 @@ class TestDemoOutcomes:
         run_id_1 = run_strategy_game(
             model="cournot",
             rounds=10,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=initial_costs,
             params=market_params,
             bounds=bounds,
@@ -93,7 +93,7 @@ class TestDemoOutcomes:
         run_id_2 = run_strategy_game(
             model="cournot",
             rounds=10,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=all_costs,
             params=market_params,
             bounds=bounds,
@@ -159,7 +159,7 @@ class TestDemoOutcomes:
         run_id_1 = run_strategy_game(
             model="cournot",
             rounds=10,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=initial_costs,
             params=market_params,
             bounds=bounds,
@@ -175,7 +175,7 @@ class TestDemoOutcomes:
         run_id_2 = run_strategy_game(
             model="cournot",
             rounds=10,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=all_costs,
             params=market_params,
             bounds=bounds,
@@ -247,7 +247,7 @@ class TestDemoOutcomes:
         run_id_1 = run_strategy_game(
             model="cournot",
             rounds=10,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=initial_costs,
             params=market_params,
             bounds=bounds,
@@ -263,7 +263,7 @@ class TestDemoOutcomes:
         run_id_2 = run_strategy_game(
             model="cournot",
             rounds=10,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=all_costs,
             params=market_params,
             bounds=bounds,
@@ -404,7 +404,7 @@ class TestDemoOutcomes:
         run_id = run_strategy_game(
             model="cournot",
             rounds=15,
-            strategies=strategies,
+            strategies=cast(List[Strategy], strategies),
             costs=costs,
             params=market_params,
             bounds=bounds,

@@ -15,24 +15,24 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from sim.events.replay import ReplaySystem
-from sim.heatmap.bertrand_heatmap import (
+from src.sim.events.replay import ReplaySystem
+from src.sim.heatmap.bertrand_heatmap import (
     compute_bertrand_heatmap,
     compute_bertrand_segmented_heatmap,
     create_price_grid,
 )
-from sim.heatmap.cournot_heatmap import (
+from src.sim.heatmap.cournot_heatmap import (
     compute_cournot_heatmap,
     compute_cournot_segmented_heatmap,
     create_quantity_grid,
 )
-from sim.models.metrics import (
+from src.sim.models.metrics import (
     calculate_round_metrics_bertrand,
     calculate_round_metrics_cournot,
 )
-from sim.models.models import Base, Event, Run, SegmentedDemand
-from sim.policy.policy_shocks import PolicyEvent, PolicyType
-from sim.runners.runner import get_run_results, run_game
+from src.sim.models.models import Base, DemandSegment, Event, Run, SegmentedDemand
+from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
+from src.sim.runners.runner import get_run_results, run_game
 
 # Database configuration
 DATABASE_URL = os.getenv(
@@ -775,12 +775,14 @@ async def get_run_events(run_id: str, db: Session = Depends(get_db)) -> EventsRe
         event_items = []
         for event in events:
             event_item = EventItem(
-                id=event.id,
-                round_idx=event.round_idx,
-                event_type=event.event_type,
-                firm_id=event.firm_id,
-                description=event.description,
-                event_data=event.event_data,
+                id=int(event.id),
+                round_idx=int(event.round_idx),
+                event_type=str(event.event_type),
+                firm_id=int(event.firm_id) if event.firm_id is not None else None,
+                description=str(event.description),
+                event_data=(
+                    dict(event.event_data) if event.event_data is not None else None
+                ),
                 created_at=event.created_at.isoformat(),
             )
             event_items.append(event_item)
@@ -932,7 +934,7 @@ async def compute_heatmap(request: HeatmapRequest) -> HeatmapResponse:
             if request.segments:
                 # Segmented demand
                 segments = [
-                    SegmentedDemand.Segment(
+                    DemandSegment(
                         alpha=segment.alpha, beta=segment.beta, weight=segment.weight
                     )
                     for segment in request.segments
@@ -977,7 +979,7 @@ async def compute_heatmap(request: HeatmapRequest) -> HeatmapResponse:
             if request.segments:
                 # Segmented demand
                 segments = [
-                    SegmentedDemand.Segment(
+                    DemandSegment(
                         alpha=segment.alpha, beta=segment.beta, weight=segment.weight
                     )
                     for segment in request.segments

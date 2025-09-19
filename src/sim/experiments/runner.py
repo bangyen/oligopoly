@@ -12,13 +12,13 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
-from sim.models.metrics import (
+from src.sim.models.metrics import (
     calculate_hhi,
     calculate_market_shares_bertrand,
     calculate_market_shares_cournot,
 )
-from sim.policy.policy_shocks import PolicyEvent, PolicyType
-from sim.runners.runner import get_run_results, run_game
+from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
+from src.sim.runners.runner import get_run_results, run_game
 
 
 class ExperimentConfig:

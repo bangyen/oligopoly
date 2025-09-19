@@ -14,9 +14,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.models.models import Base
-from sim.policy.policy_shocks import PolicyEvent, PolicyType
-from sim.runners.runner import get_run_results, run_game
+from src.sim.models.models import Base
+from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
+from src.sim.runners.runner import get_run_results, run_game
 
 # Create temporary database file
 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")

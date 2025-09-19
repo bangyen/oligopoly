@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from sim.policy.policy_shocks import apply_tax_shock
+from src.sim.policy.policy_shocks import apply_tax_shock
 
 
 def test_tax_shock_basic() -> None:

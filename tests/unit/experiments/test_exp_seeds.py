@@ -12,8 +12,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.experiments.runner import ExperimentConfig, ExperimentRunner
-from sim.models.models import Base
+from src.sim.experiments.runner import ExperimentConfig, ExperimentRunner
+from src.sim.models.models import Base
 
 
 @pytest.fixture

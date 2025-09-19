@@ -14,8 +14,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from sim.models.models import Base, Result, Round, Run
-from sim.runners.runner import get_run_results, run_game
+from src.sim.models.models import Base, Result, Round, Run
+from src.sim.runners.runner import get_run_results, run_game
 
 # Create temporary database file
 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
@@ -195,6 +195,7 @@ def test_bertrand_persistence(setup_database: None) -> None:
 
         # Verify persistence
         run = db.query(Run).filter(Run.id == run_id).first()
+        assert run is not None
         assert run.model == "bertrand"
         assert run.rounds == rounds
 
