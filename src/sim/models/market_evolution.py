@@ -4,7 +4,6 @@ This module implements market dynamics including entry/exit, innovation,
 market growth, and technological change.
 """
 
-import math
 import random
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
@@ -14,42 +13,21 @@ import numpy as np
 
 @dataclass
 class MarketEvolutionConfig:
-    """Configuration for market evolution dynamics."""
+    """Simplified configuration for market evolution dynamics."""
 
-    # Entry/Exit parameters
+    # Core market dynamics (reduced from 12 to 4 parameters)
+    growth_rate: float = 0.02  # Market growth rate per round
     entry_cost: float = 100.0  # Cost to enter the market
     exit_threshold: float = -50.0  # Profit threshold for exit
-    entry_probability: float = 0.1  # Probability of entry per round
-    exit_probability: float = 0.05  # Probability of exit per round
-
-    # Innovation parameters
-    innovation_cost: float = 50.0  # Cost of innovation
-    innovation_success_rate: float = 0.3  # Probability of successful innovation
-    innovation_impact: float = 0.1  # Impact of innovation on costs/quality
-
-    # Market growth parameters
-    growth_rate: float = 0.02  # Market growth rate per round
-    growth_volatility: float = 0.01  # Volatility in growth
-
-    # Technological change parameters
-    tech_change_rate: float = 0.01  # Rate of technological change
-    tech_spillover: float = 0.5  # Spillover of technology to other firms
+    innovation_rate: float = 0.1  # Combined innovation parameter (simplified)
 
     def __post_init__(self) -> None:
-        """Validate evolution parameters."""
+        """Validate simplified evolution parameters."""
         if self.entry_cost <= 0:
             raise ValueError(f"Entry cost must be positive, got {self.entry_cost}")
-        if self.innovation_cost <= 0:
+        if not 0 <= self.innovation_rate <= 1:
             raise ValueError(
-                f"Innovation cost must be positive, got {self.innovation_cost}"
-            )
-        if not 0 <= self.entry_probability <= 1:
-            raise ValueError(
-                f"Entry probability must be in [0, 1], got {self.entry_probability}"
-            )
-        if not 0 <= self.exit_probability <= 1:
-            raise ValueError(
-                f"Exit probability must be in [0, 1], got {self.exit_probability}"
+                f"Innovation rate must be in [0, 1], got {self.innovation_rate}"
             )
 
 
@@ -167,13 +145,9 @@ class MarketEvolutionEngine:
         return new_firms, new_costs, new_qualities, demand_params
 
     def _evolve_market_growth(self, demand_params: Dict[str, float]) -> None:
-        """Evolve market size through growth."""
-        # Add growth with some volatility
-        growth = self.config.growth_rate + float(
-            self.rng.gauss(0.0, self.config.growth_volatility)
-        )
-        growth_factor = 1.0 + growth
-
+        """Evolve market size through growth (simplified)."""
+        # Simple growth without volatility
+        growth_factor = 1.0 + self.config.growth_rate
         self.state.total_market_size *= growth_factor
 
         # Update demand parameters to reflect market growth
@@ -183,17 +157,18 @@ class MarketEvolutionEngine:
             demand_params["alpha"] *= growth_factor
 
     def _evolve_technology(self, costs: List[float], qualities: List[float]) -> None:
-        """Evolve overall technology level."""
-        # Technology improves over time
-        tech_improvement = float(self.rng.gauss(self.config.tech_change_rate, 0.005))
-        self.state.technology_level *= 1.0 + tech_improvement
+        """Evolve overall technology level (simplified)."""
+        # Simple technology improvement using innovation_rate
+        if self.rng.random() < self.config.innovation_rate:
+            tech_improvement = 0.01  # Fixed small improvement
+            self.state.technology_level *= 1.0 + tech_improvement
 
-        # Technology spillover affects all firms
-        for i in range(len(costs)):
-            # Costs decrease with technology
-            costs[i] *= 1.0 - self.config.tech_spillover * tech_improvement
-            # Qualities increase with technology
-            qualities[i] *= 1.0 + self.config.tech_spillover * tech_improvement
+            # Technology affects all firms equally
+            for i in range(len(costs)):
+                # Costs decrease with technology
+                costs[i] *= 1.0 - tech_improvement
+                # Qualities increase with technology
+                qualities[i] *= 1.0 + tech_improvement
 
     def _evolve_entry_exit(
         self,
@@ -205,11 +180,12 @@ class MarketEvolutionEngine:
         """Handle entry and exit of firms."""
         new_firms = current_firms.copy()
 
-        # Exit decisions
+        # Exit decisions (simplified)
         firms_to_exit = []
         for i, (firm_id, profit) in enumerate(zip(current_firms, current_profits)):
             if profit < self.config.exit_threshold:
-                if self.rng.random() < self.config.exit_probability:
+                # Simple exit rule: 50% chance if below threshold
+                if self.rng.random() < 0.5:
                     firms_to_exit.append(i)
 
         # Remove exiting firms
@@ -219,10 +195,11 @@ class MarketEvolutionEngine:
             current_costs.pop(i)
             current_qualities.pop(i)
 
-        # Entry decisions
-        if self.rng.random() < self.config.entry_probability:
-            # Potential entrant evaluates market
-            if self._should_enter(current_firms, current_profits, current_costs):
+        # Entry decisions (simplified)
+        # Simple entry rule: 10% chance per round if market is profitable
+        if current_firms and self.rng.random() < 0.1:
+            avg_profit = np.mean(current_profits)
+            if avg_profit > self.config.entry_cost:
                 new_firm_id = max(current_firms) + 1 if current_firms else 0
                 new_firms.append(new_firm_id)
                 self.state.add_firm(new_firm_id)
@@ -241,20 +218,13 @@ class MarketEvolutionEngine:
         current_profits: List[float],
         current_costs: List[float],
     ) -> bool:
-        """Determine if a new firm should enter the market."""
+        """Determine if a new firm should enter the market (simplified)."""
         if not current_firms:
             return True  # Enter empty market
 
-        # Calculate expected profit for entrant
-        avg_profit = np.mean(current_profits)
-
-        # Entrant expects to be average firm
-        expected_profit = avg_profit - self.config.entry_cost
-
-        # Entry probability increases with expected profit
-        entry_prob = 1.0 / (1.0 + math.exp(-expected_profit / 10.0))
-
-        return self.rng.random() < entry_prob
+        # Simple entry rule: enter if average profit exceeds entry cost
+        avg_profit = float(np.mean(current_profits))
+        return avg_profit > self.config.entry_cost
 
     def _generate_entrant_cost(self, current_costs: List[float]) -> float:
         """Generate cost for new entrant."""
@@ -303,35 +273,21 @@ class MarketEvolutionEngine:
 
             if self.rng.random() < innovation_prob:
                 # Firm attempts innovation
-                if self.rng.random() < self.config.innovation_success_rate:
+                if self.rng.random() < 0.3:  # Fixed success rate
                     # Successful innovation
                     self._apply_innovation(firm_evolution, new_costs, new_qualities, i)
 
         return new_costs, new_qualities
 
     def _calculate_innovation_probability(self, firm_evolution: FirmEvolution) -> float:
-        """Calculate innovation probability for a firm."""
-        # Base probability
-        base_prob = 0.1
-
-        # Increase with experience (learning-by-doing)
-        experience_factor = min(1.0, firm_evolution.experience / 100.0)
-
-        # Increase with market share (more resources)
+        """Calculate innovation probability for a firm (simplified)."""
+        # Simple innovation probability based on market share
         if firm_evolution.market_share_history:
             avg_market_share = float(np.mean(firm_evolution.market_share_history[-5:]))
-            market_share_factor = min(1.0, avg_market_share * 2.0)
+            # Higher market share = higher innovation probability
+            return min(0.3, avg_market_share * 0.5)
         else:
-            market_share_factor = 0.0
-
-        # Decrease with age (older firms less innovative)
-        age_factor = max(0.1, 1.0 - firm_evolution.age / 100.0)
-
-        innovation_prob = float(
-            base_prob * (1.0 + experience_factor + market_share_factor) * age_factor
-        )
-
-        return min(0.5, innovation_prob)  # Cap at 50%
+            return 0.1  # Default probability
 
     def _apply_innovation(
         self,
@@ -340,17 +296,15 @@ class MarketEvolutionEngine:
         qualities: List[float],
         firm_index: int,
     ) -> None:
-        """Apply successful innovation to a firm."""
+        """Apply successful innovation to a firm (simplified)."""
         # Update firm's innovation level
-        firm_evolution.innovation_level += self.config.innovation_impact
+        firm_evolution.innovation_level += 0.1  # Fixed improvement
 
-        # Reduce costs
-        cost_reduction = self.config.innovation_impact * costs[firm_index]
-        costs[firm_index] = max(1.0, costs[firm_index] - cost_reduction)
+        # Reduce costs by 5%
+        costs[firm_index] = max(1.0, costs[firm_index] * 0.95)
 
-        # Increase quality
-        quality_improvement = self.config.innovation_impact * qualities[firm_index]
-        qualities[firm_index] += quality_improvement
+        # Increase quality by 5%
+        qualities[firm_index] *= 1.05
 
     def get_evolution_metrics(self) -> Dict[str, float]:
         """Get metrics about market evolution."""
