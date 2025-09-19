@@ -126,7 +126,10 @@ def cournot_simulation(
 
 
 def cournot_segmented_simulation(
-    segmented_demand: SegmentedDemand, costs: List[float], quantities: List[float]
+    segmented_demand: SegmentedDemand,
+    costs: List[float],
+    quantities: List[float],
+    fixed_costs: Optional[List[float]] = None,
 ) -> CournotResult:
     """Run a one-round Cournot oligopoly simulation with segmented demand.
 
@@ -186,10 +189,20 @@ def cournot_segmented_simulation(
         0.0, (weighted_alpha - adjusted_total_quantity) / weighted_beta
     )
 
-    # Calculate profits: π_i = (P - c_i) * q_i
-    profits = [
-        (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
-    ]
+    # Calculate profits: π_i = (P - c_i) * q_i - FC_i
+    if fixed_costs:
+        if len(fixed_costs) != len(adjusted_quantities):
+            raise ValueError(
+                f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(adjusted_quantities)})"
+            )
+        profits = [
+            (adjusted_price - cost) * q - fc
+            for cost, q, fc in zip(costs, adjusted_quantities, fixed_costs)
+        ]
+    else:
+        profits = [
+            (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
+        ]
 
     return CournotResult(
         price=adjusted_price, quantities=adjusted_quantities, profits=profits

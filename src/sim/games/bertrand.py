@@ -230,7 +230,10 @@ def bertrand_simulation(
 
 
 def bertrand_segmented_simulation(
-    segmented_demand: SegmentedDemand, costs: List[float], prices: List[float]
+    segmented_demand: SegmentedDemand,
+    costs: List[float],
+    prices: List[float],
+    fixed_costs: Optional[List[float]] = None,
 ) -> BertrandResult:
     """Run a one-round Bertrand oligopoly simulation with segmented demand.
 
@@ -262,8 +265,20 @@ def bertrand_segmented_simulation(
         prices, costs, segmented_demand
     )
 
-    # Calculate profits: π_i = (p_i - c_i) * q_i
-    profits = [(price - cost) * q for price, cost, q in zip(prices, costs, quantities)]
+    # Calculate profits: π_i = (p_i - c_i) * q_i - FC_i
+    if fixed_costs:
+        if len(fixed_costs) != len(quantities):
+            raise ValueError(
+                f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(quantities)})"
+            )
+        profits = [
+            (price - cost) * q - fc
+            for price, cost, q, fc in zip(prices, costs, quantities, fixed_costs)
+        ]
+    else:
+        profits = [
+            (price - cost) * q for price, cost, q in zip(prices, costs, quantities)
+        ]
 
     return BertrandResult(
         total_demand=total_demand,
