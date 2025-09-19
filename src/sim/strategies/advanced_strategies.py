@@ -7,7 +7,7 @@ including Deep Q-Networks, Fictitious Play, and behavioral economics elements.
 import math
 import random
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, Union, cast
 
 import numpy as np
 
@@ -356,7 +356,7 @@ class DeepQLearningStrategy:
         features[8] = min_bound / 100.0
         features[9] = max_bound / 100.0
 
-        return features
+        return cast(np.ndarray[Any, Any], features)
 
     def _q_values(self, features: np.ndarray) -> np.ndarray:
         """Calculate Q-values for all actions given features."""
