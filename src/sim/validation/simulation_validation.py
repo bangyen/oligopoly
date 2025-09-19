@@ -250,4 +250,19 @@ def check_economic_plausibility(
                     f"Round {round_idx}: market price {market_price} doesn't match demand curve (expected {expected_price})"
                 )
 
+        # Check for unrealistic monopoly outcomes in Bertrand
+        if model == "bertrand":
+            active_firms = sum(1 for q in quantities if q > 0)
+            if active_firms == 1 and len(quantities) > 1:
+                warnings.append(
+                    f"Round {round_idx}: Unrealistic monopoly outcome in Bertrand competition"
+                )
+
+        # Check for total negative profits across all firms
+        total_profit = sum(profits)
+        if total_profit < -1000:  # Arbitrary threshold for "excessive" total losses
+            warnings.append(
+                f"Round {round_idx}: Excessive total losses across all firms ({total_profit})"
+            )
+
     return warnings

@@ -254,7 +254,9 @@ def _run_bertrand_round(
         # Use traditional single-segment demand
         alpha = params.get("alpha", 100.0)
         beta = params.get("beta", 1.0)
-        return bertrand_simulation(alpha, beta, costs, prices, fixed_costs)
+        return bertrand_simulation(
+            alpha, beta, costs, prices, fixed_costs, use_capacity_constraints=True
+        )
 
 
 def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:
