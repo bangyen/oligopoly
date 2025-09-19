@@ -243,7 +243,7 @@ def adaptive_nash_strategy(
     """Adaptive strategy that converges to Nash equilibrium.
 
     This strategy gradually moves firms toward their Nash equilibrium actions
-    while maintaining some exploration in early rounds.
+    while maintaining some exploration in early rounds and enforcing economic bounds.
 
     Args:
         model: "cournot" or "bertrand"
@@ -257,8 +257,9 @@ def adaptive_nash_strategy(
     Returns:
         New actions for next round
     """
-    # Calculate convergence factor (starts at 1.0, decreases to 0.1)
-    convergence_factor = 0.1 + 0.9 * (1 - round_idx / max_rounds)
+    # Calculate convergence factor (starts at 0.3, decreases to 0.1)
+    # Reduced initial convergence to prevent overshooting
+    convergence_factor = 0.1 + 0.2 * (1 - round_idx / max_rounds)
 
     if model == "cournot":
         # Check if segmented demand
@@ -274,11 +275,17 @@ def adaptive_nash_strategy(
             nash_quantities, _, _ = cournot_nash_equilibrium(
                 weighted_alpha, weighted_beta, costs
             )
+            a = weighted_alpha
+            b = weighted_beta
         else:
             # Standard demand
             a = params.get("a", 100.0)
             b = params.get("b", 1.0)
             nash_quantities, _, _ = cournot_nash_equilibrium(a, b, costs)
+
+        # Calculate reasonable bounds based on market size
+        max_individual_qty = a / b / len(costs)  # Equal share of total market
+        min_qty = 0.1
 
         # Move toward Nash equilibrium
         new_actions = []
@@ -290,10 +297,13 @@ def adaptive_nash_strategy(
                 1 - convergence_factor
             ) * current_qty + convergence_factor * nash_qty
 
-            # Add small random perturbation for exploration
-            noise_factor = params.get("noise_factor", 0.02) * (1 - convergence_factor)
+            # Add small random perturbation for exploration (reduced noise)
+            noise_factor = params.get("noise_factor", 0.01) * (1 - convergence_factor)
             noise = random.uniform(-noise_factor, noise_factor) * new_qty
-            new_qty = max(0.1, new_qty + noise)
+            new_qty = new_qty + noise
+
+            # Enforce bounds
+            new_qty = max(min_qty, min(max_individual_qty, new_qty))
 
             new_actions.append(new_qty)
 
@@ -314,10 +324,13 @@ def adaptive_nash_strategy(
                 1 - convergence_factor
             ) * current_price + convergence_factor * nash_price
 
-            # Add small random perturbation for exploration
-            noise_factor = params.get("noise_factor", 0.02) * (1 - convergence_factor)
+            # Add small random perturbation for exploration (reduced noise)
+            noise_factor = params.get("noise_factor", 0.01) * (1 - convergence_factor)
             noise = random.uniform(-noise_factor, noise_factor) * new_price
-            new_price = max(costs[i] + 0.1, new_price + noise)
+            new_price = new_price + noise
+
+            # Enforce bounds: price must be above marginal cost
+            new_price = max(costs[i] + 0.1, new_price)
 
             new_actions.append(new_price)
 
