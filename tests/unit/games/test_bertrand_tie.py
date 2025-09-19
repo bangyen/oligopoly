@@ -18,7 +18,9 @@ class TestBertrandTie:
         costs = [20.0, 20.0, 25.0]
         prices = [22.0, 22.0, 24.0]  # Firms 0 and 1 tie at lowest price
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Both firms should get equal share of demand
         expected_demand_per_firm = (
@@ -45,7 +47,9 @@ class TestBertrandTie:
         costs = [10.0, 10.0, 10.0]
         prices = [15.0, 15.0, 15.0]  # All three firms tie
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # All firms should get equal share of demand
         expected_demand_per_firm = (
@@ -70,7 +74,9 @@ class TestBertrandTie:
             22.0,
         ]  # Firms 0 and 1 attempt to tie, but firm 1's price gets adjusted
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Firm 1's price gets adjusted to 19 (20 * 0.95), so firm 0 gets all demand at price 18
         expected_demand = 80.0 - 0.8 * 18.0  # Q(18) = 65.6

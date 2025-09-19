@@ -34,7 +34,9 @@ class TestAllocateDemand:
 
     def test_allocate_demand_empty_prices(self) -> None:
         """Test allocate_demand with empty prices list."""
-        result = allocate_demand([], [10.0, 20.0], 100.0, 1.0)
+        result = allocate_demand(
+            [], [10.0, 20.0], 100.0, 1.0, use_capacity_constraints=False
+        )
         assert result == ([], 0.0)
 
 

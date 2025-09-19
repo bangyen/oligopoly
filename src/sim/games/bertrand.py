@@ -67,19 +67,24 @@ def calculate_demand(alpha: float, beta: float, price: float) -> float:
 
 
 def allocate_demand(
-    prices: List[float], costs: List[float], alpha: float, beta: float
+    prices: List[float],
+    costs: List[float],
+    alpha: float,
+    beta: float,
+    use_capacity_constraints: bool = True,
 ) -> Tuple[List[float], float]:
     """Allocate market demand among firms based on Bertrand competition.
 
-    Firms with the lowest price get all demand. If multiple firms tie for
-    lowest price, they split the demand equally. Market demand is calculated
-    at the lowest price. Includes economic constraints to prevent unrealistic outcomes.
+    Uses a more realistic allocation that considers capacity constraints and
+    market frictions to prevent unrealistic winner-take-all outcomes.
 
     Args:
         prices: List of prices set by each firm
         costs: List of marginal costs for each firm
         alpha: Intercept parameter for demand curve
         beta: Slope parameter for demand curve
+        use_capacity_constraints: If True, use capacity constraints to prevent monopoly.
+                                 If False, use traditional winner-take-all allocation.
 
     Returns:
         Tuple of (quantities_allocated, total_demand_at_lowest_price)
@@ -88,7 +93,6 @@ def allocate_demand(
         return [], 0.0
 
     # Enforce economic constraints: prices must be at least marginal cost
-    # This prevents below-cost pricing that leads to negative profits
     adjusted_prices = []
     for i, (price, cost) in enumerate(zip(prices, costs)):
         # Allow small price below cost for competitive pressure, but not excessive losses
@@ -108,12 +112,69 @@ def allocate_demand(
         if math.isclose(p, min_price, abs_tol=1e-10)
     ]
 
-    # Allocate demand equally among firms with minimum price
+    # Allocate demand based on mode
     quantities = [0.0] * len(prices)
+
     if min_price_firms and total_demand > 0:
-        demand_per_firm = total_demand / len(min_price_firms)
-        for i in min_price_firms:
-            quantities[i] = demand_per_firm
+        if use_capacity_constraints:
+            # Use capacity-constrained allocation to prevent monopoly
+            # Calculate capacity per firm (prevent winner-take-all)
+            max_capacity_per_firm = (
+                alpha / beta
+            ) * 0.4  # Each firm can serve up to 40% of market
+
+            # Allocate demand with capacity constraints
+            remaining_demand = total_demand
+            active_firms = []
+
+            # First, allocate to firms with minimum price
+            for i in min_price_firms:
+                if remaining_demand > 0:
+                    # Allocate up to capacity
+                    firm_allocation = min(max_capacity_per_firm, remaining_demand)
+                    quantities[i] = firm_allocation
+                    active_firms.append(i)
+                    remaining_demand -= firm_allocation
+
+            # If there's still demand, allow other firms to enter with small price premium
+            if remaining_demand > 0:
+                # Allow other firms to capture remaining demand
+                for i, (price, cost) in enumerate(zip(adjusted_prices, costs)):
+                    if (
+                        i not in active_firms and price <= min_price * 1.1
+                    ):  # Allow 10% price premium
+                        firm_allocation = min(max_capacity_per_firm, remaining_demand)
+                        if firm_allocation > 0:
+                            quantities[i] = firm_allocation
+                            active_firms.append(i)
+                            remaining_demand -= firm_allocation
+                            if remaining_demand <= 0:
+                                break
+
+            # If still only one firm active, force some competition by allowing others
+            if len(active_firms) == 1 and len(min_price_firms) > 1:
+                # Redistribute some demand to other minimum price firms
+                active_firm = active_firms[0]
+                if (
+                    quantities[active_firm] > max_capacity_per_firm * 0.6
+                ):  # If one firm has >60% capacity
+                    # Redistribute excess to other minimum price firms
+                    excess = quantities[active_firm] - max_capacity_per_firm * 0.6
+                    quantities[active_firm] = max_capacity_per_firm * 0.6
+
+                    # Give excess to other minimum price firms
+                    other_min_firms = [i for i in min_price_firms if i != active_firm]
+                    if other_min_firms:
+                        excess_per_firm = excess / len(other_min_firms)
+                        for i in other_min_firms:
+                            quantities[i] = min(
+                                max_capacity_per_firm * 0.4, excess_per_firm
+                            )
+        else:
+            # Traditional winner-take-all allocation (for backward compatibility)
+            demand_per_firm = total_demand / len(min_price_firms)
+            for i in min_price_firms:
+                quantities[i] = demand_per_firm
 
     return quantities, total_demand
 
@@ -174,6 +235,7 @@ def bertrand_simulation(
     prices: List[float],
     fixed_costs: Optional[List[float]] = None,
     capacity_limits: Optional[List[float]] = None,
+    use_capacity_constraints: bool = True,
 ) -> BertrandResult:
     """Run a one-round Bertrand oligopoly simulation.
 
@@ -217,7 +279,9 @@ def bertrand_simulation(
         raise ValueError(f"Beta parameter ({beta}) must be positive")
 
     # Allocate demand based on Bertrand competition
-    quantities, total_demand = allocate_demand(prices, costs, alpha, beta)
+    quantities, total_demand = allocate_demand(
+        prices, costs, alpha, beta, use_capacity_constraints
+    )
 
     # Apply capacity constraints if provided
     if capacity_limits:

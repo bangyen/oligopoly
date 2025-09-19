@@ -23,7 +23,11 @@ class TestCLIBertrand:
         config = create_sample_bertrand_config()
 
         result = bertrand_simulation(
-            config["alpha"], config["beta"], config["costs"], config["prices"]
+            config["alpha"],
+            config["beta"],
+            config["costs"],
+            config["prices"],
+            use_capacity_constraints=False,
         )
 
         assert_bertrand_output_format(result, len(config["costs"]))
@@ -34,7 +38,9 @@ class TestCLIBertrand:
         costs = [20.0, 20.0, 25.0]
         prices = [22.0, 21.0, 24.0]
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Firm 1 (index 1) has lowest price (21), so should get all demand
         expected_demand = 120.0 - 1.2 * 21.0  # 94.8
@@ -54,7 +60,11 @@ class TestCLIBertrand:
         config = create_sample_bertrand_cli_config()
 
         result = bertrand_simulation(
-            config["alpha"], config["beta"], config["costs"], config["prices"]
+            config["alpha"],
+            config["beta"],
+            config["costs"],
+            config["prices"],
+            use_capacity_constraints=False,
         )
 
         assert_bertrand_cli_format(
@@ -70,7 +80,9 @@ class TestCLIBertrand:
         costs = [15.0, 15.0, 20.0]
         prices = [18.0, 18.0, 22.0]  # Firms 0 and 1 tie
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Both firms should split demand equally
         expected_demand_per_firm = (80.0 - 0.8 * 18.0) / 2  # 65.6 / 2 = 32.8
@@ -89,7 +101,9 @@ class TestCLIBertrand:
         costs = [10.0, 15.0]
         prices = [30.0, 35.0]  # Both prices > alpha/beta = 25
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # All quantities and profits should be zero
         assert result.total_demand == pytest.approx(0.0, abs=1e-6)

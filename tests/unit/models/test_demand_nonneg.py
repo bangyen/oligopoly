@@ -21,7 +21,9 @@ class TestDemandNonNegativity:
             35.0,
         ]  # Price 40 > alpha/beta = 25, so Q(40) = max(0, 50-2*40) = 0
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # All firms should get zero demand
         assert result.quantities[0] == pytest.approx(0.0, abs=1e-6)
@@ -40,7 +42,9 @@ class TestDemandNonNegativity:
         costs = [20.0, 25.0]
         prices = [100.0, 105.0]  # At boundary: Q(100) = max(0, 100-1*100) = 0
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         assert result.total_demand == pytest.approx(0.0, abs=1e-6)
         assert all(q == pytest.approx(0.0, abs=1e-6) for q in result.quantities)
@@ -55,7 +59,9 @@ class TestDemandNonNegativity:
             105.0,
         ]  # Just below boundary: Q(99.9) = max(0, 100-1*99.9) = 0.1
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         expected_demand = 100.0 - 1.0 * 99.9  # 0.1
         assert result.total_demand == pytest.approx(expected_demand, abs=1e-6)

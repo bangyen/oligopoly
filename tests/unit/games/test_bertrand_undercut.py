@@ -23,7 +23,9 @@ class TestBertrandUndercut:
         costs = [20.0, 25.0, 30.0]
         prices = [20.0, 25.0, 30.0]  # Firm 0 prices at marginal cost
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Firm 0 should get all demand
         assert result.quantities[0] == pytest.approx(
@@ -47,7 +49,9 @@ class TestBertrandUndercut:
         costs = [20.0, 25.0, 30.0]
         prices = [15.0, 25.0, 30.0]  # Firm 0 attempts to price below marginal cost
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Firm 0's price should be adjusted to minimum viable price (20 * 0.95 = 19)
         # So demand becomes Q(19) = 100 - 1*19 = 81
@@ -72,7 +76,9 @@ class TestBertrandTie:
         costs = [20.0, 20.0, 25.0]
         prices = [22.0, 22.0, 24.0]  # Firms 0 and 1 tie at lowest price
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Both firms should get equal share of demand
         expected_demand_per_firm = (
@@ -99,7 +105,9 @@ class TestBertrandTie:
         costs = [10.0, 10.0, 10.0]
         prices = [15.0, 15.0, 15.0]  # All three firms tie
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # All firms should get equal share of demand
         expected_demand_per_firm = (
@@ -127,7 +135,9 @@ class TestDemandNonNegativity:
             35.0,
         ]  # Price 40 > alpha/beta = 25, so Q(40) = max(0, 50-2*40) = 0
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # All firms should get zero demand
         assert result.quantities[0] == pytest.approx(0.0, abs=1e-6)
@@ -146,7 +156,9 @@ class TestDemandNonNegativity:
         costs = [20.0, 25.0]
         prices = [100.0, 105.0]  # At boundary: Q(100) = max(0, 100-1*100) = 0
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         assert result.total_demand == pytest.approx(0.0, abs=1e-6)
         assert all(q == pytest.approx(0.0, abs=1e-6) for q in result.quantities)
@@ -163,7 +175,9 @@ class TestCLIBertrand:
         costs = [20.0, 20.0, 25.0]
         prices = [22.0, 21.0, 24.0]
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Verify the structure matches expected CLI output
         assert result.total_demand >= 0
@@ -180,7 +194,9 @@ class TestCLIBertrand:
         costs = [20.0, 20.0, 25.0]
         prices = [22.0, 21.0, 24.0]
 
-        result = bertrand_simulation(alpha, beta, costs, prices)
+        result = bertrand_simulation(
+            alpha, beta, costs, prices, use_capacity_constraints=False
+        )
 
         # Firm 1 (index 1) has lowest price (21), so should get all demand
         expected_demand = 120.0 - 1.2 * 21.0  # 94.8
@@ -202,22 +218,30 @@ class TestInputValidation:
     def test_negative_prices_raise_error(self) -> None:
         """Test that negative prices raise ValueError."""
         with pytest.raises(ValueError, match="must be non-negative"):
-            bertrand_simulation(100.0, 1.0, [10.0], [-5.0])
+            bertrand_simulation(
+                100.0, 1.0, [10.0], [-5.0], use_capacity_constraints=False
+            )
 
     def test_mismatched_costs_and_prices_raise_error(self) -> None:
         """Test that mismatched costs and prices lists raise ValueError."""
         with pytest.raises(ValueError, match="must match"):
-            bertrand_simulation(100.0, 1.0, [10.0, 20.0], [15.0])
+            bertrand_simulation(
+                100.0, 1.0, [10.0, 20.0], [15.0], use_capacity_constraints=False
+            )
 
     def test_non_positive_alpha_raises_error(self) -> None:
         """Test that non-positive alpha raises ValueError."""
         with pytest.raises(ValueError, match="must be positive"):
-            bertrand_simulation(0.0, 1.0, [10.0], [15.0])
+            bertrand_simulation(
+                0.0, 1.0, [10.0], [15.0], use_capacity_constraints=False
+            )
 
     def test_non_positive_beta_raises_error(self) -> None:
         """Test that non-positive beta raises ValueError."""
         with pytest.raises(ValueError, match="must be positive"):
-            bertrand_simulation(100.0, 0.0, [10.0], [15.0])
+            bertrand_simulation(
+                100.0, 0.0, [10.0], [15.0], use_capacity_constraints=False
+            )
 
 
 class TestHelperFunctions:
@@ -234,13 +258,15 @@ class TestHelperFunctions:
         # Negative demand case (should return 0)
         assert calculate_demand(100.0, 1.0, 150.0) == pytest.approx(0.0, abs=1e-6)
 
-    def test_allocate_demand(self) -> None:
+    def test_allocate_demand(self, use_capacity_constraints=False) -> None:
         """Test demand allocation function."""
         prices = [20.0, 25.0, 30.0]
         costs = [10.0, 15.0, 20.0]
         alpha, beta = 100.0, 1.0
 
-        quantities, total_demand = allocate_demand(prices, costs, alpha, beta)
+        quantities, total_demand = allocate_demand(
+            prices, costs, alpha, beta, use_capacity_constraints=False
+        )
 
         # Firm 0 should get all demand
         expected_demand = 100.0 - 1.0 * 20.0  # 80
