@@ -104,8 +104,8 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                 b = params.get("b", 1.0)
                 nash_quantities, _, _ = cournot_nash_equilibrium(a, b, costs)
 
-            # Add some randomness around Nash equilibrium
-            actions = [qty + random.uniform(-2, 2) for qty in nash_quantities]
+            # Add small randomness around Nash equilibrium (reduced from ±2 to ±1)
+            actions = [max(0.1, qty + random.uniform(-1, 1)) for qty in nash_quantities]
         else:  # bertrand
             # Start near Nash equilibrium prices
             alpha = params.get("alpha", 100.0)
@@ -113,8 +113,11 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
             from src.sim.strategies.nash_strategies import bertrand_nash_equilibrium
 
             nash_prices, _, _, _ = bertrand_nash_equilibrium(alpha, beta, costs)
-            # Add some randomness around Nash equilibrium
-            actions = [price + random.uniform(-1, 1) for price in nash_prices]
+            # Add small randomness around Nash equilibrium, ensuring prices stay above costs
+            actions = [
+                max(costs[i] + 0.1, price + random.uniform(-1, 1))
+                for i, price in enumerate(nash_prices)
+            ]
 
         # Run simulation rounds
         for round_idx in range(rounds):
@@ -139,21 +142,27 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                 quantities = result.quantities
                 profits = result.profits
             else:  # bertrand
-                # In Bertrand, each firm can have different prices, but we store the market-clearing price
-                # For simplicity, we'll use the minimum price as the market price
-                market_price = min(result.prices) if result.prices else 0.0
+                # In Bertrand, each firm sets its own price
                 quantities = result.quantities
                 profits = result.profits
+                firm_prices = result.prices
 
             # Persist results for each firm
             for firm_id in range(num_firms):
+                if model == "cournot":
+                    firm_price = market_price
+                else:  # bertrand
+                    firm_price = (
+                        firm_prices[firm_id] if firm_id < len(firm_prices) else 0.0
+                    )
+
                 result_record = Result(
                     run_id=run.id,
                     round_id=round_record.id,
                     round_idx=round_idx,
                     firm_id=firm_id,
                     action=actions[firm_id],
-                    price=market_price,
+                    price=firm_price,
                     qty=quantities[firm_id],
                     profit=profits[firm_id],
                 )
