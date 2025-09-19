@@ -266,6 +266,25 @@ class SegmentedDemand:
                     f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta/segment.alpha:.3f} > {max_elasticity_ratio}"
                 )
 
+        # Check for economically viable market size
+        # Ensure that at reasonable prices (10-50% of max price), there's positive demand
+        for i, segment in enumerate(self.segments):
+            max_price = segment.alpha / segment.beta  # Price where demand = 0
+            test_price = max_price * 0.3  # 30% of max price
+            test_demand = segment.demand(test_price)
+            if test_demand <= 0:
+                raise ValueError(
+                    f"Segment {i} has no demand at reasonable prices. Max price: {max_price:.2f}, "
+                    f"demand at 30% max price: {test_demand:.2f}"
+                )
+
+        # Check that weighted market size is reasonable
+        effective_market_size = weighted_alpha / weighted_beta
+        if effective_market_size < 5.0:
+            raise ValueError(
+                f"Effective market size too small: {effective_market_size:.2f}, should be >= 5.0"
+            )
+
     def total_demand(self, price: float) -> float:
         """Calculate total market demand at given price.
 

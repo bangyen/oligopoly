@@ -6,13 +6,12 @@ economic consistency throughout the simulation pipeline.
 
 from .economic_validation import (
     EconomicValidationError,
+    EconomicValidationResult,
     enforce_economic_constraints,
-    validate_costs,
+    log_economic_warnings,
+    validate_cost_structure,
     validate_demand_parameters,
-    validate_firm_viability,
-    validate_market_clearing,
-    validate_price_quantity_consistency,
-    validate_profit_consistency,
+    validate_market_evolution_config,
     validate_simulation_result,
 )
 from .simulation_validation import (
@@ -25,14 +24,13 @@ from .simulation_validation import (
 
 __all__ = [
     "EconomicValidationError",
+    "EconomicValidationResult",
     "enforce_economic_constraints",
-    "validate_costs",
+    "validate_cost_structure",
     "validate_demand_parameters",
-    "validate_firm_viability",
-    "validate_market_clearing",
-    "validate_price_quantity_consistency",
-    "validate_profit_consistency",
+    "validate_market_evolution_config",
     "validate_simulation_result",
+    "log_economic_warnings",
     "check_economic_plausibility",
     "sanitize_simulation_results",
     "validate_round_results",

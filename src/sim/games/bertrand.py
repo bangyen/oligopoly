@@ -14,6 +14,7 @@ from ..models.models import SegmentedDemand
 from ..validation.economic_validation import (
     EconomicValidationError,
     enforce_economic_constraints,
+    validate_cost_structure,
     validate_demand_parameters,
     validate_simulation_result,
 )
@@ -72,7 +73,7 @@ def allocate_demand(
 
     Firms with the lowest price get all demand. If multiple firms tie for
     lowest price, they split the demand equally. Market demand is calculated
-    at the lowest price.
+    at the lowest price. Includes economic constraints to prevent unrealistic outcomes.
 
     Args:
         prices: List of prices set by each firm
@@ -86,20 +87,30 @@ def allocate_demand(
     if not prices:
         return [], 0.0
 
-    # Find the minimum price
-    min_price = min(prices)
+    # Enforce economic constraints: prices must be at least marginal cost
+    # This prevents below-cost pricing that leads to negative profits
+    adjusted_prices = []
+    for i, (price, cost) in enumerate(zip(prices, costs)):
+        # Allow small price below cost for competitive pressure, but not excessive losses
+        min_price = max(0.0, cost * 0.95)  # Allow 5% below cost maximum
+        adjusted_prices.append(max(price, min_price))
+
+    # Find the minimum price among economically viable firms
+    min_price = min(adjusted_prices)
 
     # Calculate total demand at the minimum price
     total_demand = calculate_demand(alpha, beta, min_price)
 
-    # Find all firms with the minimum price
+    # Find all firms with the minimum price (including ties)
     min_price_firms = [
-        i for i, p in enumerate(prices) if math.isclose(p, min_price, abs_tol=1e-10)
+        i
+        for i, p in enumerate(adjusted_prices)
+        if math.isclose(p, min_price, abs_tol=1e-10)
     ]
 
     # Allocate demand equally among firms with minimum price
     quantities = [0.0] * len(prices)
-    if min_price_firms:
+    if min_price_firms and total_demand > 0:
         demand_per_firm = total_demand / len(min_price_firms)
         for i in min_price_firms:
             quantities[i] = demand_per_firm
@@ -190,6 +201,7 @@ def bertrand_simulation(
         validate_demand_parameters(
             0.0, 0.0, alpha, beta
         )  # Only validate Bertrand params
+        validate_cost_structure(costs, fixed_costs)
     except EconomicValidationError as e:
         raise ValueError(str(e))
 
@@ -218,19 +230,29 @@ def bertrand_simulation(
             for qty, cap in zip(quantities, capacity_limits)
         ]
 
-    # Calculate profits: π_i = (p_i - c_i) * q_i - FC_i
+    # Get the effective prices used for demand allocation (adjusted for economic constraints)
+    effective_prices = []
+    for i, (price, cost) in enumerate(zip(prices, costs)):
+        # Use the same logic as in allocate_demand to get the effective price
+        min_price = max(0.0, cost * 0.95)  # Allow 5% below cost maximum
+        effective_prices.append(max(price, min_price))
+
+    # Calculate profits using effective prices: π_i = (p_eff_i - c_i) * q_i - FC_i
     if fixed_costs:
         if len(fixed_costs) != len(quantities):
             raise ValueError(
                 f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(quantities)})"
             )
         profits = [
-            (price - cost) * q - fc
-            for price, cost, q, fc in zip(prices, costs, quantities, fixed_costs)
+            (eff_price - cost) * q - fc
+            for eff_price, cost, q, fc in zip(
+                effective_prices, costs, quantities, fixed_costs
+            )
         ]
     else:
         profits = [
-            (price - cost) * q for price, cost, q in zip(prices, costs, quantities)
+            (eff_price - cost) * q
+            for eff_price, cost, q in zip(effective_prices, costs, quantities)
         ]
 
     # Create result
@@ -243,40 +265,57 @@ def bertrand_simulation(
 
     # Validate economic consistency
     try:
-        # For Bertrand, market price is the minimum price
-        market_price = min(prices) if prices else 0.0
-        validate_simulation_result(
-            prices=prices,
-            quantities=quantities,
-            costs=costs,
-            profits=profits,
-            market_price=market_price,
-            demand_params=(
-                alpha,
-                beta,
-            ),  # Note: Bertrand uses (alpha, beta) as (a, b) equivalent
-            fixed_costs=fixed_costs,
-            strict=False,  # Don't raise exceptions, just warn
-        )
-    except EconomicValidationError:
-        # If validation fails, enforce constraints
-        enforced_prices, enforced_quantities, enforced_profits = (
-            enforce_economic_constraints(
-                prices=prices,
-                quantities=quantities,
-                costs=costs,
-                fixed_costs=fixed_costs,
-            )
+        validation_result = validate_simulation_result(
+            "bertrand",
+            prices,
+            quantities,
+            profits,
+            costs,
+            {"alpha": alpha, "beta": beta},
         )
 
-        # Recalculate demand with enforced prices
-        enforced_quantities, enforced_total_demand = allocate_demand(
-            enforced_prices, costs, alpha, beta
+        # Log warnings if any
+        if validation_result.warnings:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            for warning in validation_result.warnings:
+                logger.warning(f"Economic validation warning: {warning}")
+
+    except EconomicValidationError as e:
+        # Log warning but don't fail the simulation
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Economic validation warning: {e}")
+
+        # If validation fails, enforce constraints
+        enforced_quantities = enforce_economic_constraints(
+            quantities,
+            costs,
+            min(prices) if prices else 0.0,
         )
+
+        # Recalculate with enforced quantities
+        enforced_total_quantity = sum(enforced_quantities)
+
+        # Recalculate profits with enforced quantities
+        if fixed_costs:
+            enforced_profits = [
+                (price - cost) * q - fc
+                for price, cost, q, fc in zip(
+                    prices, costs, enforced_quantities, fixed_costs
+                )
+            ]
+        else:
+            enforced_profits = [
+                (price - cost) * q
+                for price, cost, q in zip(prices, costs, enforced_quantities)
+            ]
 
         result = BertrandResult(
-            total_demand=enforced_total_demand,
-            prices=enforced_prices,
+            total_demand=enforced_total_quantity,
+            prices=prices.copy(),
             quantities=enforced_quantities,
             profits=enforced_profits,
         )

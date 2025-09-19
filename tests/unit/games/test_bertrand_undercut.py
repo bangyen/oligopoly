@@ -42,22 +42,23 @@ class TestBertrandUndercut:
         assert sum(result.quantities) == pytest.approx(result.total_demand, abs=1e-6)
 
     def test_undercut_below_marginal_cost(self) -> None:
-        """Test firm undercutting below marginal cost gets all demand with negative profit."""
+        """Test firm attempting to undercut below marginal cost gets price adjusted to minimum viable price."""
         alpha, beta = 100.0, 1.0
         costs = [20.0, 25.0, 30.0]
-        prices = [15.0, 25.0, 30.0]  # Firm 0 prices below marginal cost
+        prices = [15.0, 25.0, 30.0]  # Firm 0 attempts to price below marginal cost
 
         result = bertrand_simulation(alpha, beta, costs, prices)
 
-        # Firm 0 should get all demand
+        # Firm 0's price should be adjusted to minimum viable price (20 * 0.95 = 19)
+        # So demand becomes Q(19) = 100 - 1*19 = 81
         assert result.quantities[0] == pytest.approx(
-            85.0, abs=1e-6
-        )  # Q(15) = 100 - 1*15 = 85
+            81.0, abs=1e-6
+        )  # Q(19) = 100 - 1*19 = 81
         assert result.quantities[1] == pytest.approx(0.0, abs=1e-6)
         assert result.quantities[2] == pytest.approx(0.0, abs=1e-6)
 
-        # Firm 0 should have negative profit
-        assert result.profits[0] == pytest.approx(-425.0, abs=1e-6)  # (15-20)*85 = -425
+        # Firm 0 should have small negative profit (pricing at 95% of marginal cost)
+        assert result.profits[0] == pytest.approx(-81.0, abs=1e-6)  # (19-20)*81 = -81
         assert result.profits[1] == pytest.approx(0.0, abs=1e-6)
         assert result.profits[2] == pytest.approx(0.0, abs=1e-6)
 

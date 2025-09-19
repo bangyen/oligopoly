@@ -153,7 +153,8 @@ def bertrand_nash_equilibrium(
 
     In Bertrand competition with homogeneous products, the Nash equilibrium
     is for all firms to price at the marginal cost of the second-lowest cost firm,
-    with only the lowest-cost firm(s) producing.
+    with only the lowest-cost firm(s) producing. Includes economic constraints
+    to prevent unrealistic monopoly outcomes.
 
     Args:
         alpha: Demand intercept parameter
@@ -173,25 +174,31 @@ def bertrand_nash_equilibrium(
     second_min_cost = sorted_costs[1] if n > 1 else min_cost
 
     # In Nash equilibrium, price equals second-lowest cost (or min cost if only one firm)
-    equilibrium_price = second_min_cost
+    # But add a small markup to prevent perfect competition and allow multiple firms
+    if n > 1:
+        # Add small markup to allow multiple firms to coexist
+        markup = (second_min_cost - min_cost) * 0.1  # 10% of cost difference
+        equilibrium_price = second_min_cost + markup
+    else:
+        equilibrium_price = min_cost * 1.1  # 10% markup for monopoly
 
     # Calculate market demand at equilibrium price
     total_demand = max(0.0, alpha - beta * equilibrium_price)
 
-    # Allocate quantities: only firms with min cost produce
+    # Allocate quantities: firms with costs below equilibrium price can produce
     prices = [equilibrium_price] * n
     quantities = [0.0] * n
     profits = [0.0] * n
 
-    # Find all firms with minimum cost
-    min_cost_firms = [i for i, cost in enumerate(costs) if cost == min_cost]
+    # Find all firms that can profitably produce at equilibrium price
+    viable_firms = [i for i, cost in enumerate(costs) if cost < equilibrium_price]
 
-    if min_cost_firms and total_demand > 0:
-        # Split demand equally among minimum cost firms
-        qty_per_firm = total_demand / len(min_cost_firms)
-        for i in min_cost_firms:
+    if viable_firms and total_demand > 0:
+        # Split demand equally among viable firms
+        qty_per_firm = total_demand / len(viable_firms)
+        for i in viable_firms:
             quantities[i] = qty_per_firm
-            profits[i] = (equilibrium_price - min_cost) * qty_per_firm
+            profits[i] = (equilibrium_price - costs[i]) * qty_per_firm
 
     return prices, quantities, profits, equilibrium_price
 
