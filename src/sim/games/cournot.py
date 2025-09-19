@@ -10,6 +10,12 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from ..models.models import SegmentedDemand
+from ..validation.economic_validation import (
+    EconomicValidationError,
+    enforce_economic_constraints,
+    validate_demand_parameters,
+    validate_simulation_result,
+)
 
 
 @dataclass
@@ -72,9 +78,14 @@ def cournot_simulation(
 
     Raises:
         ValueError: If quantities are negative or lists have mismatched lengths
+        EconomicValidationError: If economic constraints are violated
     """
     # Validate inputs
     validate_quantities(quantities)
+    try:
+        validate_demand_parameters(a, b, 0.0, 0.0)  # Only validate Cournot params
+    except EconomicValidationError as e:
+        raise ValueError(str(e))
 
     if len(costs) != len(quantities):
         raise ValueError(
@@ -120,9 +131,46 @@ def cournot_simulation(
             (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
         ]
 
-    return CournotResult(
+    # Create result
+    result = CournotResult(
         price=adjusted_price, quantities=adjusted_quantities, profits=profits
     )
+
+    # Validate economic consistency
+    try:
+        validate_simulation_result(
+            prices=[adjusted_price]
+            * len(adjusted_quantities),  # All firms face same price in Cournot
+            quantities=adjusted_quantities,
+            costs=costs,
+            profits=profits,
+            market_price=adjusted_price,
+            demand_params=(a, b),
+            fixed_costs=fixed_costs,
+            strict=False,  # Don't raise exceptions, just warn
+        )
+    except EconomicValidationError:
+        # If validation fails, enforce constraints
+        enforced_prices, enforced_quantities, enforced_profits = (
+            enforce_economic_constraints(
+                prices=[adjusted_price] * len(adjusted_quantities),
+                quantities=adjusted_quantities,
+                costs=costs,
+                fixed_costs=fixed_costs,
+            )
+        )
+
+        # Recalculate market price with enforced quantities
+        enforced_total_quantity = sum(enforced_quantities)
+        enforced_price = max(0.0, a - b * enforced_total_quantity)
+
+        result = CournotResult(
+            price=enforced_price,
+            quantities=enforced_quantities,
+            profits=enforced_profits,
+        )
+
+    return result
 
 
 def cournot_segmented_simulation(
