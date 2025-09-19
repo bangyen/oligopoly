@@ -26,11 +26,18 @@ from src.sim.heatmap.cournot_heatmap import (
     compute_cournot_segmented_heatmap,
     create_quantity_grid,
 )
+from src.sim.models.market_evolution import (
+    MarketEvolutionConfig,
+)
 from src.sim.models.metrics import (
     calculate_round_metrics_bertrand,
     calculate_round_metrics_cournot,
 )
 from src.sim.models.models import Base, DemandSegment, Event, Run, SegmentedDemand
+from src.sim.models.product_differentiation import (
+    ProductCharacteristics,
+    calculate_differentiated_nash_equilibrium,
+)
 from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
 from src.sim.runners.runner import get_run_results, run_game
 
@@ -67,6 +74,19 @@ class DemandSegmentConfig(BaseModel):
     )
 
 
+class ProductCharacteristicsConfig(BaseModel):
+    """Configuration for product characteristics in differentiated competition."""
+
+    quality: float = Field(default=1.0, gt=0, description="Product quality level")
+    location: float = Field(
+        default=0.5, ge=0, le=1, description="Product location (0-1 scale)"
+    )
+    brand_strength: float = Field(default=1.0, gt=0, description="Brand loyalty factor")
+    innovation_level: float = Field(
+        default=0.0, ge=0, description="Innovation/R&D level"
+    )
+
+
 class FirmConfig(BaseModel):
     """Configuration for a single firm in the simulation."""
 
@@ -77,6 +97,10 @@ class FirmConfig(BaseModel):
     )
     economies_of_scale: float = Field(
         default=1.0, gt=0, description="Economies of scale factor (1.0 = no economies)"
+    )
+    product_characteristics: Optional[ProductCharacteristicsConfig] = Field(
+        default=None,
+        description="Product characteristics for differentiated competition",
     )
 
 
@@ -92,11 +116,53 @@ class PolicyEventRequest(BaseModel):
     )
 
 
+class AdvancedStrategyConfig(BaseModel):
+    """Configuration for advanced learning strategies."""
+
+    strategy_type: str = Field(
+        ...,
+        pattern="^(fictitious_play|deep_q_learning|behavioral)$",
+        description="Type of advanced strategy",
+    )
+    learning_rate: float = Field(default=0.1, gt=0, le=1, description="Learning rate")
+    exploration_rate: float = Field(
+        default=0.1, ge=0, le=1, description="Exploration rate"
+    )
+    memory_length: int = Field(
+        default=20, gt=0, description="Memory length for learning"
+    )
+    rationality_level: float = Field(
+        default=0.8, ge=0, le=1, description="Rationality level (behavioral strategy)"
+    )
+
+
+class EnhancedDemandConfig(BaseModel):
+    """Configuration for enhanced demand functions."""
+
+    demand_type: str = Field(
+        default="linear",
+        pattern="^(linear|ces|network|dynamic|multi_segment)$",
+        description="Type of demand function",
+    )
+    elasticity: float = Field(
+        default=2.0, gt=1, description="Elasticity of substitution (CES)"
+    )
+    network_strength: float = Field(
+        default=0.1, ge=0, description="Network effects strength"
+    )
+    growth_rate: float = Field(default=0.02, description="Demand growth rate (dynamic)")
+    volatility: float = Field(
+        default=0.1, ge=0, description="Demand volatility (dynamic)"
+    )
+
+
 class SimulationRequest(BaseModel):
     """Request model for simulation endpoint."""
 
     model: str = Field(
-        ..., pattern="^(cournot|bertrand)$", description="Competition model type"
+        ...,
+        pattern="^(cournot|bertrand|differentiated_bertrand)$",
+        description="Competition model type",
     )
     rounds: int = Field(..., gt=0, le=1000, description="Number of simulation rounds")
     params: Dict[str, Any] = Field(
@@ -117,6 +183,15 @@ class SimulationRequest(BaseModel):
     seed: Optional[int] = Field(None, description="Random seed for reproducibility")
     events: Optional[List[PolicyEventRequest]] = Field(
         default_factory=list, description="Policy events to apply during simulation"
+    )
+    advanced_strategies: Optional[List[AdvancedStrategyConfig]] = Field(
+        default=None, description="Advanced learning strategies for firms"
+    )
+    market_evolution: Optional[MarketEvolutionConfig] = Field(
+        default=None, description="Market evolution configuration"
+    )
+    enhanced_demand: Optional[EnhancedDemandConfig] = Field(
+        default=None, description="Enhanced demand function configuration"
     )
 
 
@@ -427,6 +502,74 @@ async def simulate(
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@app.post("/differentiated-bertrand", response_model=SimulationResponse)
+async def simulate_differentiated_bertrand(
+    request: SimulationRequest, db: Session = Depends(get_db)
+) -> SimulationResponse:
+    """Run differentiated Bertrand competition simulation.
+
+    Executes differentiated Bertrand competition with product differentiation,
+    allowing for horizontal and vertical differentiation between products.
+
+    Args:
+        request: Simulation configuration with product characteristics
+        db: Database session for persistence
+
+    Returns:
+        SimulationResponse containing the unique run_id
+
+    Raises:
+        HTTPException: If simulation fails or configuration is invalid
+    """
+    try:
+        # Validate that all firms have product characteristics
+        for i, firm in enumerate(request.firms):
+            if not firm.product_characteristics:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Firm {i} must have product characteristics for differentiated competition",
+                )
+
+        # Convert to internal format
+        products = [
+            ProductCharacteristics(
+                quality=firm.product_characteristics.quality,
+                location=firm.product_characteristics.location,
+                brand_strength=firm.product_characteristics.brand_strength,
+                innovation_level=firm.product_characteristics.innovation_level,
+            )
+            for firm in request.firms
+            if firm.product_characteristics is not None
+        ]
+
+        costs = [firm.cost for firm in request.firms]
+
+        # Get demand model parameters
+        demand_model = request.params.get("demand_model", "logit")
+        demand_params = request.params.get("demand_params", {})
+        total_market_size = request.params.get("total_market_size", 100.0)
+
+        # Calculate Nash equilibrium
+        equilibrium_prices, result = calculate_differentiated_nash_equilibrium(
+            products, costs, demand_model, demand_params, total_market_size
+        )
+
+        # Create run record
+        run = Run(model="differentiated_bertrand", rounds=1)
+        db.add(run)
+        db.flush()
+
+        # Store results (simplified for this example)
+        # In a full implementation, you'd store detailed round-by-round data
+
+        return SimulationResponse(run_id=str(run.id))
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
