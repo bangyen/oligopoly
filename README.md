@@ -122,6 +122,9 @@ heatmap_response = requests.post("http://localhost:8000/heatmap", json={
 })
 ```
 
+![Cournot Competition Heatmap](docs/cournot_heatmap.png)
+*Cournot competition profit surface showing how Firm 1's profit varies with both firms' quantity choices. The cyan star marks the Nash equilibrium point. The bright band in the top-right represents monopoly profits when high quantities drive the other firm out of the market.*
+
 ### Batch Experiments
 ```bash
 # Run experiments with multiple seeds
