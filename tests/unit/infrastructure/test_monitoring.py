@@ -1,6 +1,6 @@
 """Tests for monitoring and health checks."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ class TestHealthStatus:
 
     def test_health_status_creation(self) -> None:
         """Test that HealthStatus can be created with required fields."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         checks = {"database": {"status": "healthy"}}
 
         health_status = HealthStatus(
@@ -43,7 +43,7 @@ class TestHealthStatus:
 
     def test_health_status_different_statuses(self) -> None:
         """Test HealthStatus with different status values."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         checks = {"service": {"status": "unhealthy"}}
 
         for status in ["healthy", "degraded", "unhealthy"]:
@@ -62,7 +62,7 @@ class TestMetrics:
 
     def test_metrics_creation(self) -> None:
         """Test that Metrics can be created with required fields."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
         metrics = Metrics(
             timestamp=timestamp,
@@ -88,7 +88,7 @@ class TestMetrics:
 
     def test_metrics_zero_values(self) -> None:
         """Test Metrics with zero values."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
 
         metrics = Metrics(
             timestamp=timestamp,
@@ -251,7 +251,9 @@ class TestMetricsCollector:
         mock_query.count.return_value = 25
 
         with patch("src.sim.monitoring.datetime") as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2023, 1, 1, 12, 0, 0)
+            mock_datetime.now.return_value = datetime(
+                2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+            )
 
             metrics = collector.collect_metrics(mock_db)
 
@@ -273,7 +275,9 @@ class TestMetricsCollector:
         mock_db.query.side_effect = Exception("Database error")
 
         with patch("src.sim.monitoring.datetime") as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2023, 1, 1, 12, 0, 0)
+            mock_datetime.now.return_value = datetime(
+                2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+            )
 
             metrics = collector.collect_metrics(mock_db)
 
@@ -325,7 +329,7 @@ class TestGlobalInstances:
         mock_db = Mock(spec=Session)
         expected_health = HealthStatus(
             status="healthy",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             checks={},
             uptime_seconds=100.0,
             version="1.0.0",
@@ -342,7 +346,7 @@ class TestGlobalInstances:
         """Test the get_metrics convenience function."""
         mock_db = Mock(spec=Session)
         expected_metrics = Metrics(
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             total_requests=10,
             successful_requests=8,
             failed_requests=2,

@@ -6,7 +6,7 @@ for the application.
 
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from sqlalchemy.orm import Session
@@ -89,7 +89,7 @@ class HealthChecker:
 
         return HealthStatus(
             status=overall_status,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             checks=checks,
             uptime_seconds=uptime,
             version=self.settings.version,
@@ -121,7 +121,7 @@ class MetricsCollector:
             total_simulations = db.query(Run).count()
 
             metrics = Metrics(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 total_requests=self.request_count,
                 successful_requests=self.successful_requests,
                 failed_requests=self.failed_requests,
@@ -138,7 +138,7 @@ class MetricsCollector:
             logger.error(f"Failed to collect metrics: {e}")
             # Return default metrics on error
             return Metrics(
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 total_requests=self.request_count,
                 successful_requests=self.successful_requests,
                 failed_requests=self.failed_requests,

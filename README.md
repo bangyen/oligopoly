@@ -5,6 +5,9 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-supported-2496ED.svg)](https://www.docker.com/)
 
+![Oligopoly Dashboard](docs/cournot_heatmap.png)
+*Interactive dashboard showing Cournot competition profit surface heatmap with Nash equilibrium visualization*
+
 A comprehensive platform for simulating oligopoly market competition with advanced economic models, learning strategies, and policy analysis capabilities.
 
 ## Features
@@ -121,9 +124,6 @@ heatmap_response = requests.post("http://localhost:8000/heatmap", json={
     "firms": [{"cost": 10.0}, {"cost": 15.0}]
 })
 ```
-
-![Cournot Competition Heatmap](docs/cournot_heatmap.png)
-*Cournot competition profit surface showing how Firm 1's profit varies with both firms' quantity choices. The cyan star marks the Nash equilibrium point. The bright band in the top-right represents monopoly profits when high quantities drive the other firm out of the market.*
 
 ### Batch Experiments
 ```bash

@@ -2,8 +2,7 @@
 
 init: ## install tooling
 	python -m pip install -U pip
-	pip install black ruff mypy pytest
-	pip install -e .
+	pip install -e ".[dev]"
 
 fmt:  ## format code
 	black .
