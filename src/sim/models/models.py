@@ -7,7 +7,7 @@ including demand curves, market structures, firm behavior, and simulation config
 import math
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
@@ -328,7 +328,7 @@ class Market(Base):  # type: ignore
     demand_b = Column(Float, nullable=False)
     num_firms = Column(Integer, nullable=False)
     segments = Column(JSON, nullable=True)  # Segmented demand configuration
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationship to firms in this market
     firms = relationship("Firm", back_populates="market")
@@ -378,7 +378,7 @@ class Firm(Base):  # type: ignore
     capacity_limit = Column(Float, nullable=True)  # Maximum production capacity
     economies_of_scale = Column(Float, default=1.0)  # Economies of scale factor
     market_id = Column(Integer, ForeignKey("markets.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationship to market
     market = relationship("Market", back_populates="firms")
@@ -405,7 +405,7 @@ class Run(Base):  # type: ignore
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     model = Column(String(20), nullable=False)  # "cournot" or "bertrand"
     rounds = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     rounds_data = relationship(
@@ -430,7 +430,7 @@ class Round(Base):  # type: ignore
     id = Column(Integer, primary_key=True, index=True)
     run_id = Column(String(36), ForeignKey("runs.id"), nullable=False)
     idx = Column(Integer, nullable=False)  # Round index (0-based)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     run = relationship("Run", back_populates="rounds_data")
@@ -459,7 +459,7 @@ class Result(Base):  # type: ignore
     price = Column(Float, nullable=False)  # Market price for this round
     qty = Column(Float, nullable=False)  # Quantity sold by this firm
     profit = Column(Float, nullable=False)  # Profit earned by this firm
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     run = relationship("Run", back_populates="results")
@@ -483,7 +483,7 @@ class Event(Base):  # type: ignore
     firm_id = Column(Integer, nullable=True)  # Firm involved (if applicable)
     description = Column(Text, nullable=False)  # Human-readable description
     event_data = Column(JSON, nullable=True)  # Additional event data
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     run = relationship("Run", back_populates="events")
@@ -505,7 +505,7 @@ class CollusionEvent(Base):  # type: ignore
     firm_id = Column(Integer, nullable=True)  # Firm involved (if applicable)
     description = Column(Text, nullable=False)  # Human-readable description
     event_data = Column(JSON, nullable=True)  # Additional event data
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     run = relationship("Run", back_populates="collusion_events")
@@ -527,7 +527,7 @@ class RunConfig(Base):  # type: ignore
     convergence_threshold = Column(Float, default=1e-6)
     random_seed = Column(Integer, nullable=True)
     market_id = Column(Integer, ForeignKey("markets.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationship to market
     market = relationship("Market")

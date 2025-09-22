@@ -5,7 +5,7 @@ frame-by-frame playback of simulation runs with event highlighting.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List, Optional
 
 from sqlalchemy.orm import Session
@@ -195,7 +195,7 @@ class ReplaySystem:
 
         return ReplayFrame(
             round_idx=round_idx,
-            timestamp=datetime.utcnow(),  # Use current time for replay
+            timestamp=datetime.now(timezone.utc),  # Use current time for replay
             market_price=market_price,
             total_quantity=total_quantity,
             total_profit=total_profit,
