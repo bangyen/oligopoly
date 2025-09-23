@@ -133,11 +133,13 @@ def print_experiment_summary(results: List[Dict[str, Any]]) -> None:
         avg_cs = [float(r["avg_cs"]) for r in config_runs]
         total_profits = [float(r["total_profit"]) for r in config_runs]
 
-        print(f"    Average Price: {format_currency(sum(avg_prices)/len(avg_prices))}")
-        print(f"    Average HHI: {sum(avg_hhis)/len(avg_hhis):.3f}")
-        print(f"    Average CS: {format_currency(sum(avg_cs)/len(avg_cs))}")
         print(
-            f"    Average Total Profit: {format_currency(sum(total_profits)/len(total_profits))}"
+            f"    Average Price: {format_currency(sum(avg_prices) / len(avg_prices))}"
+        )
+        print(f"    Average HHI: {sum(avg_hhis) / len(avg_hhis):.3f}")
+        print(f"    Average CS: {format_currency(sum(avg_cs) / len(avg_cs))}")
+        print(
+            f"    Average Total Profit: {format_currency(sum(total_profits) / len(total_profits))}"
         )
 
 

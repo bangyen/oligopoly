@@ -87,7 +87,9 @@ def test_tax_policy_integration(setup_database: None) -> None:
             round_0_no_tax["total_profit"],
             round_0_with_tax["total_profit"],
             abs_tol=1e-6,
-        ), f"Round 0 total profits should be identical, got {round_0_no_tax['total_profit']} vs {round_0_with_tax['total_profit']}"
+        ), (
+            f"Round 0 total profits should be identical, got {round_0_no_tax['total_profit']} vs {round_0_with_tax['total_profit']}"
+        )
 
         # Round 1 should have 20% tax applied
         round_1_no_tax = rounds_data_no_tax[1]
@@ -96,7 +98,9 @@ def test_tax_policy_integration(setup_database: None) -> None:
         expected_taxed_profit = round_1_no_tax["total_profit"] * 0.8  # 20% tax
         assert math.isclose(
             round_1_with_tax["total_profit"], expected_taxed_profit, abs_tol=1e-6
-        ), f"Round 1: expected {expected_taxed_profit}, got {round_1_with_tax['total_profit']}"
+        ), (
+            f"Round 1: expected {expected_taxed_profit}, got {round_1_with_tax['total_profit']}"
+        )
 
         # Round 2 should be identical again (no tax applied)
         round_2_no_tax = rounds_data_no_tax[2]
@@ -106,7 +110,9 @@ def test_tax_policy_integration(setup_database: None) -> None:
             round_2_no_tax["total_profit"],
             round_2_with_tax["total_profit"],
             abs_tol=1e-6,
-        ), f"Round 2 total profits should be identical, got {round_2_no_tax['total_profit']} vs {round_2_with_tax['total_profit']}"
+        ), (
+            f"Round 2 total profits should be identical, got {round_2_no_tax['total_profit']} vs {round_2_with_tax['total_profit']}"
+        )
 
     finally:
         db.close()
@@ -159,7 +165,9 @@ def test_subsidy_policy_integration(setup_database: None) -> None:
             round_0_with_subsidy["total_profit"],
             expected_subsidized_profit,
             abs_tol=1e-6,
-        ), f"Round 0: expected {expected_subsidized_profit}, got {round_0_with_subsidy['total_profit']}"
+        ), (
+            f"Round 0: expected {expected_subsidized_profit}, got {round_0_with_subsidy['total_profit']}"
+        )
 
         # Round 1 should be identical (no subsidy applied)
         round_1_no_subsidy = rounds_data_no_subsidy[1]
@@ -169,7 +177,9 @@ def test_subsidy_policy_integration(setup_database: None) -> None:
             round_1_no_subsidy["total_profit"],
             round_1_with_subsidy["total_profit"],
             abs_tol=1e-6,
-        ), f"Round 1 total profits should be identical, got {round_1_no_subsidy['total_profit']} vs {round_1_with_subsidy['total_profit']}"
+        ), (
+            f"Round 1 total profits should be identical, got {round_1_no_subsidy['total_profit']} vs {round_1_with_subsidy['total_profit']}"
+        )
 
     finally:
         db.close()
@@ -216,17 +226,17 @@ def test_price_cap_policy_integration(setup_database: None) -> None:
         price_no_cap = round_0_no_cap["price"]
         price_with_cap = round_0_with_cap["price"]
 
-        assert (
-            price_with_cap <= 50.0
-        ), f"Price should be capped at 50.0, got {price_with_cap}"
+        assert price_with_cap <= 50.0, (
+            f"Price should be capped at 50.0, got {price_with_cap}"
+        )
 
         if price_no_cap > 50.0:
             # If original price exceeded cap, profits should be recalculated
             # We can't easily calculate expected profits without knowing individual firm quantities
             # So we just verify that the price is capped and profits are different
-            assert (
-                price_with_cap == 50.0
-            ), f"Price should be exactly 50.0 when capped, got {price_with_cap}"
+            assert price_with_cap == 50.0, (
+                f"Price should be exactly 50.0 when capped, got {price_with_cap}"
+            )
             assert not math.isclose(
                 round_0_no_cap["total_profit"],
                 round_0_with_cap["total_profit"],
@@ -241,7 +251,9 @@ def test_price_cap_policy_integration(setup_database: None) -> None:
             round_1_no_cap["total_profit"],
             round_1_with_cap["total_profit"],
             abs_tol=1e-6,
-        ), f"Round 1 total profits should be identical, got {round_1_no_cap['total_profit']} vs {round_1_with_cap['total_profit']}"
+        ), (
+            f"Round 1 total profits should be identical, got {round_1_no_cap['total_profit']} vs {round_1_with_cap['total_profit']}"
+        )
 
     finally:
         db.close()

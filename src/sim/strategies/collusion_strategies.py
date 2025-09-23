@@ -427,7 +427,6 @@ class OpportunisticStrategy:
             and collusion_manager.is_cartel_active()
             and my_cost is not None
         ):
-
             cartel = collusion_manager.current_cartel
             if cartel:
                 model_type = market_params.get("model_type", "cournot")

@@ -47,7 +47,7 @@ def validate_demand_parameters(a: float, b: float, alpha: float, beta: float) ->
         if b <= 0:
             errors.append(f"Cournot demand slope 'b' must be positive, got {b}")
         if b > 0 and a > 0 and a / b < 10:  # Market size should be reasonable
-            errors.append(f"Market size (a/b) too small: {a/b:.2f}, should be >= 10")
+            errors.append(f"Market size (a/b) too small: {a / b:.2f}, should be >= 10")
 
     # Validate Bertrand parameters (only if they're being used)
     if alpha > 0 or beta > 0:  # Only validate if at least one parameter is set
@@ -61,7 +61,7 @@ def validate_demand_parameters(a: float, b: float, alpha: float, beta: float) ->
             beta > 0 and alpha > 0 and alpha / beta < 10
         ):  # Market size should be reasonable
             errors.append(
-                f"Market size (alpha/beta) too small: {alpha/beta:.2f}, should be >= 10"
+                f"Market size (alpha/beta) too small: {alpha / beta:.2f}, should be >= 10"
             )
 
     if errors:

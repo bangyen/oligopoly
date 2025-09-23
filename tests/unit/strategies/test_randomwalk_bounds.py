@@ -49,9 +49,9 @@ def test_randomwalk_bounds() -> None:
                 market_params={},
             )
 
-            assert (
-                min_bound <= current_action <= max_bound
-            ), f"Action {current_action} outside bounds [{min_bound}, {max_bound}] at round {round_num}"
+            assert min_bound <= current_action <= max_bound, (
+                f"Action {current_action} outside bounds [{min_bound}, {max_bound}] at round {round_num}"
+            )
 
     # Test edge case: very small step size
     strategy = RandomWalk(step=0.01, min_bound=0.0, max_bound=1.0, seed=123)
@@ -73,6 +73,6 @@ def test_randomwalk_bounds() -> None:
             market_params={},
         )
 
-        assert (
-            0.0 <= current_action <= 1.0
-        ), f"Action {current_action} outside bounds [0.0, 1.0] at round {round_num}"
+        assert 0.0 <= current_action <= 1.0, (
+            f"Action {current_action} outside bounds [0.0, 1.0] at round {round_num}"
+        )

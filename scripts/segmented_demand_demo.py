@@ -55,7 +55,7 @@ def main() -> None:
         demand_30 = segment.demand(30.0)
         change_pct = (demand_30 - demand_20) / demand_20 * 100
         print(
-            f"  Segment {i+1}: Q(20)={demand_20:.1f}, Q(30)={demand_30:.1f} ({change_pct:+.0f}%)"
+            f"  Segment {i + 1}: Q(20)={demand_20:.1f}, Q(30)={demand_30:.1f} ({change_pct:+.0f}%)"
         )
 
     print_demo_completion(

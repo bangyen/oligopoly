@@ -5,7 +5,6 @@ This script demonstrates the collusion features including cartel formation,
 defection detection, regulatory intervention, and event logging.
 """
 
-
 from typing import Any
 
 from sim.collusion import CollusionEventType, CollusionManager, RegulatorState

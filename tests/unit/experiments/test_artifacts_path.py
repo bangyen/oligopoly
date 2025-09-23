@@ -165,9 +165,9 @@ def test_csv_headers_match_schema(temp_db):
 
         # Check no unexpected headers
         unexpected_headers = set(headers) - set(expected_headers)
-        assert (
-            len(unexpected_headers) == 0
-        ), f"Unexpected headers found: {unexpected_headers}"
+        assert len(unexpected_headers) == 0, (
+            f"Unexpected headers found: {unexpected_headers}"
+        )
 
 
 def test_csv_data_types_are_correct(temp_db):

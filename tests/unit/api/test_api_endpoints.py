@@ -176,9 +176,7 @@ class TestGetRunDetail:
 
         # Mock query result for Result (empty list to avoid iteration issues)
         mock_result_query = Mock()
-        mock_result_query.filter.return_value.order_by.return_value.all.return_value = (
-            []
-        )
+        mock_result_query.filter.return_value.order_by.return_value.all.return_value = []
 
         # Set up mock_db.query to return different mocks based on the model
         def mock_query_side_effect(model):
@@ -249,9 +247,7 @@ class TestGetRunMetrics:
 
         # Mock query result for Result (empty list to avoid iteration issues)
         mock_result_query = Mock()
-        mock_result_query.filter.return_value.order_by.return_value.all.return_value = (
-            []
-        )
+        mock_result_query.filter.return_value.order_by.return_value.all.return_value = []
 
         # Set up mock_db.query to return different mocks based on the model
         def mock_query_side_effect(model):

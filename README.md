@@ -21,6 +21,8 @@ A comprehensive platform for simulating oligopoly market competition with advanc
 
 ## Quick Start
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bangyen/oligopoly/blob/main/oligopoly_demo.ipynb)
+
 ### Docker (Recommended)
 ```bash
 # Start all services

@@ -104,7 +104,7 @@ def demonstrate_strategies() -> None:
             bounds=(0, 5),
             market_params={},
         )
-        print(f"  Strategy {i+1}: {action:.2f}")
+        print(f"  Strategy {i + 1}: {action:.2f}")
 
     print_demo_completion(
         "Strategy demonstration",

@@ -44,14 +44,14 @@ class TestHeatmapAPI:
         response_time_ms = (end_time - start_time) * 1000
 
         # Validate response
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         # Validate response time
-        assert (
-            response_time_ms < 2000
-        ), f"Response time {response_time_ms:.1f}ms exceeds 2s budget"
+        assert response_time_ms < 2000, (
+            f"Response time {response_time_ms:.1f}ms exceeds 2s budget"
+        )
 
         # Validate response structure
         data = response.json()
@@ -64,18 +64,18 @@ class TestHeatmapAPI:
         assert "firm_j" in data
 
         # Validate dimensions
-        assert (
-            len(data["profit_surface"]) == 5
-        ), f"Expected 5 rows, got {len(data['profit_surface'])}"
-        assert (
-            len(data["profit_surface"][0]) == 5
-        ), f"Expected 5 cols, got {len(data['profit_surface'][0])}"
-        assert (
-            len(data["action_i_grid"]) == 5
-        ), f"Expected 5 grid points, got {len(data['action_i_grid'])}"
-        assert (
-            len(data["action_j_grid"]) == 5
-        ), f"Expected 5 grid points, got {len(data['action_j_grid'])}"
+        assert len(data["profit_surface"]) == 5, (
+            f"Expected 5 rows, got {len(data['profit_surface'])}"
+        )
+        assert len(data["profit_surface"][0]) == 5, (
+            f"Expected 5 cols, got {len(data['profit_surface'][0])}"
+        )
+        assert len(data["action_i_grid"]) == 5, (
+            f"Expected 5 grid points, got {len(data['action_i_grid'])}"
+        )
+        assert len(data["action_j_grid"]) == 5, (
+            f"Expected 5 grid points, got {len(data['action_j_grid'])}"
+        )
 
     def test_heatmap_api_medium_grid_performance(self):
         """Test API response time for medium grid (<2s for 10x10)."""
@@ -101,14 +101,14 @@ class TestHeatmapAPI:
         response_time_ms = (end_time - start_time) * 1000
 
         # Validate response
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         # Validate response time
-        assert (
-            response_time_ms < 2000
-        ), f"Response time {response_time_ms:.1f}ms exceeds 2s budget"
+        assert response_time_ms < 2000, (
+            f"Response time {response_time_ms:.1f}ms exceeds 2s budget"
+        )
 
         # Validate response structure
         data = response.json()
@@ -118,15 +118,15 @@ class TestHeatmapAPI:
         assert "action_j_grid" in data
 
         # Validate dimensions
-        assert (
-            len(data["profit_surface"]) == 10
-        ), f"Expected 10 rows, got {len(data['profit_surface'])}"
-        assert (
-            len(data["profit_surface"][0]) == 10
-        ), f"Expected 10 cols, got {len(data['profit_surface'][0])}"
-        assert (
-            len(data["market_share_surface"]) == 10
-        ), f"Expected 10 rows, got {len(data['market_share_surface'])}"
+        assert len(data["profit_surface"]) == 10, (
+            f"Expected 10 rows, got {len(data['profit_surface'])}"
+        )
+        assert len(data["profit_surface"][0]) == 10, (
+            f"Expected 10 cols, got {len(data['profit_surface'][0])}"
+        )
+        assert len(data["market_share_surface"]) == 10, (
+            f"Expected 10 rows, got {len(data['market_share_surface'])}"
+        )
 
     def test_heatmap_api_large_grid_performance(self):
         """Test API response time for large grid (<2s for 15x15)."""
@@ -152,23 +152,23 @@ class TestHeatmapAPI:
         response_time_ms = (end_time - start_time) * 1000
 
         # Validate response
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         # Validate response time
-        assert (
-            response_time_ms < 2000
-        ), f"Response time {response_time_ms:.1f}ms exceeds 2s budget"
+        assert response_time_ms < 2000, (
+            f"Response time {response_time_ms:.1f}ms exceeds 2s budget"
+        )
 
         # Validate dimensions
         data = response.json()
-        assert (
-            len(data["profit_surface"]) == 15
-        ), f"Expected 15 rows, got {len(data['profit_surface'])}"
-        assert (
-            len(data["profit_surface"][0]) == 15
-        ), f"Expected 15 cols, got {len(data['profit_surface'][0])}"
+        assert len(data["profit_surface"]) == 15, (
+            f"Expected 15 rows, got {len(data['profit_surface'])}"
+        )
+        assert len(data["profit_surface"][0]) == 15, (
+            f"Expected 15 cols, got {len(data['profit_surface'][0])}"
+        )
 
     def test_heatmap_api_validation_errors(self):
         """Test API validation error handling."""
@@ -187,9 +187,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 422
-        ), f"Expected 422 for invalid model, got {response.status_code}"
+        assert response.status_code == 422, (
+            f"Expected 422 for invalid model, got {response.status_code}"
+        )
 
         # Test invalid firm indices
         request_data = {
@@ -204,9 +204,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 500
-        ), f"Expected 500 for invalid firm index, got {response.status_code}"
+        assert response.status_code == 500, (
+            f"Expected 500 for invalid firm index, got {response.status_code}"
+        )
 
         # Test missing parameters
         request_data = {
@@ -221,9 +221,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 500
-        ), f"Expected 500 for missing parameters, got {response.status_code}"
+        assert response.status_code == 500, (
+            f"Expected 500 for missing parameters, got {response.status_code}"
+        )
 
     def test_heatmap_api_bertrand_market_share(self):
         """Test that Bertrand API returns market share surface."""
@@ -241,25 +241,25 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         data = response.json()
-        assert (
-            "market_share_surface" in data
-        ), "Bertrand response should include market share surface"
-        assert (
-            data["market_share_surface"] is not None
-        ), "Market share surface should not be None"
+        assert "market_share_surface" in data, (
+            "Bertrand response should include market share surface"
+        )
+        assert data["market_share_surface"] is not None, (
+            "Market share surface should not be None"
+        )
 
         # Validate market share surface dimensions
-        assert (
-            len(data["market_share_surface"]) == 8
-        ), f"Expected 8 rows, got {len(data['market_share_surface'])}"
-        assert (
-            len(data["market_share_surface"][0]) == 8
-        ), f"Expected 8 cols, got {len(data['market_share_surface'][0])}"
+        assert len(data["market_share_surface"]) == 8, (
+            f"Expected 8 rows, got {len(data['market_share_surface'])}"
+        )
+        assert len(data["market_share_surface"][0]) == 8, (
+            f"Expected 8 cols, got {len(data['market_share_surface'][0])}"
+        )
 
         # Validate market share values are between 0 and 1
         for row in data["market_share_surface"]:
@@ -282,17 +282,17 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         data = response.json()
-        assert (
-            "market_share_surface" in data
-        ), "Response should include market_share_surface field"
-        assert (
-            data["market_share_surface"] is None
-        ), "Cournot response should have None market share surface"
+        assert "market_share_surface" in data, (
+            "Response should include market_share_surface field"
+        )
+        assert data["market_share_surface"] is None, (
+            "Cournot response should have None market share surface"
+        )
 
     def test_heatmap_api_computation_time_field(self):
         """Test that API returns computation time field."""
@@ -310,20 +310,20 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         data = response.json()
-        assert (
-            "computation_time_ms" in data
-        ), "Response should include computation_time_ms field"
-        assert isinstance(
-            data["computation_time_ms"], (int, float)
-        ), "Computation time should be numeric"
-        assert (
-            data["computation_time_ms"] >= 0
-        ), "Computation time should be non-negative"
+        assert "computation_time_ms" in data, (
+            "Response should include computation_time_ms field"
+        )
+        assert isinstance(data["computation_time_ms"], (int, float)), (
+            "Computation time should be numeric"
+        )
+        assert data["computation_time_ms"] >= 0, (
+            "Computation time should be non-negative"
+        )
 
     def test_heatmap_api_grid_size_limits(self):
         """Test API behavior with grid size limits."""
@@ -342,9 +342,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 200
-        ), f"Expected 200 for minimum grid size, got {response.status_code}"
+        assert response.status_code == 200, (
+            f"Expected 200 for minimum grid size, got {response.status_code}"
+        )
 
         # Test maximum grid size
         request_data = {
@@ -359,9 +359,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 200
-        ), f"Expected 200 for maximum grid size, got {response.status_code}"
+        assert response.status_code == 200, (
+            f"Expected 200 for maximum grid size, got {response.status_code}"
+        )
 
         # Test invalid grid size (too small)
         request_data = {
@@ -376,9 +376,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 422
-        ), f"Expected 422 for too small grid size, got {response.status_code}"
+        assert response.status_code == 422, (
+            f"Expected 422 for too small grid size, got {response.status_code}"
+        )
 
     def test_heatmap_api_profit_values_validity(self):
         """Test that API returns valid profit values."""
@@ -396,9 +396,9 @@ class TestHeatmapAPI:
         }
 
         response = client.post("/heatmap", json=request_data)
-        assert (
-            response.status_code == 200
-        ), f"Expected 200, got {response.status_code}: {response.text}"
+        assert response.status_code == 200, (
+            f"Expected 200, got {response.status_code}: {response.text}"
+        )
 
         data = response.json()
         profit_surface = data["profit_surface"]
@@ -406,10 +406,10 @@ class TestHeatmapAPI:
         # Validate profit values
         for row in profit_surface:
             for profit in row:
-                assert isinstance(
-                    profit, (int, float)
-                ), f"Profit value {profit} should be numeric"
+                assert isinstance(profit, (int, float)), (
+                    f"Profit value {profit} should be numeric"
+                )
                 assert profit >= 0, f"Profit value {profit} should be non-negative"
-                assert not (
-                    profit != profit
-                ), f"Profit value {profit} should not be NaN"  # NaN check
+                assert not (profit != profit), (
+                    f"Profit value {profit} should not be NaN"
+                )  # NaN check

@@ -5,7 +5,6 @@ This script demonstrates how different policy interventions affect
 simulation outcomes by running simulations with and without policy shocks.
 """
 
-
 from sim.policy.policy_shocks import PolicyEvent, PolicyType
 from sim.runners.runner import get_run_results, run_game
 
