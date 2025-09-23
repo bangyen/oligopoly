@@ -296,7 +296,9 @@ def calculate_metrics_for_run(run_data: Dict[str, Any]) -> pd.DataFrame:
                 "market_price": (
                     market_price
                     if model == "cournot"
-                    else min(prices) if prices else 0.0
+                    else min(prices)
+                    if prices
+                    else 0.0
                 ),
                 "total_quantity": sum(quantities),
                 "total_profit": sum(profits),
@@ -1148,7 +1150,7 @@ def create_scenario_config_form(side: str) -> Dict[str, Any]:
     firms = []
     for i in range(num_firms):
         cost = st.number_input(
-            f"Firm {i+1} Cost",
+            f"Firm {i + 1} Cost",
             min_value=0.1,
             value=10.0 + i * 5.0,
             key=f"firm_{i}_{side}",
@@ -1467,7 +1469,7 @@ def create_deltas_table(comparison_data: Dict[str, Any]) -> None:
                 "Mean Delta": f"{sum(values) / len(values):.4f}",
                 "Min Delta": f"{min(values):.4f}",
                 "Max Delta": f"{max(values):.4f}",
-                "STD Delta": f"{(sum((x - sum(values)/len(values))**2 for x in values) / len(values))**0.5:.4f}",
+                "STD Delta": f"{(sum((x - sum(values) / len(values)) ** 2 for x in values) / len(values)) ** 0.5:.4f}",
             }
         )
 

@@ -480,7 +480,7 @@ async def simulate(
                 if segment.beta / segment.alpha > max_elasticity_ratio:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta/segment.alpha:.3f} > {max_elasticity_ratio}",
+                        detail=f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta / segment.alpha:.3f} > {max_elasticity_ratio}",
                     )
 
             config["params"]["segments"] = [
@@ -621,7 +621,9 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
                 "market_price": (
                     market_price
                     if model == "cournot"
-                    else min(prices) if prices else 0.0
+                    else min(prices)
+                    if prices
+                    else 0.0
                 ),
                 "total_quantity": sum(quantities),
                 "total_profit": sum(profits),

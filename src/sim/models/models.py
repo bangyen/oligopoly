@@ -263,7 +263,7 @@ class SegmentedDemand:
         for i, segment in enumerate(self.segments):
             if segment.beta / segment.alpha > max_elasticity_ratio:
                 raise ValueError(
-                    f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta/segment.alpha:.3f} > {max_elasticity_ratio}"
+                    f"Segment {i} has unrealistic elasticity: beta/alpha = {segment.beta / segment.alpha:.3f} > {max_elasticity_ratio}"
                 )
 
         # Check for economically viable market size

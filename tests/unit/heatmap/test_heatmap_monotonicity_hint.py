@@ -32,9 +32,9 @@ class TestHeatmapProperties:
         )
 
         # Test that profit matrix has reasonable values
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Profit matrix should contain finite values"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Profit matrix should contain finite values"
+        )
 
         # Test that low-cost firm generally has higher profits than high-cost firm
         # when both choose similar quantities (diagonal comparison)
@@ -66,20 +66,20 @@ class TestHeatmapProperties:
         )
 
         # Test that profit matrix has reasonable values
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Profit matrix should contain finite values"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Profit matrix should contain finite values"
+        )
 
         # Test that market share matrix has reasonable values
-        assert np.all(
-            np.isfinite(market_share_matrix)
-        ), "Market share matrix should contain finite values"
-        assert np.all(
-            market_share_matrix >= 0
-        ), "Market share matrix should contain non-negative values"
-        assert np.all(
-            market_share_matrix <= 1
-        ), "Market share matrix should contain values <= 1"
+        assert np.all(np.isfinite(market_share_matrix)), (
+            "Market share matrix should contain finite values"
+        )
+        assert np.all(market_share_matrix >= 0), (
+            "Market share matrix should contain non-negative values"
+        )
+        assert np.all(market_share_matrix <= 1), (
+            "Market share matrix should contain values <= 1"
+        )
 
     def test_cournot_profit_patterns(self):
         """Test that Cournot profits exhibit reasonable patterns."""
@@ -97,9 +97,9 @@ class TestHeatmapProperties:
         )
 
         # Test that profit matrix has reasonable values
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Profit matrix should contain finite values"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Profit matrix should contain finite values"
+        )
 
         # Test that profit matrix has reasonable structure
         assert profit_matrix.shape == (
@@ -198,9 +198,9 @@ class TestHeatmapProperties:
         )
 
         # Should handle small quantities gracefully
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Should handle small quantities gracefully"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Should handle small quantities gracefully"
+        )
 
         # Test with moderate quantities (should give positive profits)
         q_i_grid = create_quantity_grid(0.0, 10.0, 3)
@@ -211,9 +211,9 @@ class TestHeatmapProperties:
         )
 
         # Should handle moderate quantities gracefully
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Should handle moderate quantities gracefully"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Should handle moderate quantities gracefully"
+        )
 
         # Test with high quantities (may result in negative profits, which is realistic)
         q_i_grid = create_quantity_grid(50.0, 100.0, 3)
@@ -224,9 +224,9 @@ class TestHeatmapProperties:
         )
 
         # Should handle high quantities gracefully (may result in negative profits)
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Should handle high quantities gracefully"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Should handle high quantities gracefully"
+        )
 
         # Negative profits are realistic when costs exceed prices
         # This is expected behavior in economic models

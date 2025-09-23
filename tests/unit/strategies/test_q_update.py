@@ -82,9 +82,9 @@ def test_q_update_positive_reward():
     # Q[s,a] = (1-α)*0 + α*(reward + γ*0) = α*reward = 0.1*5.0 = 0.5 (normalized reward)
     expected_q_value = q_learning.alpha * (positive_profit / 10.0)  # Normalized reward
     assert q_value > 0, f"Expected positive Q-value, got {q_value}"
-    assert math.isclose(
-        q_value, expected_q_value, abs_tol=1e-6
-    ), f"Expected Q-value ≈ {expected_q_value}, got {q_value}"
+    assert math.isclose(q_value, expected_q_value, abs_tol=1e-6), (
+        f"Expected Q-value ≈ {expected_q_value}, got {q_value}"
+    )
 
 
 def test_q_update_multiple_rewards():
@@ -135,9 +135,9 @@ def test_q_update_multiple_rewards():
 
         # Check that Q-table has been updated
         q_table_after = q_learning.get_q_table()
-        assert (
-            len(q_table_after) > 0
-        ), f"Q-table should have entries after round {round_num}"
+        assert len(q_table_after) > 0, (
+            f"Q-table should have entries after round {round_num}"
+        )
 
     # Check that final Q-values are positive
     final_q_table = q_learning.get_q_table()

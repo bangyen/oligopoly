@@ -26,6 +26,6 @@ def test_titfortat_first_round() -> None:
 
         expected = (min_bound + max_bound) / 2.0
 
-        assert (
-            action == expected
-        ), f"Expected {expected}, got {action} for bounds ({min_bound}, {max_bound})"
+        assert action == expected, (
+            f"Expected {expected}, got {action} for bounds ({min_bound}, {max_bound})"
+        )

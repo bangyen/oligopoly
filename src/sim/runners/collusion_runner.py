@@ -298,7 +298,6 @@ def run_collusion_game(
                 and collusion_config
                 and collusion_config.get("auto_form_cartel", False)
             ):
-
                 # Simple cartel formation logic - can be made more sophisticated
                 avg_price = sum(prices) / len(prices)
                 avg_quantity = sum(quantities) / len(quantities)

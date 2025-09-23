@@ -116,9 +116,9 @@ def test_same_config_same_seed_produces_identical_results(
     for field in numeric_fields:
         val_1 = float(result_1[field])
         val_2 = float(result_2[field])
-        assert math.isclose(
-            val_1, val_2, abs_tol=1e-6
-        ), f"{field} differs: {val_1} vs {val_2}"
+        assert math.isclose(val_1, val_2, abs_tol=1e-6), (
+            f"{field} differs: {val_1} vs {val_2}"
+        )
 
 
 def test_different_seeds_produce_different_results(

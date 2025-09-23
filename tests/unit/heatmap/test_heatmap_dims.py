@@ -200,9 +200,9 @@ class TestHeatmapDimensions:
         )
 
         # Validate values
-        assert np.all(
-            np.isfinite(profit_matrix)
-        ), "Profit matrix contains non-finite values"
+        assert np.all(np.isfinite(profit_matrix)), (
+            "Profit matrix contains non-finite values"
+        )
         assert np.all(profit_matrix >= 0), "Profit matrix contains negative values"
 
         # Check that matrix is not all zeros (should have some positive profits)
