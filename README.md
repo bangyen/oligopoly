@@ -61,7 +61,7 @@ oligopoly/
 
 ## Validation
 
-- ✅ Overall test coverage of 79% (`pytest`)
+- ✅ Overall test coverage of 84% (`pytest`)
 - ✅ Reproducible seeds for experiments
 - ✅ Benchmark scripts included
 
