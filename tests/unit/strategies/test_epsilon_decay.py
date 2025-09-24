@@ -65,21 +65,21 @@ def test_epsilon_decay_basic() -> None:
 
     # Check that epsilon decreases
     for i in range(1, len(epsilon_values)):
-        assert epsilon_values[i] <= epsilon_values[i - 1], (
-            f"Epsilon should decrease: round {i - 1}={epsilon_values[i - 1]}, round {i}={epsilon_values[i]}"
-        )
+        assert (
+            epsilon_values[i] <= epsilon_values[i - 1]
+        ), f"Epsilon should decrease: round {i - 1}={epsilon_values[i - 1]}, round {i}={epsilon_values[i]}"
 
     # Check that epsilon never goes below minimum
     for i, eps in enumerate(epsilon_values):
-        assert eps >= q_learning.epsilon_min, (
-            f"Epsilon at round {i} ({eps}) should be >= epsilon_min ({q_learning.epsilon_min})"
-        )
+        assert (
+            eps >= q_learning.epsilon_min
+        ), f"Epsilon at round {i} ({eps}) should be >= epsilon_min ({q_learning.epsilon_min})"
 
     # Check that epsilon approaches the minimum
     final_epsilon = epsilon_values[-1]
-    assert final_epsilon >= q_learning.epsilon_min, (
-        f"Final epsilon ({final_epsilon}) should be >= epsilon_min ({q_learning.epsilon_min})"
-    )
+    assert (
+        final_epsilon >= q_learning.epsilon_min
+    ), f"Final epsilon ({final_epsilon}) should be >= epsilon_min ({q_learning.epsilon_min})"
 
 
 def test_epsilon_decay_rate() -> None:
@@ -130,9 +130,9 @@ def test_epsilon_decay_rate() -> None:
         if epsilon_values[i - 1] > q_learning.epsilon_min:
             expected_epsilon = epsilon_values[i - 1] * decay_rate
             actual_epsilon = epsilon_values[i]
-            assert math.isclose(actual_epsilon, expected_epsilon, abs_tol=1e-10), (
-                f"Round {i}: expected {expected_epsilon}, got {actual_epsilon}"
-            )
+            assert math.isclose(
+                actual_epsilon, expected_epsilon, abs_tol=1e-10
+            ), f"Round {i}: expected {expected_epsilon}, got {actual_epsilon}"
 
 
 def test_epsilon_min_bound() -> None:
@@ -180,23 +180,23 @@ def test_epsilon_min_bound() -> None:
     # Check that epsilon reaches and stays at minimum
     min_epsilon_reached = False
     for i, eps in enumerate(epsilon_values):
-        assert eps >= q_learning.epsilon_min, (
-            f"Epsilon at round {i} ({eps}) should be >= epsilon_min ({q_learning.epsilon_min})"
-        )
+        assert (
+            eps >= q_learning.epsilon_min
+        ), f"Epsilon at round {i} ({eps}) should be >= epsilon_min ({q_learning.epsilon_min})"
 
         if math.isclose(eps, q_learning.epsilon_min, abs_tol=1e-10):
             min_epsilon_reached = True
 
-    assert min_epsilon_reached, (
-        f"Epsilon should reach minimum value {q_learning.epsilon_min}"
-    )
+    assert (
+        min_epsilon_reached
+    ), f"Epsilon should reach minimum value {q_learning.epsilon_min}"
 
     # Check that epsilon stays at minimum once reached
     final_epsilons = epsilon_values[-5:]  # Last 5 rounds
     for eps in final_epsilons:
-        assert math.isclose(eps, q_learning.epsilon_min, abs_tol=1e-10), (
-            f"Epsilon should stay at minimum {q_learning.epsilon_min}, got {eps}"
-        )
+        assert math.isclose(
+            eps, q_learning.epsilon_min, abs_tol=1e-10
+        ), f"Epsilon should stay at minimum {q_learning.epsilon_min}, got {eps}"
 
 
 def test_epsilon_decay_different_rates() -> None:
@@ -247,14 +247,14 @@ def test_epsilon_decay_different_rates() -> None:
         final_epsilon = q_learning.get_current_epsilon()
 
         # Verify epsilon decreased
-        assert final_epsilon < initial_epsilon, (
-            f"Decay rate {decay_rate}: epsilon should decrease from {initial_epsilon} to {final_epsilon}"
-        )
+        assert (
+            final_epsilon < initial_epsilon
+        ), f"Decay rate {decay_rate}: epsilon should decrease from {initial_epsilon} to {final_epsilon}"
 
         # Verify epsilon is above minimum
-        assert final_epsilon >= q_learning.epsilon_min, (
-            f"Decay rate {decay_rate}: final epsilon {final_epsilon} should be >= epsilon_min {q_learning.epsilon_min}"
-        )
+        assert (
+            final_epsilon >= q_learning.epsilon_min
+        ), f"Decay rate {decay_rate}: final epsilon {final_epsilon} should be >= epsilon_min {q_learning.epsilon_min}"
 
 
 def test_epsilon_no_decay_when_zero() -> None:
@@ -297,9 +297,9 @@ def test_epsilon_no_decay_when_zero() -> None:
         )
 
         current_epsilon = q_learning.get_current_epsilon()
-        assert math.isclose(current_epsilon, 0.1, abs_tol=1e-10), (
-            f"Epsilon should stay at minimum 0.1, got {current_epsilon}"
-        )
+        assert math.isclose(
+            current_epsilon, 0.1, abs_tol=1e-10
+        ), f"Epsilon should stay at minimum 0.1, got {current_epsilon}"
 
 
 if __name__ == "__main__":

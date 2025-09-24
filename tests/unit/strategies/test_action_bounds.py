@@ -71,28 +71,28 @@ def test_action_bounds_200_steps() -> None:
         actions_chosen.append(action2)
 
     # Verify all actions are within bounds
-    assert len(actions_chosen) == 200, (
-        f"Expected 200 actions, got {len(actions_chosen)}"
-    )
+    assert (
+        len(actions_chosen) == 200
+    ), f"Expected 200 actions, got {len(actions_chosen)}"
 
     for i, action in enumerate(actions_chosen):
-        assert min_action <= action <= max_action, (
-            f"Action {i} ({action}) is outside bounds [{min_action}, {max_action}]"
-        )
+        assert (
+            min_action <= action <= max_action
+        ), f"Action {i} ({action}) is outside bounds [{min_action}, {max_action}]"
 
     # Verify all actions are from the grid
     unique_actions = set(actions_chosen)
     expected_grid_set = set(expected_grid)
 
     for action in unique_actions:
-        assert action in expected_grid_set, (
-            f"Action {action} is not in expected grid {expected_grid}"
-        )
+        assert (
+            action in expected_grid_set
+        ), f"Action {action} is not in expected grid {expected_grid}"
 
     # Verify we used multiple different actions (exploration worked)
-    assert len(unique_actions) > 1, (
-        f"Should use multiple different actions, got only {len(unique_actions)} unique actions"
-    )
+    assert (
+        len(unique_actions) > 1
+    ), f"Should use multiple different actions, got only {len(unique_actions)} unique actions"
 
 
 def test_action_bounds_different_grids() -> None:
@@ -152,16 +152,16 @@ def test_action_bounds_different_grids() -> None:
 
         # Verify bounds
         for i, action in enumerate(actions_chosen):
-            assert min_action <= action <= max_action, (
-                f"Config {config}: Action {i} ({action}) outside bounds [{min_action}, {max_action}]"
-            )
+            assert (
+                min_action <= action <= max_action
+            ), f"Config {config}: Action {i} ({action}) outside bounds [{min_action}, {max_action}]"
 
         # Verify grid membership
         expected_grid = q_learning.get_action_grid()
         for action in actions_chosen:
-            assert action in expected_grid, (
-                f"Config {config}: Action {action} not in grid {expected_grid}"
-            )
+            assert (
+                action in expected_grid
+            ), f"Config {config}: Action {action} not in grid {expected_grid}"
 
 
 def test_action_bounds_edge_cases() -> None:
@@ -258,9 +258,9 @@ def test_action_bounds_edge_cases() -> None:
 
     # Verify all actions are from grid
     for action in actions_chosen_large:
-        assert action in expected_large_grid, (
-            f"Action {action} not in grid {expected_large_grid}"
-        )
+        assert (
+            action in expected_large_grid
+        ), f"Action {action} not in grid {expected_large_grid}"
 
 
 def test_action_bounds_clamping() -> None:
@@ -307,16 +307,16 @@ def test_action_bounds_clamping() -> None:
 
     # All actions should be within external bounds
     for action in actions_chosen:
-        assert 5.0 <= action <= 25.0, (
-            f"Action {action} outside external bounds [5.0, 25.0]"
-        )
+        assert (
+            5.0 <= action <= 25.0
+        ), f"Action {action} outside external bounds [5.0, 25.0]"
 
     # But actions should still be from the internal grid
     expected_grid = [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0]
     for action in actions_chosen:
-        assert action in expected_grid, (
-            f"Action {action} not in internal grid {expected_grid}"
-        )
+        assert (
+            action in expected_grid
+        ), f"Action {action} not in internal grid {expected_grid}"
 
 
 if __name__ == "__main__":

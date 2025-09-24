@@ -23,9 +23,9 @@ def test_subsidy_shock_basic() -> None:
     expected_profits = [150.0, 225.0, 300.0]  # 100+5*10, 150+5*15, 200+5*20
 
     for i, (actual, expected) in enumerate(zip(subsidized_profits, expected_profits)):
-        assert math.isclose(actual, expected, abs_tol=1e-6), (
-            f"Firm {i}: expected {expected}, got {actual}"
-        )
+        assert math.isclose(
+            actual, expected, abs_tol=1e-6
+        ), f"Firm {i}: expected {expected}, got {actual}"
 
 
 def test_subsidy_shock_zero_subsidy() -> None:
@@ -52,9 +52,9 @@ def test_subsidy_shock_fractional_quantities() -> None:
     expected_profits = [121.0, 180.5]
 
     for i, (actual, expected) in enumerate(zip(subsidized_profits, expected_profits)):
-        assert math.isclose(actual, expected, abs_tol=1e-6), (
-            f"Firm {i}: expected {expected}, got {actual}"
-        )
+        assert math.isclose(
+            actual, expected, abs_tol=1e-6
+        ), f"Firm {i}: expected {expected}, got {actual}"
 
 
 def test_subsidy_shock_zero_quantities() -> None:
@@ -126,6 +126,6 @@ def test_subsidy_shock_large_values() -> None:
     expected_profits = [1100000.0, 2200000.0]
 
     for i, (actual, expected) in enumerate(zip(subsidized_profits, expected_profits)):
-        assert math.isclose(actual, expected, abs_tol=1e-6), (
-            f"Firm {i}: expected {expected}, got {actual}"
-        )
+        assert math.isclose(
+            actual, expected, abs_tol=1e-6
+        ), f"Firm {i}: expected {expected}, got {actual}"

@@ -63,9 +63,9 @@ def test_titfortat_follow() -> None:
             market_params={},
         )
 
-        assert math.isclose(action, expected_mean, abs_tol=1e-6), (
-            f"Expected {expected_mean}, got {action} for rival results {rival_results}"
-        )
+        assert math.isclose(
+            action, expected_mean, abs_tol=1e-6
+        ), f"Expected {expected_mean}, got {action} for rival results {rival_results}"
 
     # Test with bounds clamping
     rival_result = CournotResult(price=5.0, quantities=[15.0], profits=[0.0])

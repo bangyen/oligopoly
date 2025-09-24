@@ -621,9 +621,7 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
                 "market_price": (
                     market_price
                     if model == "cournot"
-                    else min(prices)
-                    if prices
-                    else 0.0
+                    else min(prices) if prices else 0.0
                 ),
                 "total_quantity": sum(quantities),
                 "total_profit": sum(profits),

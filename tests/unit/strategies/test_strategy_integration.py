@@ -64,9 +64,9 @@ def test_strategy_integration() -> None:
 
     # Verify we got trajectories for all 3 firms
     assert len(trajectories) == 3, f"Expected 3 trajectories, got {len(trajectories)}"
-    assert all(len(traj) == rounds for traj in trajectories), (
-        f"Expected all trajectories to have {rounds} rounds"
-    )
+    assert all(
+        len(traj) == rounds for traj in trajectories
+    ), f"Expected all trajectories to have {rounds} rounds"
 
     # Verify trajectories are pairwise different (not all equal)
     # Check that at least one pair of firms has different trajectories
@@ -84,9 +84,9 @@ def test_strategy_integration() -> None:
     # Verify all actions are within bounds
     for i, traj in enumerate(trajectories):
         for round_idx, action in enumerate(traj):
-            assert bounds[0] <= action <= bounds[1], (
-                f"Firm {i} action {action} outside bounds {bounds} at round {round_idx}"
-            )
+            assert (
+                bounds[0] <= action <= bounds[1]
+            ), f"Firm {i} action {action} outside bounds {bounds} at round {round_idx}"
 
     # Print trajectories for debugging (optional)
     print(f"Static strategy trajectory: {trajectories[0]}")
@@ -160,14 +160,14 @@ def test_strategy_integration_different_seeds() -> None:
     assert trajectories1[0] == trajectories2[0], "Static strategies should be identical"
 
     # TitForTat will be different because it responds to different RandomWalk trajectories
-    assert trajectories1[1] != trajectories2[1], (
-        "TitForTat strategies should differ due to different RandomWalk inputs"
-    )
+    assert (
+        trajectories1[1] != trajectories2[1]
+    ), "TitForTat strategies should differ due to different RandomWalk inputs"
 
     # RandomWalk should be different due to different seeds
-    assert trajectories1[2] != trajectories2[2], (
-        "RandomWalk strategies should differ with different seeds"
-    )
+    assert (
+        trajectories1[2] != trajectories2[2]
+    ), "RandomWalk strategies should differ with different seeds"
 
 
 def test_strategy_integration_mixed_bounds() -> None:
@@ -233,6 +233,6 @@ def test_strategy_integration_mixed_bounds() -> None:
 
     # Verify Static strategy respects bounds
     static_trajectory = trajectories[0]
-    assert all(action == 7.5 for action in static_trajectory), (
-        "Static strategy should maintain constant value"
-    )
+    assert all(
+        action == 7.5 for action in static_trajectory
+    ), "Static strategy should maintain constant value"

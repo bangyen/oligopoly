@@ -175,9 +175,9 @@ def test_delta_calculation_zero_difference(setup_database: None) -> None:
     ]:
         delta_values = deltas[metric_name]
         for delta in delta_values:
-            assert abs(delta) < 1e-6, (
-                f"Expected zero delta for {metric_name}, got {delta}"
-            )
+            assert (
+                abs(delta) < 1e-6
+            ), f"Expected zero delta for {metric_name}, got {delta}"
 
 
 def test_delta_calculation_bertrand_model(setup_database: None) -> None:
