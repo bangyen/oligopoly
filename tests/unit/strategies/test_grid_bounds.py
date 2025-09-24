@@ -36,9 +36,9 @@ class TestGridBounds:
             )
 
             # Action must be in the grid
-            assert action in action_grid, (
-                f"Action {action} not in grid {action_grid} at round {round_num}"
-            )
+            assert (
+                action in action_grid
+            ), f"Action {action} not in grid {action_grid} at round {round_num}"
 
     def test_actions_within_bounds(self) -> None:
         """Test that all actions are within the specified bounds."""
@@ -64,9 +64,9 @@ class TestGridBounds:
             )
 
             # Action must be within bounds
-            assert min_action <= action <= max_action, (
-                f"Action {action} outside bounds [{min_action}, {max_action}] at round {round_num}"
-            )
+            assert (
+                min_action <= action <= max_action
+            ), f"Action {action} outside bounds [{min_action}, {max_action}] at round {round_num}"
 
     def test_q_values_no_nans(self) -> None:
         """Test that Q-values never contain NaN values."""
@@ -98,9 +98,9 @@ class TestGridBounds:
             # Check Q-values after action
             q_values = strategy.get_q_values()
             for i, q_val in enumerate(q_values):
-                assert not math.isnan(q_val), (
-                    f"Q-value {i} is NaN after action at round {round_num}"
-                )
+                assert not math.isnan(
+                    q_val
+                ), f"Q-value {i} is NaN after action at round {round_num}"
 
     def test_q_values_finite(self) -> None:
         """Test that Q-values are always finite (not infinite)."""
@@ -118,9 +118,9 @@ class TestGridBounds:
             # Check Q-values are finite
             q_values = strategy.get_q_values()
             for i, q_val in enumerate(q_values):
-                assert math.isfinite(q_val), (
-                    f"Q-value {i} is not finite at round {round_num}: {q_val}"
-                )
+                assert math.isfinite(
+                    q_val
+                ), f"Q-value {i} is not finite at round {round_num}: {q_val}"
 
             # Choose action (not used, just to trigger Q-value checks)
             strategy.next_action(
@@ -158,9 +158,9 @@ class TestGridBounds:
         # All actions should be spaced by step_size
         for i in range(1, len(action_grid)):
             diff = action_grid[i] - action_grid[i - 1]
-            assert abs(diff - step_size) < 1e-10, (
-                f"Step size incorrect: {diff} != {step_size}"
-            )
+            assert (
+                abs(diff - step_size) < 1e-10
+            ), f"Step size incorrect: {diff} != {step_size}"
 
         # All actions should be within bounds
         for action in action_grid:
@@ -189,9 +189,9 @@ class TestGridBounds:
 
             # Grid should have reasonable size
             assert len(action_grid) > 0, "Grid should not be empty"
-            assert len(action_grid) <= (max_action - min_action) / step_size + 2, (
-                "Grid should not be too large"
-            )
+            assert (
+                len(action_grid) <= (max_action - min_action) / step_size + 2
+            ), "Grid should not be too large"
 
             # All actions should be valid
             for action in action_grid:
@@ -223,9 +223,9 @@ class TestGridBounds:
             )
 
             # Action should be clamped to tight bounds
-            assert tight_bounds[0] <= action <= tight_bounds[1], (
-                f"Action {action} not clamped to bounds {tight_bounds}"
-            )
+            assert (
+                tight_bounds[0] <= action <= tight_bounds[1]
+            ), f"Action {action} not clamped to bounds {tight_bounds}"
 
     def test_q_values_initialization(self) -> None:
         """Test that Q-values are properly initialized."""
@@ -265,9 +265,9 @@ class TestGridBounds:
         # Test mapping for each action in grid
         for i, action in enumerate(action_grid):
             mapped_index = strategy._get_action_index(action)
-            assert mapped_index == i, (
-                f"Action {action} mapped to index {mapped_index}, expected {i}"
-            )
+            assert (
+                mapped_index == i
+            ), f"Action {action} mapped to index {mapped_index}, expected {i}"
 
         # Test mapping for actions not exactly in grid
         test_actions = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
@@ -279,6 +279,6 @@ class TestGridBounds:
             min_distance = min(distances)
             actual_distance = abs(action - closest_action)
 
-            assert actual_distance <= min_distance + 1e-10, (
-                f"Action {action} not mapped to closest grid action"
-            )
+            assert (
+                actual_distance <= min_distance + 1e-10
+            ), f"Action {action} not mapped to closest grid action"

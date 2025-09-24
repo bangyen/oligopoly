@@ -53,9 +53,9 @@ def test_price_cap_cournot_cap_applied() -> None:
     for i, (actual, expected) in enumerate(
         zip(capped_result.profits, expected_profits)
     ):
-        assert math.isclose(actual, expected, abs_tol=1e-6), (
-            f"Firm {i}: expected {expected}, got {actual}"
-        )
+        assert math.isclose(
+            actual, expected, abs_tol=1e-6
+        ), f"Firm {i}: expected {expected}, got {actual}"
 
 
 def test_price_cap_cournot_exact_cap() -> None:
@@ -116,9 +116,9 @@ def test_price_cap_bertrand_cap_applied() -> None:
     for i, (actual, expected) in enumerate(
         zip(capped_result.profits, expected_profits)
     ):
-        assert math.isclose(actual, expected, abs_tol=1e-6), (
-            f"Firm {i}: expected {expected}, got {actual}"
-        )
+        assert math.isclose(
+            actual, expected, abs_tol=1e-6
+        ), f"Firm {i}: expected {expected}, got {actual}"
 
 
 def test_price_cap_negative_cap() -> None:
@@ -149,9 +149,9 @@ def test_price_cap_zero_cap() -> None:
     for i, (actual, expected) in enumerate(
         zip(capped_result.profits, expected_profits)
     ):
-        assert math.isclose(actual, expected, abs_tol=1e-6), (
-            f"Firm {i}: expected {expected}, got {actual}"
-        )
+        assert math.isclose(
+            actual, expected, abs_tol=1e-6
+        ), f"Firm {i}: expected {expected}, got {actual}"
 
 
 def test_price_cap_unsupported_result_type() -> None:

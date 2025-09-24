@@ -296,9 +296,7 @@ def calculate_metrics_for_run(run_data: Dict[str, Any]) -> pd.DataFrame:
                 "market_price": (
                     market_price
                     if model == "cournot"
-                    else min(prices)
-                    if prices
-                    else 0.0
+                    else min(prices) if prices else 0.0
                 ),
                 "total_quantity": sum(quantities),
                 "total_profit": sum(profits),

@@ -30,9 +30,9 @@ def test_q_init_random_actions() -> None:
     expected_actions = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
     actual_actions = q_learning.get_action_grid()
 
-    assert actual_actions == expected_actions, (
-        f"Expected {expected_actions}, got {actual_actions}"
-    )
+    assert (
+        actual_actions == expected_actions
+    ), f"Expected {expected_actions}, got {actual_actions}"
 
     # Test multiple actions to verify randomness
     actions_chosen: List[float] = []
@@ -52,27 +52,27 @@ def test_q_init_random_actions() -> None:
 
     # Verify all actions are from the grid
     for action in actions_chosen:
-        assert action in expected_actions, (
-            f"Action {action} not in expected grid {expected_actions}"
-        )
+        assert (
+            action in expected_actions
+        ), f"Action {action} not in expected grid {expected_actions}"
 
     # Verify we get a reasonable distribution (not all the same action)
     action_counts = Counter(actions_chosen)
     unique_actions = len(action_counts)
 
     # With 100 samples and 11 possible actions, we should see multiple different actions
-    assert unique_actions > 1, (
-        f"Expected multiple different actions, got only {unique_actions} unique actions"
-    )
+    assert (
+        unique_actions > 1
+    ), f"Expected multiple different actions, got only {unique_actions} unique actions"
 
     # Verify epsilon has decayed from 100 iterations (should be less than 1.0)
     current_epsilon = q_learning.get_current_epsilon()
-    assert current_epsilon < 1.0, (
-        f"Expected epsilon < 1.0 after 100 iterations, got {current_epsilon}"
-    )
-    assert current_epsilon >= q_learning.epsilon_min, (
-        f"Expected epsilon >= epsilon_min ({q_learning.epsilon_min}), got {current_epsilon}"
-    )
+    assert (
+        current_epsilon < 1.0
+    ), f"Expected epsilon < 1.0 after 100 iterations, got {current_epsilon}"
+    assert (
+        current_epsilon >= q_learning.epsilon_min
+    ), f"Expected epsilon >= epsilon_min ({q_learning.epsilon_min}), got {current_epsilon}"
 
 
 def test_q_init_with_history() -> None:
@@ -112,16 +112,16 @@ def test_q_init_with_history() -> None:
 
     # Verify all actions are from the grid
     for action in actions_chosen:
-        assert action in expected_actions, (
-            f"Action {action} not in expected grid {expected_actions}"
-        )
+        assert (
+            action in expected_actions
+        ), f"Action {action} not in expected grid {expected_actions}"
 
     # Verify randomness (should see multiple different actions)
     action_counts = Counter(actions_chosen)
     unique_actions = len(action_counts)
-    assert unique_actions > 1, (
-        f"Expected multiple different actions, got only {unique_actions} unique actions"
-    )
+    assert (
+        unique_actions > 1
+    ), f"Expected multiple different actions, got only {unique_actions} unique actions"
 
 
 def test_q_init_epsilon_verification() -> None:

@@ -124,9 +124,9 @@ class TestDemoOutcomes:
         post_avg_price = sum(post_entry_prices) / len(post_entry_prices)
 
         # Price should decrease after entry (more competition)
-        assert post_avg_price < pre_avg_price, (
-            f"Price should decrease after entry: {pre_avg_price:.2f} -> {post_avg_price:.2f}"
-        )
+        assert (
+            post_avg_price < pre_avg_price
+        ), f"Price should decrease after entry: {pre_avg_price:.2f} -> {post_avg_price:.2f}"
 
         # The decrease should be meaningful (at least 1%)
         price_decrease = (pre_avg_price - post_avg_price) / pre_avg_price
@@ -212,9 +212,9 @@ class TestDemoOutcomes:
         post_avg_hhi = sum(post_entry_hhi) / len(post_entry_hhi)
 
         # HHI should decrease after entry (less concentration)
-        assert post_avg_hhi < pre_avg_hhi, (
-            f"HHI should decrease after entry: {pre_avg_hhi:.0f} -> {post_avg_hhi:.0f}"
-        )
+        assert (
+            post_avg_hhi < pre_avg_hhi
+        ), f"HHI should decrease after entry: {pre_avg_hhi:.0f} -> {post_avg_hhi:.0f}"
 
         # The decrease should be meaningful
         hhi_decrease = (pre_avg_hhi - post_avg_hhi) / pre_avg_hhi
@@ -308,15 +308,15 @@ class TestDemoOutcomes:
         post_avg_cs = sum(post_entry_cs) / len(post_entry_cs)
 
         # Consumer surplus should increase after entry (lower prices)
-        assert post_avg_cs > pre_avg_cs, (
-            f"Consumer surplus should increase after entry: {pre_avg_cs:.2f} -> {post_avg_cs:.2f}"
-        )
+        assert (
+            post_avg_cs > pre_avg_cs
+        ), f"Consumer surplus should increase after entry: {pre_avg_cs:.2f} -> {post_avg_cs:.2f}"
 
         # The increase should be meaningful
         cs_increase = (post_avg_cs - pre_avg_cs) / pre_avg_cs
-        assert cs_increase > 0.01, (
-            f"Consumer surplus increase too small: {cs_increase:.3f}"
-        )
+        assert (
+            cs_increase > 0.01
+        ), f"Consumer surplus increase too small: {cs_increase:.3f}"
 
     def test_epsilon_greedy_learning_progress(self, db_session) -> None:
         """Test that ε-greedy agents show learning progress."""
@@ -349,21 +349,21 @@ class TestDemoOutcomes:
         )
 
         # Check that epsilon decayed
-        assert strategy.get_current_epsilon() < strategy.epsilon_0, (
-            "Epsilon should have decayed from initial value"
-        )
+        assert (
+            strategy.get_current_epsilon() < strategy.epsilon_0
+        ), "Epsilon should have decayed from initial value"
 
         # Check that epsilon reached minimum
-        assert strategy.get_current_epsilon() >= strategy.epsilon_min, (
-            "Epsilon should not go below minimum"
-        )
+        assert (
+            strategy.get_current_epsilon() >= strategy.epsilon_min
+        ), "Epsilon should not go below minimum"
 
         # Check that Q-values are not all zero (some learning occurred)
         q_values = strategy.get_q_values()
         non_zero_q_values = [q for q in q_values if abs(q) > 1e-6]
-        assert len(non_zero_q_values) > 0, (
-            "Some Q-values should be non-zero after learning"
-        )
+        assert (
+            len(non_zero_q_values) > 0
+        ), "Some Q-values should be non-zero after learning"
 
         # Check that actions are from grid
         results = get_strategy_run_results(run_id, db_session)
@@ -372,9 +372,9 @@ class TestDemoOutcomes:
         for round_idx in range(20):
             round_data = results["results"][round_idx]
             action = round_data[0]["action"]
-            assert action in action_grid, (
-                f"Action {action} not in grid at round {round_idx}"
-            )
+            assert (
+                action in action_grid
+            ), f"Action {action} not in grid at round {round_idx}"
 
     def test_multiple_firms_independent_learning(self, db_session) -> None:
         """Test that multiple ε-greedy firms learn independently."""
@@ -415,16 +415,16 @@ class TestDemoOutcomes:
         # Check that all firms learned independently
         for i, strategy in enumerate(strategies):
             # Each firm should have decayed epsilon
-            assert strategy.get_current_epsilon() < strategy.epsilon_0, (
-                f"Firm {i} epsilon should have decayed"
-            )
+            assert (
+                strategy.get_current_epsilon() < strategy.epsilon_0
+            ), f"Firm {i} epsilon should have decayed"
 
             # Each firm should have some non-zero Q-values
             q_values = strategy.get_q_values()
             non_zero_q_values = [q for q in q_values if abs(q) > 1e-6]
-            assert len(non_zero_q_values) > 0, (
-                f"Firm {i} should have learned some Q-values"
-            )
+            assert (
+                len(non_zero_q_values) > 0
+            ), f"Firm {i} should have learned some Q-values"
 
             # Actions should be from grid
             action_grid = strategy.get_action_grid()
@@ -433,9 +433,9 @@ class TestDemoOutcomes:
             for round_idx in range(15):
                 round_data = results["results"][round_idx]
                 action = round_data[i]["action"]
-                assert action in action_grid, (
-                    f"Firm {i} action {action} not in grid at round {round_idx}"
-                )
+                assert (
+                    action in action_grid
+                ), f"Firm {i} action {action} not in grid at round {round_idx}"
 
         # Check that firms have different final Q-values (due to different experiences)
         q_values_0 = strategies[0].get_q_values()

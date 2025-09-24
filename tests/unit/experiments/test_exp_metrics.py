@@ -124,9 +124,9 @@ def test_metrics_values_are_reasonable(temp_db, temp_artifacts_dir):
 
     # Price should be positive and reasonable for demand curve a=100, b=1
     assert avg_price > 0, f"Average price should be positive, got {avg_price}"
-    assert avg_price < 100, (
-        f"Average price should be less than demand intercept, got {avg_price}"
-    )
+    assert (
+        avg_price < 100
+    ), f"Average price should be less than demand intercept, got {avg_price}"
 
     # HHI should be between 0 and 1 (or 0 and 10000 in percentage terms)
     assert 0 <= avg_hhi <= 1, f"HHI should be between 0 and 1, got {avg_hhi}"
@@ -135,18 +135,18 @@ def test_metrics_values_are_reasonable(temp_db, temp_artifacts_dir):
     assert avg_cs >= 0, f"Consumer surplus should be non-negative, got {avg_cs}"
 
     # Profits should be reasonable (could be negative if costs are high)
-    assert isinstance(total_profit, (int, float)), (
-        f"Total profit should be numeric, got {total_profit}"
-    )
-    assert isinstance(mean_profit_per_firm, (int, float)), (
-        f"Mean profit per firm should be numeric, got {mean_profit_per_firm}"
-    )
+    assert isinstance(
+        total_profit, (int, float)
+    ), f"Total profit should be numeric, got {total_profit}"
+    assert isinstance(
+        mean_profit_per_firm, (int, float)
+    ), f"Mean profit per firm should be numeric, got {mean_profit_per_firm}"
 
     # Mean profit per firm should equal total profit / number of firms
     expected_mean = total_profit / 2  # 2 firms
-    assert math.isclose(mean_profit_per_firm, expected_mean, abs_tol=1e-6), (
-        f"Mean profit per firm should equal total_profit/num_firms: {mean_profit_per_firm} vs {expected_mean}"
-    )
+    assert math.isclose(
+        mean_profit_per_firm, expected_mean, abs_tol=1e-6
+    ), f"Mean profit per firm should equal total_profit/num_firms: {mean_profit_per_firm} vs {expected_mean}"
 
 
 def test_bertrand_vs_cournot_metrics_differ(temp_db, temp_artifacts_dir):
@@ -192,14 +192,14 @@ def test_bertrand_vs_cournot_metrics_differ(temp_db, temp_artifacts_dir):
     bertrand_hhi = float(bertrand_result["avg_hhi"])
 
     # Prices should be different (Bertrand typically has lower prices)
-    assert not math.isclose(cournot_price, bertrand_price, abs_tol=1e-6), (
-        f"Cournot and Bertrand prices should differ: {cournot_price} vs {bertrand_price}"
-    )
+    assert not math.isclose(
+        cournot_price, bertrand_price, abs_tol=1e-6
+    ), f"Cournot and Bertrand prices should differ: {cournot_price} vs {bertrand_price}"
 
     # HHI values should also differ
-    assert not math.isclose(cournot_hhi, bertrand_hhi, abs_tol=1e-6), (
-        f"Cournot and Bertrand HHI should differ: {cournot_hhi} vs {bertrand_hhi}"
-    )
+    assert not math.isclose(
+        cournot_hhi, bertrand_hhi, abs_tol=1e-6
+    ), f"Cournot and Bertrand HHI should differ: {cournot_hhi} vs {bertrand_hhi}"
 
 
 def test_firm_specific_profits_sum_to_total(temp_db, temp_artifacts_dir):
@@ -236,9 +236,9 @@ def test_firm_specific_profits_sum_to_total(temp_db, temp_artifacts_dir):
     sum_firm_profits = sum(firm_profits)
     total_profit = float(result["total_profit"])
 
-    assert math.isclose(sum_firm_profits, total_profit, abs_tol=1e-6), (
-        f"Sum of firm profits ({sum_firm_profits}) should equal total profit ({total_profit})"
-    )
+    assert math.isclose(
+        sum_firm_profits, total_profit, abs_tol=1e-6
+    ), f"Sum of firm profits ({sum_firm_profits}) should equal total profit ({total_profit})"
 
 
 def test_segmented_demand_metrics(temp_db, temp_artifacts_dir):
@@ -275,15 +275,15 @@ def test_segmented_demand_metrics(temp_db, temp_artifacts_dir):
     avg_cs = float(result["avg_cs"])
 
     # All metrics should be reasonable
-    assert avg_price > 0, (
-        f"Average price should be positive for segmented demand, got {avg_price}"
-    )
-    assert 0 <= avg_hhi <= 1, (
-        f"HHI should be between 0 and 1 for segmented demand, got {avg_hhi}"
-    )
-    assert avg_cs >= 0, (
-        f"Consumer surplus should be non-negative for segmented demand, got {avg_cs}"
-    )
+    assert (
+        avg_price > 0
+    ), f"Average price should be positive for segmented demand, got {avg_price}"
+    assert (
+        0 <= avg_hhi <= 1
+    ), f"HHI should be between 0 and 1 for segmented demand, got {avg_hhi}"
+    assert (
+        avg_cs >= 0
+    ), f"Consumer surplus should be non-negative for segmented demand, got {avg_cs}"
 
 
 def test_policy_events_affect_metrics(temp_db, temp_artifacts_dir):
@@ -328,9 +328,9 @@ def test_policy_events_affect_metrics(temp_db, temp_artifacts_dir):
     baseline_profit = float(baseline_result["total_profit"])
     tax_profit = float(tax_result["total_profit"])
 
-    assert tax_profit < baseline_profit, (
-        f"Tax policy should reduce profits: baseline {baseline_profit} vs taxed {tax_profit}"
-    )
+    assert (
+        tax_profit < baseline_profit
+    ), f"Tax policy should reduce profits: baseline {baseline_profit} vs taxed {tax_profit}"
 
     # Prices might also be affected, but the adaptive strategy might make them similar
     baseline_price = float(baseline_result["avg_price"])

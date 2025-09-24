@@ -93,17 +93,17 @@ def test_repro_seed_identical_sequences() -> None:
         sequence2.append(action2_2)
 
     # Verify sequences are identical
-    assert len(sequence1) == len(sequence2), (
-        f"Sequences should have same length: {len(sequence1)} vs {len(sequence2)}"
-    )
+    assert len(sequence1) == len(
+        sequence2
+    ), f"Sequences should have same length: {len(sequence1)} vs {len(sequence2)}"
 
     for i, (action1, action2) in enumerate(zip(sequence1, sequence2)):
         assert action1 == action2, f"Action {i} differs: {action1} vs {action2}"
 
     # Verify epsilon values are also identical
-    assert q_learning1.get_current_epsilon() == q_learning2.get_current_epsilon(), (
-        f"Epsilon values differ: {q_learning1.get_current_epsilon()} vs {q_learning2.get_current_epsilon()}"
-    )
+    assert (
+        q_learning1.get_current_epsilon() == q_learning2.get_current_epsilon()
+    ), f"Epsilon values differ: {q_learning1.get_current_epsilon()} vs {q_learning2.get_current_epsilon()}"
 
 
 def test_repro_seed_different_seeds() -> None:
@@ -255,9 +255,9 @@ def test_repro_seed_multiple_runs() -> None:
 
     reference_sequence = all_sequences[0]
     for i, sequence in enumerate(all_sequences[1:], 1):
-        assert sequence == reference_sequence, (
-            f"Run {i} differs from reference sequence"
-        )
+        assert (
+            sequence == reference_sequence
+        ), f"Run {i} differs from reference sequence"
 
 
 def test_repro_seed_q_table_consistency() -> None:
@@ -415,9 +415,9 @@ def test_repro_seed_no_seed_vs_seed() -> None:
             pass  # Acceptable if both are exploiting
         else:
             # In exploration phase, sequences should differ
-            assert not sequences_identical, (
-                "Sequences should differ between no seed and fixed seed"
-            )
+            assert (
+                not sequences_identical
+            ), "Sequences should differ between no seed and fixed seed"
 
 
 if __name__ == "__main__":
