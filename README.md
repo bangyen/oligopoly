@@ -45,18 +45,18 @@ Or open in Colab: [Colab Notebook](https://colab.research.google.com/github/bang
 
 ```plaintext
 oligopoly/
-├── notebooks/           # Jupyter notebooks (oligopoly_demo.ipynb)
-├── scripts/            # Demo and utility scripts
-├── tests/              # Unit/integration tests (79% coverage)
-├── docs/               # Images and documentation
-├── experiments/        # Batch experiment configurations
-└── src/                # Core implementation
-    ├── sim/            # Simulation engine
-    │   ├── games/      # Cournot & Bertrand models
-    │   ├── strategies/ # Learning algorithms
-    │   ├── policy/     # Tax/subsidy interventions
-    │   └── heatmap/    # Profit surface visualization
-    └── main.py         # FastAPI application
+├── oligopoly_demo.ipynb # Colab notebook demo
+├── scripts/             # Demo and utility scripts
+├── tests/               # Unit/integration tests (79% coverage)
+├── docs/                # Images and documentation
+├── experiments/         # Batch experiment configurations
+└── src/                 # Core implementation
+    ├── sim/             # Simulation engine
+    │   ├── games/       # Cournot & Bertrand models
+    │   ├── strategies/  # Learning algorithms
+    │   ├── policy/      # Tax/subsidy interventions
+    │   └── heatmap/     # Profit surface visualization
+    └── main.py          # FastAPI application
 ```
 
 ## Validation
