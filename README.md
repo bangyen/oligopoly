@@ -75,9 +75,9 @@ oligopoly/
 
 ## References
 
-- Cournot, A. (1838). *Recherches sur les principes mathématiques de la théorie des richesses*
-- Bertrand, J. (1883). *Théorie mathématique de la richesse sociale*
-- Nash, J. (1950). *Equilibrium points in n-person games*
+- Cournot, A. (1838). *[Recherches sur les principes mathématiques de la théorie des richesses](https://gallica.bnf.fr/ark:/12148/bpt6k6117257c)*
+- Bertrand, J. (1883). *[Théorie mathématique de la richesse sociale](https://en.wikipedia.org/wiki/Bertrand_competition)*
+- Nash, J. (1950). *[Equilibrium points in n-person games](https://www.pnas.org/doi/10.1073/pnas.36.1.48)*
 
 ## License
 
