@@ -205,8 +205,8 @@ class TestHeatmapAPI:
 
         response = client.post("/heatmap", json=request_data)
         assert (
-            response.status_code == 500
-        ), f"Expected 500 for invalid firm index, got {response.status_code}"
+            response.status_code == 400
+        ), f"Expected 400 for invalid firm index, got {response.status_code}"
 
         # Test missing parameters
         request_data = {
@@ -222,8 +222,8 @@ class TestHeatmapAPI:
 
         response = client.post("/heatmap", json=request_data)
         assert (
-            response.status_code == 500
-        ), f"Expected 500 for missing parameters, got {response.status_code}"
+            response.status_code == 400
+        ), f"Expected 400 for missing parameters, got {response.status_code}"
 
     def test_heatmap_api_bertrand_market_share(self):
         """Test that Bertrand API returns market share surface."""
