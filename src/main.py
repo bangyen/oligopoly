@@ -752,6 +752,9 @@ async def compare_scenarios(
 
         return ComparisonResponse(left_run_id=left_run_id, right_run_id=right_run_id)
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like validation errors) as-is
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -823,6 +826,9 @@ async def get_comparison_results(
             deltas=deltas,
         )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like validation errors) as-is
+        raise
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -1227,6 +1233,9 @@ async def compute_heatmap(request: HeatmapRequest) -> HeatmapResponse:
             computation_time_ms=computation_time_ms,
         )
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like validation errors) as-is
+        raise
     except ValueError as e:
         # Check if it's a validation error (starts with error code)
         error_msg = str(e)

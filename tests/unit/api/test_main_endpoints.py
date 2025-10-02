@@ -426,3 +426,684 @@ class TestErrorHandling:
 
                 assert response.status_code == 500
                 assert "Unexpected error" in response.json()["detail"]
+
+
+class TestDifferentiatedBertrandEndpoint:
+    """Test differentiated Bertrand endpoint."""
+
+    def test_differentiated_bertrand_endpoint(self):
+        """Test differentiated Bertrand endpoint."""
+        with TestClient(app) as client:
+            simulation_data = {
+                "model": "cournot",  # Model doesn't matter for this endpoint
+                "rounds": 1,
+                "firms": [
+                    {"cost": 10.0, "strategy": "nash"},
+                    {"cost": 12.0, "strategy": "nash"},
+                ],
+                "params": {
+                    "demand_model": "logit",
+                    "demand_params": {},
+                    "total_market_size": 100.0,
+                },
+            }
+
+            with patch("src.main.get_db") as mock_get_db:
+                mock_db = Mock()
+                mock_get_db.return_value = mock_db
+
+                # Mock the database operations
+                mock_run = Mock()
+                mock_run.id = 1
+                mock_db.add.return_value = None
+                mock_db.flush.return_value = None
+
+                with patch(
+                    "src.main.calculate_differentiated_nash_equilibrium"
+                ) as mock_calc:
+                    mock_calc.return_value = ([50.0, 52.0], {"equilibrium": True})
+
+                    # Override the dependency
+                    app.dependency_overrides[get_db] = lambda: mock_db
+                    try:
+                        response = client.post(
+                            "/differentiated-bertrand", json=simulation_data
+                        )
+
+                        assert response.status_code == 200
+                        data = response.json()
+                        assert "run_id" in data
+                    finally:
+                        app.dependency_overrides.clear()
+
+    def test_differentiated_bertrand_endpoint_error(self):
+        """Test differentiated Bertrand endpoint with error."""
+        with TestClient(app) as client:
+            simulation_data = {
+                "model": "cournot",
+                "rounds": 1,
+                "firms": [{"cost": 10.0, "strategy": "nash"}],
+                "params": {"demand_model": "invalid"},
+            }
+
+            with patch(
+                "src.main.calculate_differentiated_nash_equilibrium"
+            ) as mock_calc:
+                mock_calc.side_effect = ValueError("Invalid demand model")
+
+                response = client.post("/differentiated-bertrand", json=simulation_data)
+
+                assert response.status_code == 400
+                assert "Invalid demand model" in response.json()["detail"]
+
+
+class TestCompareEndpoints:
+    """Test comparison endpoints."""
+
+    def test_compare_scenarios_endpoint(self):
+        """Test compare scenarios endpoint."""
+        with TestClient(app) as client:
+            comparison_data = {
+                "left_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 10.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 42,
+                    "events": [],
+                },
+                "right_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 12.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 43,
+                    "events": [],
+                },
+            }
+
+            with patch("src.main.get_db") as mock_get_db:
+                mock_db = Mock()
+                mock_get_db.return_value = mock_db
+
+                with patch("src.main.run_game") as mock_run_game:
+                    mock_run_game.side_effect = ["run_1", "run_2"]
+
+                    # Override the dependency
+                    app.dependency_overrides[get_db] = lambda: mock_db
+                    try:
+                        response = client.post("/compare", json=comparison_data)
+
+                        assert response.status_code == 200
+                        data = response.json()
+                        assert "left_run_id" in data
+                        assert "right_run_id" in data
+                    finally:
+                        app.dependency_overrides.clear()
+
+    def test_compare_scenarios_different_rounds(self):
+        """Test compare scenarios with different rounds."""
+        with TestClient(app) as client:
+            comparison_data = {
+                "left_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 10.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 42,
+                    "events": [],
+                },
+                "right_config": {
+                    "model": "cournot",
+                    "rounds": 20,  # Different number of rounds
+                    "firms": [{"cost": 12.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 43,
+                    "events": [],
+                },
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/compare", json=comparison_data)
+
+                assert response.status_code == 400
+                assert "same number of rounds" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_compare_scenarios_with_segments(self):
+        """Test compare scenarios with segments."""
+        with TestClient(app) as client:
+            comparison_data = {
+                "left_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 10.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 42,
+                    "events": [],
+                    "segments": [
+                        {"alpha": 100.0, "beta": 1.0, "weight": 0.6},
+                        {"alpha": 80.0, "beta": 1.2, "weight": 0.4},
+                    ],
+                },
+                "right_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 12.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 43,
+                    "events": [],
+                },
+            }
+
+            with patch("src.main.get_db") as mock_get_db:
+                mock_db = Mock()
+                mock_get_db.return_value = mock_db
+
+                with patch("src.main.run_game") as mock_run_game:
+                    mock_run_game.side_effect = ["run_1", "run_2"]
+
+                    # Override the dependency
+                    app.dependency_overrides[get_db] = lambda: mock_db
+                    try:
+                        response = client.post("/compare", json=comparison_data)
+
+                        assert response.status_code == 200
+                    finally:
+                        app.dependency_overrides.clear()
+
+    def test_compare_scenarios_invalid_segments(self):
+        """Test compare scenarios with invalid segment weights."""
+        with TestClient(app) as client:
+            comparison_data = {
+                "left_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 10.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 42,
+                    "events": [],
+                    "segments": [
+                        {"alpha": 100.0, "beta": 1.0, "weight": 0.6},
+                        {
+                            "alpha": 80.0,
+                            "beta": 1.2,
+                            "weight": 0.3,
+                        },  # Sums to 0.9, not 1.0
+                    ],
+                },
+                "right_config": {
+                    "model": "cournot",
+                    "rounds": 10,
+                    "firms": [{"cost": 12.0}],
+                    "params": {"a": 100.0, "b": 1.0},
+                    "seed": 43,
+                    "events": [],
+                },
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/compare", json=comparison_data)
+
+                assert response.status_code == 400
+                assert "sum to 1.0" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_get_comparison_results_endpoint(self):
+        """Test get comparison results endpoint."""
+        with TestClient(app) as client:
+            with patch("src.main.get_run_results") as mock_get_run_results:
+                # Mock results for both runs
+                mock_left_results = {
+                    "id": "run_1",
+                    "model": "cournot",
+                    "rounds": 10,
+                    "results": {
+                        "0": {
+                            "firm_0": {"price": 50.0, "quantity": 20.0, "profit": 800.0}
+                        },
+                        "1": {
+                            "firm_0": {"price": 51.0, "quantity": 19.0, "profit": 779.0}
+                        },
+                    },
+                }
+                mock_right_results = {
+                    "id": "run_2",
+                    "model": "cournot",
+                    "rounds": 10,
+                    "results": {
+                        "0": {
+                            "firm_0": {"price": 52.0, "quantity": 18.0, "profit": 756.0}
+                        },
+                        "1": {
+                            "firm_0": {"price": 53.0, "quantity": 17.0, "profit": 731.0}
+                        },
+                    },
+                }
+
+                mock_get_run_results.side_effect = [
+                    mock_left_results,
+                    mock_right_results,
+                ]
+
+                # Override the dependency
+                mock_db = Mock()
+                app.dependency_overrides[get_db] = lambda: mock_db
+                try:
+                    response = client.get("/compare/run_1/run_2")
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert "left_run_id" in data
+                    assert "right_run_id" in data
+                    assert "left_metrics" in data
+                    assert "right_metrics" in data
+                    assert "deltas" in data
+                finally:
+                    app.dependency_overrides.clear()
+
+    def test_get_comparison_results_different_rounds(self):
+        """Test get comparison results with different number of rounds."""
+        with TestClient(app) as client:
+            with patch("src.main.get_run_results") as mock_get_run_results:
+                # Mock results with different number of rounds
+                mock_left_results = {
+                    "id": "run_1",
+                    "model": "cournot",
+                    "rounds": 10,
+                    "results": {
+                        "0": {
+                            "firm_0": {"price": 50.0, "quantity": 20.0, "profit": 800.0}
+                        }
+                    },
+                }
+                mock_right_results = {
+                    "id": "run_2",
+                    "model": "cournot",
+                    "rounds": 20,  # Different number of rounds
+                    "results": {
+                        "0": {
+                            "firm_0": {"price": 52.0, "quantity": 18.0, "profit": 756.0}
+                        }
+                    },
+                }
+
+                mock_get_run_results.side_effect = [
+                    mock_left_results,
+                    mock_right_results,
+                ]
+
+                # Override the dependency
+                mock_db = Mock()
+                app.dependency_overrides[get_db] = lambda: mock_db
+                try:
+                    response = client.get("/compare/run_1/run_2")
+
+                    assert response.status_code == 400
+                    assert "same number of rounds" in response.json()["detail"]
+                finally:
+                    app.dependency_overrides.clear()
+
+
+class TestEventsEndpoint:
+    """Test events endpoint."""
+
+    def test_get_run_events_endpoint(self):
+        """Test get run events endpoint."""
+        with TestClient(app) as client:
+            with patch("src.main.get_db") as mock_get_db:
+                mock_db = Mock()
+                mock_get_db.return_value = mock_db
+
+                # Mock run exists
+                mock_run = Mock()
+                mock_run.id = "run_1"
+                mock_db.query.return_value.filter.return_value.first.return_value = (
+                    mock_run
+                )
+
+                # Mock events
+                mock_event = Mock()
+                mock_event.id = 1
+                mock_event.round_idx = 0
+                mock_event.event_type = "collusion"
+                mock_event.firm_id = 0
+                mock_event.description = "Test event"
+                mock_event.event_data = {"test": "data"}
+                mock_event.created_at.isoformat.return_value = "2023-01-01T00:00:00"
+
+                mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [
+                    mock_event
+                ]
+
+                # Override the dependency
+                app.dependency_overrides[get_db] = lambda: mock_db
+                try:
+                    response = client.get("/runs/run_1/events")
+
+                    assert response.status_code == 200
+                    data = response.json()
+                    assert "run_id" in data
+                    assert "total_events" in data
+                    assert "events" in data
+                    assert len(data["events"]) == 1
+                finally:
+                    app.dependency_overrides.clear()
+
+    def test_get_run_events_endpoint_not_found(self):
+        """Test get run events endpoint with non-existent run."""
+        with TestClient(app) as client:
+            with patch("src.main.get_db") as mock_get_db:
+                mock_db = Mock()
+                mock_get_db.return_value = mock_db
+
+                # Mock run doesn't exist
+                mock_db.query.return_value.filter.return_value.first.return_value = None
+
+                # Override the dependency
+                app.dependency_overrides[get_db] = lambda: mock_db
+                try:
+                    response = client.get("/runs/nonexistent/events")
+
+                    assert response.status_code == 404
+                    assert "not found" in response.json()["detail"]
+                finally:
+                    app.dependency_overrides.clear()
+
+
+class TestHeatmapEndpoint:
+    """Test heatmap endpoint."""
+
+    def test_heatmap_endpoint_cournot(self):
+        """Test heatmap endpoint for Cournot model."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [],
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            with patch("src.main.compute_cournot_heatmap") as mock_compute:
+                import numpy as np
+
+                mock_compute.return_value = (
+                    np.array([[100.0, 90.0], [90.0, 80.0]]),  # profit_matrix
+                    np.array([10.0, 20.0, 30.0, 40.0, 50.0]),  # action_i_grid
+                    np.array([10.0, 20.0, 30.0, 40.0, 50.0]),  # action_j_grid
+                )
+
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert "profit_surface" in data
+                assert "action_i_grid" in data
+                assert "action_j_grid" in data
+                assert "computation_time_ms" in data
+
+    def test_heatmap_endpoint_bertrand(self):
+        """Test heatmap endpoint for Bertrand model."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "bertrand",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [20.0, 60.0],
+                "other_actions": [],
+                "params": {"alpha": 200.0, "beta": 2.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            with patch("src.main.compute_bertrand_heatmap") as mock_compute:
+                import numpy as np
+
+                mock_compute.return_value = (
+                    np.array([[100.0, 90.0], [90.0, 80.0]]),  # profit_matrix
+                    np.array([[0.5, 0.4], [0.4, 0.3]]),  # market_share_matrix
+                    np.array([20.0, 30.0, 40.0, 50.0, 60.0]),  # action_i_grid
+                    np.array([20.0, 30.0, 40.0, 50.0, 60.0]),  # action_j_grid
+                )
+
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert "profit_surface" in data
+                assert "market_share_surface" in data
+                assert "action_i_grid" in data
+                assert "action_j_grid" in data
+
+    def test_heatmap_endpoint_invalid_firm_indices(self):
+        """Test heatmap endpoint with invalid firm indices."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 2,  # Invalid: only 2 firms (indices 0, 1)
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [],
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 400
+                assert "firm_i" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_heatmap_endpoint_same_firm_indices(self):
+        """Test heatmap endpoint with same firm indices."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 0,
+                "firm_j": 0,  # Same as firm_i
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [],
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 400
+                assert "must be different" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_heatmap_endpoint_invalid_other_actions_length(self):
+        """Test heatmap endpoint with invalid other_actions length."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [15.0, 25.0],  # Should be empty for 2 firms
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 400
+                assert "other_actions length" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_heatmap_endpoint_missing_cournot_params(self):
+        """Test heatmap endpoint with missing Cournot parameters."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [],
+                "params": {"a": 100.0},  # Missing 'b' parameter
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 400
+                assert "'a' and 'b' parameters" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_heatmap_endpoint_missing_bertrand_params(self):
+        """Test heatmap endpoint with missing Bertrand parameters."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "bertrand",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [20.0, 60.0],
+                "other_actions": [],
+                "params": {"alpha": 200.0},  # Missing 'beta' parameter
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            # Override the dependency
+            mock_db = Mock()
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 400
+                assert "'alpha' and 'beta' parameters" in response.json()["detail"]
+            finally:
+                app.dependency_overrides.clear()
+
+    def test_heatmap_endpoint_with_segments(self):
+        """Test heatmap endpoint with segmented demand."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [],
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+                "segments": [
+                    {"alpha": 100.0, "beta": 1.0, "weight": 0.6},
+                    {"alpha": 80.0, "beta": 1.2, "weight": 0.4},
+                ],
+            }
+
+            with patch("src.main.compute_cournot_segmented_heatmap") as mock_compute:
+                import numpy as np
+
+                mock_compute.return_value = (
+                    np.array([[100.0, 90.0], [90.0, 80.0]]),  # profit_matrix
+                    np.array([10.0, 20.0, 30.0, 40.0, 50.0]),  # action_i_grid
+                    np.array([10.0, 20.0, 30.0, 40.0, 50.0]),  # action_j_grid
+                )
+
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 200
+                data = response.json()
+                assert "profit_surface" in data
+
+    def test_heatmap_endpoint_computation_error(self):
+        """Test heatmap endpoint with computation error."""
+        with TestClient(app) as client:
+            heatmap_data = {
+                "model": "cournot",
+                "firm_i": 0,
+                "firm_j": 1,
+                "grid_size": 10,
+                "action_range": [10.0, 50.0],
+                "other_actions": [],
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [
+                    {"cost": 10.0, "fixed_cost": 0.0},
+                    {"cost": 12.0, "fixed_cost": 0.0},
+                ],
+            }
+
+            with patch("src.main.compute_cournot_heatmap") as mock_compute:
+                mock_compute.side_effect = ValueError("400: Invalid parameters")
+
+                response = client.post("/heatmap", json=heatmap_data)
+
+                assert response.status_code == 400
+                assert "Invalid parameters" in response.json()["detail"]
+
+
+class TestRootEndpoint:
+    """Test root endpoint."""
+
+    def test_root_endpoint(self):
+        """Test root endpoint."""
+        with TestClient(app) as client:
+            response = client.get("/")
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "message" in data
+            assert "oligopoly" in data["message"].lower()
