@@ -64,7 +64,7 @@ class TestComparisonDashboard:
     def test_comparison_tab_renders(self):
         """Test that the comparison tab renders without errors."""
         # This is a basic smoke test - in a real implementation,
-        # you would use streamlit testing frameworks
+        # you would use UI testing frameworks
         assert True  # Placeholder for actual UI testing
 
     def test_scenario_config_forms(self):

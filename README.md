@@ -37,7 +37,7 @@ Or open in Colab: [Colab Notebook](https://colab.research.google.com/github/bang
 - **Collusion Detection** — 98.5% accuracy in identifying cartel behavior with 5% tolerance threshold.  
 - **Policy Analysis** — Quantifies tax/subsidy effects with 1e-6 mathematical precision and measurable price impacts.  
 - **Learning Strategies** — 72.3% strategy adaptation rate with Q-learning and Fictitious Play algorithms.  
-- **Interactive Dashboard** — Real-time visualization with Streamlit and profit surface heatmaps.  
+- **Interactive Dashboard** — Real-time visualization with Flask and profit surface heatmaps.  
 - **REST API** — FastAPI with 460ms response time for simulation and analysis endpoints.  
 - **Batch Experiments** — Statistical analysis with CSV export and reproducible seed management.  
 
