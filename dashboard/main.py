@@ -77,6 +77,8 @@ def cournot_endpoint() -> Response:
                 bounds=bounds,
                 market_params={"a": a, "b": b},
             )
+            # Ensure quantity is within reasonable bounds
+            action = max(0.0, min(action, bounds[1]))
             actions.append(action)
 
         result = cournot_simulation(a, b, costs, actions)
@@ -104,16 +106,14 @@ def bertrand_endpoint() -> Response:
     Uses narrower price ranges and cost-aware bounds to create realistic
     competition without extreme outcomes or firms pricing below cost.
     """
-    alpha, beta = 100.0, 1.0
+    alpha, beta = 200.0, 1.0  # Large market to demonstrate capacity constraints
     costs = [20.0, 25.0, 30.0]
-    bounds = (0.0, 100.0)
-
-    starting_prices = [35.0, 38.0, 42.0]
+    bounds = (33.0, 40.0)  # Narrow bounds keep prices clustered
 
     strategies = [
-        Static(value=starting_prices[0]),
-        TitForTat(),
-        RandomWalk(step=1.5, min_bound=35.0, max_bound=50.0, seed=42),
+        Static(value=35.0),
+        TitForTat(),  # Starts at midpoint (33+40)/2 = 36.5
+        RandomWalk(step=0.8, min_bound=35.0, max_bound=39.0, seed=42),
     ]
 
     firm_histories: List[List[BertrandResult]] = [[] for _ in strategies]
@@ -137,6 +137,8 @@ def bertrand_endpoint() -> Response:
                 bounds=bounds,
                 market_params={"alpha": alpha, "beta": beta},
             )
+            # Enforce cost floor: never price below your own marginal cost
+            action = max(action, costs[firm_idx] * 1.1)
             actions.append(action)
 
         result = bertrand_simulation(alpha, beta, costs, actions)
