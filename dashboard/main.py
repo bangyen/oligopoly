@@ -60,7 +60,7 @@ def cournot_endpoint() -> Response:
     ]
 
     firm_histories: List[List[CournotResult]] = [[] for _ in strategies]
-    history: Dict[str, List[Any]] = {
+    history: Dict[str, Any] = {
         "quantities": [],
         "prices": [],
         "profits": [],
@@ -99,6 +99,33 @@ def cournot_endpoint() -> Response:
         history["prices"].append(result.price)
         history["profits"].append(result.profits)
 
+    # Calculate summary statistics (average of last 10 rounds)
+    last_10 = slice(-10, None)
+    avg_quantities = [
+        sum(
+            history["quantities"][i][j]
+            for i in range(len(history["quantities"][last_10]))
+        )
+        / 10
+        for j in range(len(costs))
+    ]
+    avg_profits = [
+        sum(history["profits"][i][j] for i in range(len(history["profits"][last_10])))
+        / 10
+        for j in range(len(costs))
+    ]
+    avg_price = sum(history["prices"][last_10]) / 10
+    total_q = sum(avg_quantities)
+    hhi = sum((q / total_q * 100) ** 2 for q in avg_quantities) if total_q > 0 else 0
+
+    history["summary"] = {
+        "avg_quantities": avg_quantities,
+        "avg_price": avg_price,
+        "avg_profits": avg_profits,
+        "total_surplus": sum(avg_profits),
+        "hhi": hhi,
+    }
+
     return jsonify(history)
 
 
@@ -122,7 +149,7 @@ def bertrand_endpoint() -> Response:
     ]
 
     firm_histories: List[List[BertrandResult]] = [[] for _ in strategies]
-    history: Dict[str, List[Any]] = {
+    history: Dict[str, Any] = {
         "prices": [],
         "quantities": [],
         "profits": [],
@@ -167,83 +194,26 @@ def bertrand_endpoint() -> Response:
 
 @app.route("/api/metrics")
 def metrics_endpoint() -> Response:
-    """Return aggregated market metrics from actual simulations.
+    """Return theoretical Nash equilibrium for comparison.
 
-    Runs a fresh Cournot simulation and returns average outcomes
-    across the last 10 rounds to show realized (not theoretical) metrics.
+    Pure game theory calculation with no simulation.
     """
     a, b = 100.0, 1.0
     costs = [20.0, 25.0, 30.0]
-    bounds = (0.0, 50.0)
     n = len(costs)
 
-    # Run a simulation to get actual outcomes
-    nash_quantities = [(a - costs[i]) / (b * (n + 1)) for i in range(n)]
-
-    strategies = [
-        Static(value=nash_quantities[0]),
-        TitForTat(),
-        RandomWalk(
-            step=2.0, min_bound=10.0, max_bound=30.0, seed=random.randint(1, 10000)
-        ),
-    ]
-
-    firm_histories: List[List[CournotResult]] = [[] for _ in strategies]
-
-    # Run 30 rounds and average the last 10 for stable metrics
-    for round_num in range(30):
-        actions = []
-        for firm_idx, strategy in enumerate(strategies):
-            rival_histories = [
-                firm_histories[i] for i in range(len(strategies)) if i != firm_idx
-            ]
-            action = strategy.next_action(
-                round_num=round_num,
-                my_history=firm_histories[firm_idx],
-                rival_histories=rival_histories,
-                bounds=bounds,
-                market_params={"a": a, "b": b},
-            )
-            action = max(0.0, min(action, bounds[1]))
-            actions.append(action)
-
-        result = cournot_simulation(a, b, costs, actions)
-
-        for firm_idx in range(len(strategies)):
-            firm_result = CournotResult(
-                price=result.price,
-                quantities=[result.quantities[firm_idx]],
-                profits=[result.profits[firm_idx]],
-            )
-            firm_histories[firm_idx].append(firm_result)
-
-    # Average over last 10 rounds for stable metrics
-    avg_quantities = [
-        sum(firm_histories[i][-10:][j].quantities[0] for j in range(10)) / 10
-        for i in range(n)
-    ]
-    avg_profits = [
-        sum(firm_histories[i][-10:][j].profits[0] for j in range(10)) / 10
-        for i in range(n)
-    ]
-    avg_price = (
-        sum(
-            a - b * sum(firm_histories[i][j].quantities[0] for i in range(n))
-            for j in range(-10, 0)
-        )
-        / 10
-    )
-
-    total_q = sum(avg_quantities)
-    hhi = sum((q / total_q * 100) ** 2 for q in avg_quantities) if total_q > 0 else 0
+    # Calculate theoretical Nash equilibrium
+    nash_q = [(a - costs[i]) / (b * (n + 1)) for i in range(n)]
+    total_q = sum(nash_q)
+    nash_price = max(0.0, a - b * total_q)
+    nash_profits = [(nash_price - costs[i]) * nash_q[i] for i in range(n)]
 
     return jsonify(
         {
-            "nash_quantities": avg_quantities,
-            "nash_price": avg_price,
-            "nash_profits": avg_profits,
-            "total_surplus": sum(avg_profits),
-            "hhi": hhi,
+            "nash_quantities": nash_q,
+            "nash_price": nash_price,
+            "nash_profits": nash_profits,
+            "total_surplus": sum(nash_profits),
         }
     )
 

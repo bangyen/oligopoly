@@ -184,31 +184,90 @@ function updateTimeSeriesChart(chartName, data, seriesType) {
 }
 
 function loadMetrics() {
-    fetch('/api/metrics')
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('hhi-value').textContent = data.hhi.toFixed(1);
-            document.getElementById('nash-price-value').textContent = data.nash_price.toFixed(2);
-            document.getElementById('surplus-value').textContent = data.total_surplus.toFixed(2);
+    Promise.all([
+        fetch('/api/metrics').then(r => r.json()),
+        fetch('/api/simulation/cournot').then(r => r.json())
+    ]).then(([theoretical, cournotData]) => {
+        const summary = cournotData.summary;
+        
+        document.getElementById('hhi-value').textContent = summary.hhi.toFixed(1);
+        document.getElementById('nash-price-value').textContent = summary.avg_price.toFixed(2);
+        document.getElementById('surplus-value').textContent = summary.total_surplus.toFixed(2);
+        
+        // Update comparison labels
+        const priceDeviation = ((summary.avg_price - theoretical.nash_price) / theoretical.nash_price * 100);
+        const surplusDeviation = ((summary.total_surplus - theoretical.total_surplus) / theoretical.total_surplus * 100);
             
-            charts.profit.data.datasets[0].data = data.nash_profits;
-            charts.profit.update();
-            
-            const totalQ = data.nash_quantities.reduce((a, b) => a + b, 0);
-            const shares = data.nash_quantities.map(q => (q / totalQ * 100));
-            charts.share.data.datasets[0].data = shares;
-            charts.share.update();
-            
-            const tbody = document.getElementById('metrics-table-body');
-            tbody.innerHTML = data.nash_quantities.map((q, i) => `
-                <tr>
-                    <td>Firm ${i + 1}</td>
-                    <td>${q.toFixed(2)}</td>
-                    <td>${data.nash_profits[i].toFixed(2)}</td>
-                    <td>${shares[i].toFixed(1)}%</td>
-                </tr>
-            `).join('');
-        });
+            document.getElementById('price-comparison').textContent = 
+                `${priceDeviation > 0 ? '+' : ''}${priceDeviation.toFixed(1)}% vs Nash`;
+            document.getElementById('price-comparison').className = 
+                priceDeviation > 5 ? 'metric-change' : priceDeviation < -5 ? 'metric-change positive' : 'metric-change neutral';
+                
+        document.getElementById('surplus-comparison').textContent = 
+            `${surplusDeviation > 0 ? '+' : ''}${surplusDeviation.toFixed(1)}% vs Nash`;
+        document.getElementById('surplus-comparison').className = 
+            surplusDeviation > 0 ? 'metric-change positive' : 'metric-change';
+        
+        charts.profit.data.datasets[0].data = summary.avg_profits;
+        charts.profit.update();
+        
+        const totalQ = summary.avg_quantities.reduce((a, b) => a + b, 0);
+        const shares = summary.avg_quantities.map(q => (q / totalQ * 100));
+        charts.share.data.datasets[0].data = shares;
+        charts.share.update();
+        
+        const tbody = document.getElementById('metrics-table-body');
+        tbody.innerHTML = summary.avg_quantities.map((q, i) => `
+            <tr>
+                <td>Firm ${i + 1}</td>
+                <td>${q.toFixed(2)}</td>
+                <td>${summary.avg_profits[i].toFixed(2)}</td>
+                <td>${shares[i].toFixed(1)}%</td>
+            </tr>
+        `).join('');
+        
+        // Populate comparison table
+        const comparisonTbody = document.getElementById('comparison-table-body');
+        const rows = [
+            {
+                metric: 'Market Price',
+                theoretical: theoretical.nash_price.toFixed(2),
+                actual: summary.avg_price.toFixed(2),
+                deviation: priceDeviation
+            },
+            {
+                metric: 'Total Surplus',
+                theoretical: theoretical.total_surplus.toFixed(2),
+                actual: summary.total_surplus.toFixed(2),
+                deviation: surplusDeviation
+            },
+            ...summary.avg_quantities.map((q, i) => ({
+                metric: `Firm ${i + 1} Quantity`,
+                theoretical: theoretical.nash_quantities[i].toFixed(2),
+                actual: q.toFixed(2),
+                deviation: ((q - theoretical.nash_quantities[i]) / theoretical.nash_quantities[i] * 100)
+            })),
+            ...summary.avg_profits.map((p, i) => ({
+                metric: `Firm ${i + 1} Profit`,
+                theoretical: theoretical.nash_profits[i].toFixed(2),
+                actual: p.toFixed(2),
+                deviation: ((p - theoretical.nash_profits[i]) / theoretical.nash_profits[i] * 100)
+            }))
+        ];
+        
+        comparisonTbody.innerHTML = rows.map(row => `
+            <tr>
+                <td>${row.metric}</td>
+                <td>${row.theoretical}</td>
+                <td>${row.actual}</td>
+                <td style="color: ${Math.abs(row.deviation) > 10 ? '#E63946' : Math.abs(row.deviation) > 5 ? '#457B9D' : '#06D6A0'}">${row.deviation > 0 ? '+' : ''}${row.deviation.toFixed(1)}%</td>
+            </tr>
+        `).join('');
+        
+        // Update Cournot chart
+        currentData.cournot = cournotData;
+        updateTimeSeriesChart('cournot', cournotData, 'quantities');
+    });
 }
 
 function loadSimulation(market) {
@@ -258,23 +317,79 @@ document.addEventListener('DOMContentLoaded', () => {
             fetch('/api/simulation/cournot').then(r => r.json()),
             fetch('/api/simulation/bertrand').then(r => r.json())
         ]).then(([metricsData, cournotData, bertrandData]) => {
-            // Update metrics (Overview tab)
-            document.getElementById('hhi-value').textContent = metricsData.hhi.toFixed(1);
-            document.getElementById('nash-price-value').textContent = metricsData.nash_price.toFixed(2);
-            document.getElementById('surplus-value').textContent = metricsData.total_surplus.toFixed(2);
-            charts.profit.data.datasets[0].data = metricsData.nash_profits;
+            // Use Cournot simulation summary for Overview (not a separate simulation)
+            const summary = cournotData.summary;
+            const theoretical = metricsData;
+            
+            document.getElementById('hhi-value').textContent = summary.hhi.toFixed(1);
+            document.getElementById('nash-price-value').textContent = summary.avg_price.toFixed(2);
+            document.getElementById('surplus-value').textContent = summary.total_surplus.toFixed(2);
+            
+            // Update comparison labels
+            const priceDeviation = ((summary.avg_price - theoretical.nash_price) / theoretical.nash_price * 100);
+            const surplusDeviation = ((summary.total_surplus - theoretical.total_surplus) / theoretical.total_surplus * 100);
+            
+            document.getElementById('price-comparison').textContent = 
+                `${priceDeviation > 0 ? '+' : ''}${priceDeviation.toFixed(1)}% vs Nash`;
+            document.getElementById('price-comparison').className = 
+                priceDeviation > 5 ? 'metric-change' : priceDeviation < -5 ? 'metric-change positive' : 'metric-change neutral';
+                
+            document.getElementById('surplus-comparison').textContent = 
+                `${surplusDeviation > 0 ? '+' : ''}${surplusDeviation.toFixed(1)}% vs Nash`;
+            document.getElementById('surplus-comparison').className = 
+                surplusDeviation > 0 ? 'metric-change positive' : 'metric-change';
+            
+            charts.profit.data.datasets[0].data = summary.avg_profits;
             charts.profit.update();
-            const totalQ = metricsData.nash_quantities.reduce((a, b) => a + b, 0);
-            const shares = metricsData.nash_quantities.map(q => (q / totalQ * 100));
+            const totalQ = summary.avg_quantities.reduce((a, b) => a + b, 0);
+            const shares = summary.avg_quantities.map(q => (q / totalQ * 100));
             charts.share.data.datasets[0].data = shares;
             charts.share.update();
             const tbody = document.getElementById('metrics-table-body');
-            tbody.innerHTML = metricsData.nash_quantities.map((q, i) => `
+            tbody.innerHTML = summary.avg_quantities.map((q, i) => `
                 <tr>
                     <td>Firm ${i + 1}</td>
                     <td>${q.toFixed(2)}</td>
-                    <td>${metricsData.nash_profits[i].toFixed(2)}</td>
+                    <td>${summary.avg_profits[i].toFixed(2)}</td>
                     <td>${shares[i].toFixed(1)}%</td>
+                </tr>
+            `).join('');
+            
+            // Update comparison table
+            const comparisonTbody = document.getElementById('comparison-table-body');
+            const rows = [
+                {
+                    metric: 'Market Price',
+                    theoretical: theoretical.nash_price.toFixed(2),
+                    actual: summary.avg_price.toFixed(2),
+                    deviation: priceDeviation
+                },
+                {
+                    metric: 'Total Surplus',
+                    theoretical: theoretical.total_surplus.toFixed(2),
+                    actual: summary.total_surplus.toFixed(2),
+                    deviation: surplusDeviation
+                },
+                ...summary.avg_quantities.map((q, i) => ({
+                    metric: `Firm ${i + 1} Quantity`,
+                    theoretical: theoretical.nash_quantities[i].toFixed(2),
+                    actual: q.toFixed(2),
+                    deviation: ((q - theoretical.nash_quantities[i]) / theoretical.nash_quantities[i] * 100)
+                })),
+                ...summary.avg_profits.map((p, i) => ({
+                    metric: `Firm ${i + 1} Profit`,
+                    theoretical: theoretical.nash_profits[i].toFixed(2),
+                    actual: p.toFixed(2),
+                    deviation: ((p - theoretical.nash_profits[i]) / theoretical.nash_profits[i] * 100)
+                }))
+            ];
+            
+            comparisonTbody.innerHTML = rows.map(row => `
+                <tr>
+                    <td>${row.metric}</td>
+                    <td>${row.theoretical}</td>
+                    <td>${row.actual}</td>
+                    <td style="color: ${Math.abs(row.deviation) > 10 ? '#E63946' : Math.abs(row.deviation) > 5 ? '#457B9D' : '#06D6A0'}">${row.deviation > 0 ? '+' : ''}${row.deviation.toFixed(1)}%</td>
                 </tr>
             `).join('');
             

@@ -100,15 +100,36 @@
                     </div>
                     
                     <div class="metric-card">
-                        <div class="metric-label">Nash Price</div>
+                        <div class="metric-label">Actual Price</div>
                         <div class="metric-value" id="nash-price-value">—</div>
-                        <div class="metric-change">Equilibrium</div>
+                        <div class="metric-change" id="price-comparison">—</div>
                     </div>
                     
                     <div class="metric-card">
                         <div class="metric-label">Total Surplus</div>
                         <div class="metric-value" id="surplus-value">—</div>
-                        <div class="metric-change positive">Optimal</div>
+                        <div class="metric-change" id="surplus-comparison">—</div>
+                    </div>
+                </div>
+                
+                <div class="chart-card" style="margin-bottom: 32px;">
+                    <h3 class="chart-title">Actual vs Theoretical Nash Equilibrium</h3>
+                    <div class="data-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Theoretical</th>
+                                    <th>Actual</th>
+                                    <th>Deviation</th>
+                                </tr>
+                            </thead>
+                            <tbody id="comparison-table-body">
+                                <tr>
+                                    <td colspan="4" class="loading">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
                 
@@ -175,7 +196,7 @@
         </main>
     </div>
     
-    <script src="/static/js/dashboard.js?v=4"></script>
+    <script src="/static/js/dashboard.js?v=6"></script>
 </body>
 </html>
 
