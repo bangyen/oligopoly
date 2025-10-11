@@ -12,10 +12,6 @@ from flask import Flask, Response, jsonify, render_template
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-logging.getLogger("sim.validation.economic_validation").setLevel(logging.ERROR)
-logging.getLogger("sim.games.cournot").setLevel(logging.ERROR)
-logging.getLogger("sim.games.bertrand").setLevel(logging.ERROR)
-
 from sim.games.bertrand import (  # type: ignore[import-not-found]
     BertrandResult,
     bertrand_simulation,
@@ -29,6 +25,10 @@ from sim.strategies.strategies import (  # type: ignore[import-not-found]
     Static,
     TitForTat,
 )
+
+logging.getLogger("sim.validation.economic_validation").setLevel(logging.ERROR)
+logging.getLogger("sim.games.cournot").setLevel(logging.ERROR)
+logging.getLogger("sim.games.bertrand").setLevel(logging.ERROR)
 
 app = Flask(__name__)
 
@@ -46,8 +46,10 @@ def cournot_endpoint() -> Response:
     costs = [20.0, 25.0, 30.0]
     bounds = (0.0, 50.0)
 
-    nash_quantities = [(a - costs[i]) / (b * (len(costs) + 1)) for i in range(len(costs))]
-    
+    nash_quantities = [
+        (a - costs[i]) / (b * (len(costs) + 1)) for i in range(len(costs))
+    ]
+
     strategies = [
         Static(value=nash_quantities[0]),
         TitForTat(),
@@ -98,7 +100,7 @@ def cournot_endpoint() -> Response:
 @app.route("/api/simulation/bertrand")
 def bertrand_endpoint() -> Response:
     """Execute a Bertrand simulation and return time series data.
-    
+
     Uses narrower price ranges and cost-aware bounds to create realistic
     competition without extreme outcomes or firms pricing below cost.
     """
@@ -107,7 +109,7 @@ def bertrand_endpoint() -> Response:
     bounds = (0.0, 100.0)
 
     starting_prices = [35.0, 38.0, 42.0]
-    
+
     strategies = [
         Static(value=starting_prices[0]),
         TitForTat(),
