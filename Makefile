@@ -58,13 +58,7 @@ api: ## start API server only
 		exit 1; \
 	fi
 
-dashboard: ## start streamlit dashboard (starts API if needed)
-	@echo "Checking if API is running..."
-	@if curl -s http://localhost:8000/healthz > /dev/null 2>&1; then \
-		echo "API is already running"; \
-	else \
-		echo "API not running, starting Docker services..."; \
-		$(MAKE) api; \
-	fi
+dashboard: ## start Flask dashboard
 	@echo "Starting dashboard..."
-	streamlit run scripts/dashboard.py
+	@echo "Dashboard will be available at http://localhost:5050"
+	python3 dashboard/main.py
