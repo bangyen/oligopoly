@@ -248,15 +248,45 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSimulation('cournot');
     loadSimulation('bertrand');
     
-    document.getElementById('refresh-btn').addEventListener('click', () => {
-        loadMetrics();
-        loadSimulation('cournot');
-        loadSimulation('bertrand');
-    });
-    
-    document.getElementById('run-simulation-btn').addEventListener('click', () => {
-        loadSimulation('cournot');
-        loadSimulation('bertrand');
+    document.getElementById('run-simulation-btn').addEventListener('click', (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.textContent = 'Running...';
+        
+        Promise.all([
+            fetch('/api/metrics').then(r => r.json()),
+            fetch('/api/simulation/cournot').then(r => r.json()),
+            fetch('/api/simulation/bertrand').then(r => r.json())
+        ]).then(([metricsData, cournotData, bertrandData]) => {
+            // Update metrics (Overview tab)
+            document.getElementById('hhi-value').textContent = metricsData.hhi.toFixed(1);
+            document.getElementById('nash-price-value').textContent = metricsData.nash_price.toFixed(2);
+            document.getElementById('surplus-value').textContent = metricsData.total_surplus.toFixed(2);
+            charts.profit.data.datasets[0].data = metricsData.nash_profits;
+            charts.profit.update();
+            const totalQ = metricsData.nash_quantities.reduce((a, b) => a + b, 0);
+            const shares = metricsData.nash_quantities.map(q => (q / totalQ * 100));
+            charts.share.data.datasets[0].data = shares;
+            charts.share.update();
+            const tbody = document.getElementById('metrics-table-body');
+            tbody.innerHTML = metricsData.nash_quantities.map((q, i) => `
+                <tr>
+                    <td>Firm ${i + 1}</td>
+                    <td>${q.toFixed(2)}</td>
+                    <td>${metricsData.nash_profits[i].toFixed(2)}</td>
+                    <td>${shares[i].toFixed(1)}%</td>
+                </tr>
+            `).join('');
+            
+            // Update simulations
+            currentData.cournot = cournotData;
+            currentData.bertrand = bertrandData;
+            updateTimeSeriesChart('cournot', cournotData, 'quantities');
+            updateTimeSeriesChart('bertrand', bertrandData, 'prices');
+            
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2V6H10" stroke="currentColor" stroke-width="2"/><path d="M2 14V10H6" stroke="currentColor" stroke-width="2"/><path d="M14 6C13.5 4 12 2.5 10 2C6 1 2 3 2 8C2 13 6 15 10 14C12 13.5 13.5 12 14 10" stroke="currentColor" stroke-width="2"/></svg> Run Simulation';
+        });
     });
 });
 
