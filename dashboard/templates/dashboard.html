@@ -113,7 +113,13 @@
                 </div>
                 
                 <div class="chart-card" style="margin-bottom: 32px;">
-                    <h3 class="chart-title">Actual vs Theoretical Nash Equilibrium</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 class="chart-title" style="margin: 0;">Actual vs Theoretical Nash Equilibrium</h3>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span id="session-count" style="font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: #86868B; font-weight: 500;">Session: 0 runs</span>
+                            <button id="reset-session-btn" class="btn-secondary" style="padding: 6px 12px; font-size: 13px;">Reset</button>
+                        </div>
+                    </div>
                     <div class="data-table">
                         <table>
                             <thead>
@@ -196,7 +202,7 @@
         </main>
     </div>
     
-    <script src="/static/js/dashboard.js?v=6"></script>
+    <script src="/static/js/dashboard.js?v=7"></script>
 </body>
 </html>
 

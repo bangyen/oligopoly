@@ -44,6 +44,16 @@ const CHART_CONFIG = {
 let charts = {};
 let currentData = { cournot: null, bertrand: null };
 
+let sessionStats = {
+    runs: 0,
+    cumulative: {
+        quantities: [0, 0, 0],
+        profits: [0, 0, 0],
+        price: 0,
+        surplus: 0
+    }
+};
+
 function initNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
     const views = document.querySelectorAll('.view-container');
@@ -321,13 +331,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const summary = cournotData.summary;
             const theoretical = metricsData;
             
+            // Accumulate session statistics
+            sessionStats.runs++;
+            for (let i = 0; i < 3; i++) {
+                sessionStats.cumulative.quantities[i] += summary.avg_quantities[i];
+                sessionStats.cumulative.profits[i] += summary.avg_profits[i];
+            }
+            sessionStats.cumulative.price += summary.avg_price;
+            sessionStats.cumulative.surplus += summary.total_surplus;
+            
+            // Calculate session averages
+            const sessionAvg = {
+                quantities: sessionStats.cumulative.quantities.map(q => q / sessionStats.runs),
+                profits: sessionStats.cumulative.profits.map(p => p / sessionStats.runs),
+                price: sessionStats.cumulative.price / sessionStats.runs,
+                surplus: sessionStats.cumulative.surplus / sessionStats.runs
+            };
+            
             document.getElementById('hhi-value').textContent = summary.hhi.toFixed(1);
             document.getElementById('nash-price-value').textContent = summary.avg_price.toFixed(2);
             document.getElementById('surplus-value').textContent = summary.total_surplus.toFixed(2);
             
-            // Update comparison labels
-            const priceDeviation = ((summary.avg_price - theoretical.nash_price) / theoretical.nash_price * 100);
-            const surplusDeviation = ((summary.total_surplus - theoretical.total_surplus) / theoretical.total_surplus * 100);
+            // Update comparison labels (using session average)
+            const priceDeviation = ((sessionAvg.price - theoretical.nash_price) / theoretical.nash_price * 100);
+            const surplusDeviation = ((sessionAvg.surplus - theoretical.total_surplus) / theoretical.total_surplus * 100);
             
             document.getElementById('price-comparison').textContent = 
                 `${priceDeviation > 0 ? '+' : ''}${priceDeviation.toFixed(1)}% vs Nash`;
@@ -355,28 +382,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `).join('');
             
-            // Update comparison table
+            // Update comparison table (using session averages)
             const comparisonTbody = document.getElementById('comparison-table-body');
             const rows = [
                 {
                     metric: 'Market Price',
                     theoretical: theoretical.nash_price.toFixed(2),
-                    actual: summary.avg_price.toFixed(2),
+                    actual: sessionAvg.price.toFixed(2),
                     deviation: priceDeviation
                 },
                 {
                     metric: 'Total Surplus',
                     theoretical: theoretical.total_surplus.toFixed(2),
-                    actual: summary.total_surplus.toFixed(2),
+                    actual: sessionAvg.surplus.toFixed(2),
                     deviation: surplusDeviation
                 },
-                ...summary.avg_quantities.map((q, i) => ({
+                ...sessionAvg.quantities.map((q, i) => ({
                     metric: `Firm ${i + 1} Quantity`,
                     theoretical: theoretical.nash_quantities[i].toFixed(2),
                     actual: q.toFixed(2),
                     deviation: ((q - theoretical.nash_quantities[i]) / theoretical.nash_quantities[i] * 100)
                 })),
-                ...summary.avg_profits.map((p, i) => ({
+                ...sessionAvg.profits.map((p, i) => ({
                     metric: `Firm ${i + 1} Profit`,
                     theoretical: theoretical.nash_profits[i].toFixed(2),
                     actual: p.toFixed(2),
@@ -393,6 +420,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 </tr>
             `).join('');
             
+            // Update session count display
+            document.getElementById('session-count').textContent = 
+                `Session: ${sessionStats.runs} run${sessionStats.runs !== 1 ? 's' : ''}`;
+            
             // Update simulations
             currentData.cournot = cournotData;
             currentData.bertrand = bertrandData;
@@ -402,6 +433,20 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = false;
             btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M14 2V6H10" stroke="currentColor" stroke-width="2"/><path d="M2 14V10H6" stroke="currentColor" stroke-width="2"/><path d="M14 6C13.5 4 12 2.5 10 2C6 1 2 3 2 8C2 13 6 15 10 14C12 13.5 13.5 12 14 10" stroke="currentColor" stroke-width="2"/></svg> Run Simulation';
         });
+    });
+    
+    document.getElementById('reset-session-btn').addEventListener('click', () => {
+        sessionStats.runs = 0;
+        sessionStats.cumulative = {
+            quantities: [0, 0, 0],
+            profits: [0, 0, 0],
+            price: 0,
+            surplus: 0
+        };
+        document.getElementById('session-count').textContent = 'Session: 0 runs';
+        document.getElementById('comparison-table-body').innerHTML = '<tr><td colspan="4" class="loading">Run a simulation to see data...</td></tr>';
+        document.getElementById('price-comparison').textContent = '—';
+        document.getElementById('surplus-comparison').textContent = '—';
     });
 });
 
