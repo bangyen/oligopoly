@@ -141,18 +141,22 @@ jobs:
           echo "Generating dashboard screenshot..."
           
           # Install dependencies for screenshot generation
-          pip install streamlit selenium webdriver-manager pillow
+          pip install selenium webdriver-manager pillow
           
-          # Start dashboard in background
-          cd scripts
-          streamlit run dashboard.py --server.port 8501 --server.headless true &
+          # Install Flask and dependencies
+          pip install -e .
+          
+          # Start Flask dashboard in background
+          cd dashboard
+          python main.py &
           DASHBOARD_PID=$!
+          cd ..
           
           # Wait for dashboard to start
           sleep 10
           
           # Create screenshot script
-          cat > screenshot.py << 'EOF'
+          cat > /tmp/screenshot.py << 'EOF'
           from selenium import webdriver
           from selenium.webdriver.chrome.options import Options
           from selenium.webdriver.common.by import By
@@ -172,12 +176,12 @@ jobs:
           driver = webdriver.Chrome(options=chrome_options)
           
           try:
-              # Navigate to dashboard
-              driver.get("http://localhost:8501")
+              # Navigate to Flask dashboard
+              driver.get("http://localhost:5050")
               
               # Wait for page to load
               WebDriverWait(driver, 30).until(
-                  EC.presence_of_element_located((By.CLASS_NAME, "stApp"))
+                  EC.presence_of_element_located((By.TAG_NAME, "body"))
               )
               
               # Wait a bit more for charts to render
@@ -198,7 +202,7 @@ jobs:
           EOF
           
           # Run screenshot script
-          python screenshot.py
+          python /tmp/screenshot.py
           
           # Stop dashboard
           kill $DASHBOARD_PID 2>/dev/null || true
