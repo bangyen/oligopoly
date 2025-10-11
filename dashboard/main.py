@@ -3,6 +3,7 @@
 Provides endpoints for simulation data visualization and real-time metrics.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -10,6 +11,10 @@ from typing import Any, Dict, List
 from flask import Flask, Response, jsonify, render_template
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+logging.getLogger("sim.validation.economic_validation").setLevel(logging.ERROR)
+logging.getLogger("sim.games.cournot").setLevel(logging.ERROR)
+logging.getLogger("sim.games.bertrand").setLevel(logging.ERROR)
 
 from sim.games.bertrand import (  # type: ignore[import-not-found]
     BertrandResult,
@@ -41,10 +46,12 @@ def cournot_endpoint() -> Response:
     costs = [20.0, 25.0, 30.0]
     bounds = (0.0, 50.0)
 
+    nash_quantities = [(a - costs[i]) / (b * (len(costs) + 1)) for i in range(len(costs))]
+    
     strategies = [
-        Static(value=20.0),
+        Static(value=nash_quantities[0]),
         TitForTat(),
-        RandomWalk(step=2.0, min_bound=0.0, max_bound=50.0, seed=42),
+        RandomWalk(step=2.0, min_bound=10.0, max_bound=30.0, seed=42),
     ]
 
     firm_histories: List[List[CournotResult]] = [[] for _ in strategies]
@@ -90,15 +97,21 @@ def cournot_endpoint() -> Response:
 
 @app.route("/api/simulation/bertrand")
 def bertrand_endpoint() -> Response:
-    """Execute a Bertrand simulation and return time series data."""
+    """Execute a Bertrand simulation and return time series data.
+    
+    Uses narrower price ranges and cost-aware bounds to create realistic
+    competition without extreme outcomes or firms pricing below cost.
+    """
     alpha, beta = 100.0, 1.0
     costs = [20.0, 25.0, 30.0]
     bounds = (0.0, 100.0)
 
+    starting_prices = [35.0, 38.0, 42.0]
+    
     strategies = [
-        Static(value=40.0),
+        Static(value=starting_prices[0]),
         TitForTat(),
-        RandomWalk(step=5.0, min_bound=20.0, max_bound=80.0, seed=42),
+        RandomWalk(step=1.5, min_bound=35.0, max_bound=50.0, seed=42),
     ]
 
     firm_histories: List[List[BertrandResult]] = [[] for _ in strategies]
