@@ -200,6 +200,15 @@ function loadMetrics() {
     ]).then(([theoretical, cournotData]) => {
         const summary = cournotData.summary;
         
+        // Count initial load as a run
+        sessionStats.runs++;
+        for (let i = 0; i < 3; i++) {
+            sessionStats.cumulative.quantities[i] += summary.avg_quantities[i];
+            sessionStats.cumulative.profits[i] += summary.avg_profits[i];
+        }
+        sessionStats.cumulative.price += summary.avg_price;
+        sessionStats.cumulative.surplus += summary.total_surplus;
+        
         document.getElementById('hhi-value').textContent = summary.hhi.toFixed(1);
         document.getElementById('nash-price-value').textContent = summary.avg_price.toFixed(2);
         document.getElementById('surplus-value').textContent = summary.total_surplus.toFixed(2);
@@ -273,6 +282,10 @@ function loadMetrics() {
                 <td style="color: ${Math.abs(row.deviation) > 10 ? '#E63946' : Math.abs(row.deviation) > 5 ? '#457B9D' : '#06D6A0'}">${row.deviation > 0 ? '+' : ''}${row.deviation.toFixed(1)}%</td>
             </tr>
         `).join('');
+        
+        // Update session count display
+        document.getElementById('session-count').textContent = 
+            `Session: ${sessionStats.runs} run${sessionStats.runs !== 1 ? 's' : ''}`;
         
         // Update Cournot chart
         currentData.cournot = cournotData;
