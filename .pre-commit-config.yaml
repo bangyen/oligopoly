@@ -9,7 +9,7 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: bash -c 'pip install -e . && mypy .'
+        entry: bash -c 'if command -v uv >/dev/null 2>&1; then uv run mypy .; else pip install -e . && mypy .; fi'
         language: system
         types: [python]
         pass_filenames: false
