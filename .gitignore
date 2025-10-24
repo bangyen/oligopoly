@@ -57,3 +57,5 @@ htmlcov/
 
 # Experiment artifacts
 artifacts/
+oligopoly_data.json
+oligopoly_data.json.gz
