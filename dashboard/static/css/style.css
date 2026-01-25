@@ -18,6 +18,74 @@
     --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+[data-theme="dark"] {
+    --color-bg: #0D1117;
+    --color-surface: #161B22;
+    --color-border: #30363D;
+    --color-text-primary: #E6EDF3;
+    --color-text-secondary: #8B949E;
+    --color-text-tertiary: #6E7681;
+    --color-accent: #E63946;
+    --color-accent-hover: #F25C69;
+    --color-secondary: #58A6FF;
+    --color-success: #238636; /* Darker green for text readability or background? adjusting to matching green */
+    --color-success: #3FB950;
+    --color-neutral: #58A6FF;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* New Configuration Styles */
+.nav-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: 16px 12px;
+}
+
+.config-section {
+    padding: 0 16px;
+    margin-bottom: 16px;
+}
+
+.config-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-tertiary);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.config-group {
+    margin-bottom: 12px;
+}
+
+.config-label {
+    display: block;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+}
+
+.config-input {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    font-family: var(--font-primary);
+    font-size: 13px;
+    color: var(--color-text-primary);
+    transition: all 0.15s ease;
+}
+
+.config-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(230, 57, 70, 0.1);
+}
+
+
 * {
     margin: 0;
     padding: 0;
