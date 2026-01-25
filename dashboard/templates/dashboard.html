@@ -60,9 +60,41 @@
                     </svg>
                     <span>Metrics</span>
                 </button>
+
+                <div class="nav-divider"></div>
+                
+                <div class="config-section">
+                    <h3 class="config-title">Configuration</h3>
+                    
+                    <div class="config-group">
+                        <label for="config-a" class="config-label">Demand Intercept (a)</label>
+                        <input type="number" id="config-a" class="config-input" value="100" min="10" step="10">
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="config-b" class="config-label">Demand Slope (b)</label>
+                        <input type="number" id="config-b" class="config-input" value="1.0" min="0.1" step="0.1">
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="config-costs" class="config-label">Firm Costs (csv)</label>
+                        <input type="text" id="config-costs" class="config-input" value="20, 25, 30" placeholder="e.g. 10, 20">
+                    </div>
+                </div>
             </nav>
             
             <div class="sidebar-footer">
+                <button id="theme-toggle" class="nav-item" style="width: 100%; margin-bottom: 12px; justify-content: flex-start;">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" class="sun-icon">
+                        <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="2"/>
+                        <path d="M10 2V4M10 16V18M2 10H4M16 10H18M4.34 4.34L5.75 5.75M14.25 14.25L15.66 15.66M4.34 15.66L5.75 14.25M14.25 5.75L15.66 4.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" class="moon-icon" style="display: none;">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707 8.001 8.001 0 1017.293 13.293z" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <span>Dark Mode</span>
+                </button>
+            
                 <div class="status-indicator">
                     <span class="status-dot"></span>
                     <span class="status-text">Live</span>
