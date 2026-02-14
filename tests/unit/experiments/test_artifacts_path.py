@@ -11,28 +11,24 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from src.sim.experiments.runner import ExperimentConfig, ExperimentRunner
 from src.sim.models.models import Base
 
 
 @pytest.fixture
-def temp_db():
-    """Create a temporary database for testing."""
+def temp_db_url():
+    """Create a temporary database for testing and return its URL."""
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_file.close()
 
-    engine = create_engine(f"sqlite:///{temp_file.name}")
-    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+    db_url = f"sqlite:///{temp_file.name}"
+    engine = create_engine(db_url)
     Base.metadata.create_all(bind=engine)
 
-    db = session_local()
     try:
-        yield db
+        yield db_url
     finally:
-        db.close()
         os.unlink(temp_file.name)
 
 
@@ -52,7 +48,7 @@ def test_artifacts_directory_creation():
         assert artifacts_dir.is_dir()
 
 
-def test_csv_file_creation_and_naming(temp_db):
+def test_csv_file_creation_and_naming(temp_db_url):
     """Test that CSV files are created with proper naming convention."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -69,7 +65,9 @@ def test_csv_file_creation_and_naming(temp_db):
         experiments = [config]
         seeds_per_config = 1
 
-        csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(
+            experiments, seeds_per_config, temp_db_url
+        )
 
         # Check file exists
         assert Path(csv_path).exists()
@@ -83,7 +81,7 @@ def test_csv_file_creation_and_naming(temp_db):
         assert Path(csv_path).parent == artifacts_dir
 
 
-def test_csv_file_is_non_empty(temp_db):
+def test_csv_file_is_non_empty(temp_db_url):
     """Test that generated CSV file is not empty."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -100,7 +98,9 @@ def test_csv_file_is_non_empty(temp_db):
         experiments = [config]
         seeds_per_config = 2  # Multiple seeds to ensure content
 
-        csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(
+            experiments, seeds_per_config, temp_db_url
+        )
 
         # Check file size
         file_size = Path(csv_path).stat().st_size
@@ -117,7 +117,7 @@ def test_csv_file_is_non_empty(temp_db):
             assert "avg_price" in content
 
 
-def test_csv_headers_match_schema(temp_db):
+def test_csv_headers_match_schema(temp_db_url):
     """Test that CSV headers match the expected schema."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -134,7 +134,9 @@ def test_csv_headers_match_schema(temp_db):
         experiments = [config]
         seeds_per_config = 1
 
-        csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(
+            experiments, seeds_per_config, temp_db_url
+        )
 
         # Read headers
         with open(csv_path) as f:
@@ -157,6 +159,14 @@ def test_csv_headers_match_schema(temp_db):
             "firm_0_profit",
             "firm_1_profit",
             "firm_2_profit",
+            "cartel_duration",
+            "total_defections",
+            "firm_0_strategy",
+            "firm_1_strategy",
+            "firm_2_strategy",
+            "firm_0_defections",
+            "firm_1_defections",
+            "firm_2_defections",
         ]
 
         # Check all expected headers are present
@@ -170,7 +180,7 @@ def test_csv_headers_match_schema(temp_db):
         ), f"Unexpected headers found: {unexpected_headers}"
 
 
-def test_csv_data_types_are_correct(temp_db):
+def test_csv_data_types_are_correct(temp_db_url):
     """Test that CSV data has correct types."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -187,7 +197,9 @@ def test_csv_data_types_are_correct(temp_db):
         experiments = [config]
         seeds_per_config = 1
 
-        csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(
+            experiments, seeds_per_config, temp_db_url
+        )
 
         # Read data
         with open(csv_path) as f:
@@ -223,7 +235,7 @@ def test_csv_data_types_are_correct(temp_db):
                 pytest.fail(f"Field {field} should be numeric, got: {row[field]}")
 
 
-def test_multiple_experiments_in_single_csv(temp_db):
+def test_multiple_experiments_in_single_csv(temp_db_url):
     """Test that multiple experiments are written to the same CSV file."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -248,7 +260,7 @@ def test_multiple_experiments_in_single_csv(temp_db):
 
         seeds_per_config = 2
 
-        csv_path = runner.run_experiment_batch(configs, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(configs, seeds_per_config, temp_db_url)
 
         # Read data
         with open(csv_path) as f:
@@ -269,7 +281,7 @@ def test_multiple_experiments_in_single_csv(temp_db):
         assert models.count("bertrand") == 2
 
 
-def test_csv_file_permissions_and_accessibility(temp_db):
+def test_csv_file_permissions_and_accessibility(temp_db_url):
     """Test that CSV file has proper permissions and is accessible."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -286,7 +298,9 @@ def test_csv_file_permissions_and_accessibility(temp_db):
         experiments = [config]
         seeds_per_config = 1
 
-        csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(
+            experiments, seeds_per_config, temp_db_url
+        )
 
         # Check file exists and is readable
         csv_file = Path(csv_path)
@@ -308,7 +322,7 @@ def test_csv_file_permissions_and_accessibility(temp_db):
             assert len(rows) > 0
 
 
-def test_csv_handles_empty_experiments(temp_db):
+def test_csv_handles_empty_experiments(temp_db_url):
     """Test CSV creation with empty experiment list."""
     with tempfile.TemporaryDirectory() as temp_dir:
         artifacts_dir = Path(temp_dir) / "artifacts"
@@ -318,7 +332,9 @@ def test_csv_handles_empty_experiments(temp_db):
         experiments = []
         seeds_per_config = 1
 
-        csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+        csv_path = runner.run_experiment_batch(
+            experiments, seeds_per_config, temp_db_url
+        )
 
         # File should still be created
         assert Path(csv_path).exists()

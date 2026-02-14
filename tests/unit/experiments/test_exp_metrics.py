@@ -11,28 +11,24 @@ import tempfile
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from src.sim.experiments.runner import ExperimentConfig, ExperimentRunner
 from src.sim.models.models import Base
 
 
 @pytest.fixture
-def temp_db():
-    """Create a temporary database for testing."""
+def temp_db_url():
+    """Create a temporary database for testing and return its URL."""
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_file.close()
 
-    engine = create_engine(f"sqlite:///{temp_file.name}")
-    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
+    db_url = f"sqlite:///{temp_file.name}"
+    engine = create_engine(db_url)
     Base.metadata.create_all(bind=engine)
 
-    db = session_local()
     try:
-        yield db
+        yield db_url
     finally:
-        db.close()
         os.unlink(temp_file.name)
 
 
@@ -46,7 +42,7 @@ def temp_artifacts_dir():
     shutil.rmtree(temp_dir)
 
 
-def test_csv_contains_required_metrics_columns(temp_db, temp_artifacts_dir):
+def test_csv_contains_required_metrics_columns(temp_db_url, temp_artifacts_dir):
     """Test that CSV contains all required metrics columns."""
     config = ExperimentConfig(
         config_id="metrics_test",
@@ -60,7 +56,7 @@ def test_csv_contains_required_metrics_columns(temp_db, temp_artifacts_dir):
     experiments = [config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read CSV headers
     with open(csv_path) as f:
@@ -91,7 +87,7 @@ def test_csv_contains_required_metrics_columns(temp_db, temp_artifacts_dir):
         assert col in headers, f"Missing firm profit column: {col}"
 
 
-def test_metrics_values_are_reasonable(temp_db, temp_artifacts_dir):
+def test_metrics_values_are_reasonable(temp_db_url, temp_artifacts_dir):
     """Test that calculated metrics have reasonable values."""
     config = ExperimentConfig(
         config_id="reasonable_test",
@@ -105,7 +101,7 @@ def test_metrics_values_are_reasonable(temp_db, temp_artifacts_dir):
     experiments = [config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read results
     with open(csv_path) as f:
@@ -149,7 +145,7 @@ def test_metrics_values_are_reasonable(temp_db, temp_artifacts_dir):
     ), f"Mean profit per firm should equal total_profit/num_firms: {mean_profit_per_firm} vs {expected_mean}"
 
 
-def test_bertrand_vs_cournot_metrics_differ(temp_db, temp_artifacts_dir):
+def test_bertrand_vs_cournot_metrics_differ(temp_db_url, temp_artifacts_dir):
     """Test that Bertrand and Cournot models produce different metrics."""
     cournot_config = ExperimentConfig(
         config_id="cournot_test",
@@ -171,7 +167,7 @@ def test_bertrand_vs_cournot_metrics_differ(temp_db, temp_artifacts_dir):
     experiments = [cournot_config, bertrand_config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read results
     with open(csv_path) as f:
@@ -202,7 +198,7 @@ def test_bertrand_vs_cournot_metrics_differ(temp_db, temp_artifacts_dir):
     ), f"Cournot and Bertrand HHI should differ: {cournot_hhi} vs {bertrand_hhi}"
 
 
-def test_firm_specific_profits_sum_to_total(temp_db, temp_artifacts_dir):
+def test_firm_specific_profits_sum_to_total(temp_db_url, temp_artifacts_dir):
     """Test that individual firm profits sum to total profit."""
     config = ExperimentConfig(
         config_id="profit_sum_test",
@@ -216,7 +212,7 @@ def test_firm_specific_profits_sum_to_total(temp_db, temp_artifacts_dir):
     experiments = [config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read results
     with open(csv_path) as f:
@@ -241,7 +237,7 @@ def test_firm_specific_profits_sum_to_total(temp_db, temp_artifacts_dir):
     ), f"Sum of firm profits ({sum_firm_profits}) should equal total profit ({total_profit})"
 
 
-def test_segmented_demand_metrics(temp_db, temp_artifacts_dir):
+def test_segmented_demand_metrics(temp_db_url, temp_artifacts_dir):
     """Test metrics calculation with segmented demand."""
     config = ExperimentConfig(
         config_id="segmented_test",
@@ -259,7 +255,7 @@ def test_segmented_demand_metrics(temp_db, temp_artifacts_dir):
     experiments = [config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read results
     with open(csv_path) as f:
@@ -286,7 +282,7 @@ def test_segmented_demand_metrics(temp_db, temp_artifacts_dir):
     ), f"Consumer surplus should be non-negative for segmented demand, got {avg_cs}"
 
 
-def test_policy_events_affect_metrics(temp_db, temp_artifacts_dir):
+def test_policy_events_affect_metrics(temp_db_url, temp_artifacts_dir):
     """Test that policy events affect the calculated metrics."""
     # Baseline config without policies
     baseline_config = ExperimentConfig(
@@ -311,7 +307,7 @@ def test_policy_events_affect_metrics(temp_db, temp_artifacts_dir):
     experiments = [baseline_config, tax_config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read results
     with open(csv_path) as f:

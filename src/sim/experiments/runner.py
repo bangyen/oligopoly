@@ -12,7 +12,6 @@ from os import cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy.orm import Session
 from tqdm import tqdm
 
 from src.sim.models.metrics import (
@@ -23,14 +22,16 @@ from src.sim.models.metrics import (
 from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
 from src.sim.runners.runner import get_run_results, run_game
 
-def _simulation_worker(args):
+
+def _simulation_worker(args: tuple) -> Dict[str, Any]:
     """Top-level worker function for multiprocessing (must be picklable)."""
     exp_config, seed, db_url, metrics_calc_func = args
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
+
     engine = create_engine(db_url)
-    SessionLocal = sessionmaker(bind=engine)
-    db = SessionLocal()
+    session_local = sessionmaker(bind=engine)
+    db = session_local()
     try:
         config = exp_config.to_simulation_config(seed)
         run_id = run_game(exp_config.model, exp_config.rounds, config, db)
@@ -239,33 +240,51 @@ class ExperimentRunner:
 
         if parallel:
             print(f"Running {total_tasks} simulations in parallel...")
-            worker_args = [(t[0], t[1], db_url, self._calculate_summary_metrics) for t in tasks]
+            worker_args = [
+                (t[0], t[1], db_url, self._calculate_summary_metrics) for t in tasks
+            ]
 
             with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
-                futures = [executor.submit(_simulation_worker, arg) for arg in worker_args]
-                for future in tqdm(as_completed(futures), total=total_tasks, desc="Experiments"):
+                futures = [
+                    executor.submit(_simulation_worker, arg) for arg in worker_args
+                ]
+                for future in tqdm(
+                    as_completed(futures), total=total_tasks, desc="Experiments"
+                ):
                     results.append(future.result())
         else:
             print(f"Running {total_tasks} simulations sequentially...")
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
+
             engine = create_engine(db_url)
-            SessionLocal = sessionmaker(bind=engine)
-            db = SessionLocal()
+            session_local = sessionmaker(bind=engine)
+            db = session_local()
             try:
                 for exp_config, seed in tqdm(tasks, desc="Experiments"):
-                    config = exp_config.to_simulation_config(seed)
-                    run_id = run_game(exp_config.model, exp_config.rounds, config, db)
-                    run_results = get_run_results(run_id, db)
-                    metrics = self._calculate_summary_metrics(run_results, exp_config)
-                    results.append({
-                        "run_id": run_id,
-                        "config_id": exp_config.config_id,
-                        "seed": seed,
-                        "model": exp_config.model,
-                        "rounds": exp_config.rounds,
-                        **metrics,
-                    })
+                    try:
+                        config = exp_config.to_simulation_config(seed)
+                        run_id = run_game(
+                            exp_config.model, exp_config.rounds, config, db
+                        )
+                        run_results = get_run_results(run_id, db)
+                        metrics = self._calculate_summary_metrics(
+                            run_results, exp_config
+                        )
+                        results.append(
+                            {
+                                "run_id": run_id,
+                                "config_id": exp_config.config_id,
+                                "seed": seed,
+                                "model": exp_config.model,
+                                "rounds": exp_config.rounds,
+                                **metrics,
+                            }
+                        )
+                    except Exception as e:
+                        raise RuntimeError(
+                            f"Failed to run config {exp_config.config_id} seed {seed}: {e}"
+                        )
             finally:
                 db.close()
 
@@ -381,13 +400,15 @@ class ExperimentRunner:
         for i, firm_data in enumerate(firms_data):
             total_firm_profit = sum(firm_data["profits"])
             firm_metrics[f"firm_{i}_profit"] = total_firm_profit
-            
+
             # Get strategy type from config if available
             if i < len(exp_config.firms):
-                firm_metrics[f"firm_{i}_strategy"] = exp_config.firms[i].get("strategy_type", "nash")
-                
+                firm_metrics[f"firm_{i}_strategy"] = exp_config.firms[i].get(
+                    "strategy_type", "nash"
+                )
+
             # Defections (placeholders until we fully integrate events in get_run_results)
-            firm_metrics[f"firm_{i}_defections"] = 0 
+            firm_metrics[f"firm_{i}_defections"] = 0
 
         # Summary collusion metrics (placeholders)
         return {

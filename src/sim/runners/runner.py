@@ -5,24 +5,26 @@ oligopoly simulations and persisting results to the database.
 """
 
 import random
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 from sqlalchemy.orm import Session
 
-from src.sim.collusion import CollusionManager, RegulatorState
-from src.sim.games.enhanced_simulation import (
+from src.sim.collusion import CollusionManager
+from src.sim.games.bertrand import (
     BertrandResult,
-    CournotResult,
+    bertrand_segmented_simulation,
     bertrand_simulation,
+)
+from src.sim.games.cournot import (
+    CournotResult,
+    cournot_segmented_simulation,
     cournot_simulation,
 )
 from src.sim.models.metrics import (
-    calculate_hhi,
     calculate_market_shares_bertrand,
     calculate_market_shares_cournot,
 )
 from src.sim.models.models import (
-    Demand,
     DemandSegment,
     Result,
     Round,
@@ -30,7 +32,12 @@ from src.sim.models.models import (
     SegmentedDemand,
 )
 from src.sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
-from src.sim.strategies.collusion_strategies import create_collusion_strategy
+from src.sim.strategies.collusion_strategies import (
+    CartelStrategy,
+    CollusiveStrategy,
+    OpportunisticStrategy,
+    create_collusion_strategy,
+)
 from src.sim.strategies.nash_strategies import (
     adaptive_nash_strategy,
     cournot_nash_equilibrium,
@@ -105,9 +112,13 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
     # Setup strategies and collusion manager
     collusion_manager = CollusionManager()
-    firm_strategies = []
-    firm_histories = [[] for _ in range(num_firms)] # List of results for each firm
-    
+    firm_strategies: List[
+        Optional[Union[CartelStrategy, CollusiveStrategy, OpportunisticStrategy]]
+    ] = []
+    firm_histories: List[List[Union[CournotResult, BertrandResult]]] = [
+        [] for _ in range(num_firms)
+    ]  # List of results for each firm
+
     for i, firm_config in enumerate(firms):
         strategy_type = firm_config.get("strategy_type", "nash")
         if strategy_type == "nash":
@@ -118,7 +129,9 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
             strategy_kwargs = firm_config.copy()
             if "strategy_type" in strategy_kwargs:
                 strategy_kwargs.pop("strategy_type")
-            strategy = create_collusion_strategy(strategy_type, seed=seed, **strategy_kwargs)
+            strategy: Union[
+                CartelStrategy, CollusiveStrategy, OpportunisticStrategy
+            ] = create_collusion_strategy(strategy_type, seed=seed, **strategy_kwargs)
             firm_strategies.append(strategy)
 
     try:
@@ -138,14 +151,20 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
             else:
                 a = params.get("a", 100.0)
                 b = params.get("b", 1.0)
-                nash_quantities, _, _ = cournot_nash_equilibrium(a, b, costs, fixed_costs)
+                nash_quantities, _, _ = cournot_nash_equilibrium(
+                    a, b, costs, fixed_costs
+                )
             actions = [max(0.1, qty + random.uniform(-1, 1)) for qty in nash_quantities]
         else:  # bertrand
             alpha = params.get("alpha", 100.0)
             beta = params.get("beta", 1.0)
             from src.sim.strategies.nash_strategies import bertrand_nash_equilibrium
+
             nash_prices, _, _, _ = bertrand_nash_equilibrium(alpha, beta, costs)
-            actions = [max(costs[i] + 0.1, p + random.uniform(-1, 1)) for i, p in enumerate(nash_prices)]
+            actions = [
+                max(costs[i] + 0.1, p + random.uniform(-1, 1))
+                for i, p in enumerate(nash_prices)
+            ]
 
         # Run simulation rounds
         for round_idx in range(rounds):
@@ -154,7 +173,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
             # 1. Get Actions for this round
             # (First round uses initialized actions, subsequent rounds use updated ones)
-            
+
             # 2. Run simulation for this round
             if model == "cournot":
                 result = _run_cournot_round(params, costs, actions, fixed_costs)
@@ -167,50 +186,74 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                     result = apply_policy_shock(result, event, costs)
 
             # 4. Detect collusion and update manager
-            market_shares = []
             if model == "cournot":
-                market_shares = calculate_market_shares_cournot(result.quantities)
+                calculate_market_shares_cournot(result.quantities)
             else:
-                market_shares = calculate_market_shares_bertrand(result.prices, result.quantities)
-            
+                calculate_market_shares_bertrand(result.prices, result.quantities)
+
             # Check for defections if a cartel exists
             if collusion_manager.is_cartel_active():
                 cartel = collusion_manager.current_cartel
-                for firm_id in range(num_firms):
-                    collusion_manager.detect_defection(
-                        round_idx,
-                        firm_id,
-                        result.price if model == "cournot" else result.prices[firm_id],
-                        result.quantities[firm_id],
-                        cartel.collusive_price,
-                        cartel.collusive_quantity / len(cartel.participating_firms) # Approximate
-                    )
-            
+                if cartel:
+                    for firm_id in range(num_firms):
+                        collusion_manager.detect_defection(
+                            round_idx,
+                            firm_id,
+                            (
+                                result.price
+                                if model == "cournot"
+                                else result.prices[firm_id]
+                            ),
+                            result.quantities[firm_id],
+                            cartel.collusive_price,
+                            cartel.collusive_quantity
+                            / len(cartel.participating_firms),  # Approximate
+                        )
+
             # Check if any firm is playing a collusive strategy and try to form cartel if not active
-            colluding_firms = [i for i, s in enumerate(firm_strategies) if s is not None and hasattr(s, 'is_colluding') and s.is_colluding]
+            colluding_firms = [
+                i
+                for i, s in enumerate(firm_strategies)
+                if s is not None and hasattr(s, "is_colluding") and s.is_colluding
+            ]
             if colluding_firms and not collusion_manager.is_cartel_active():
                 # Form a cartel agreement based on current collusive intent
                 # In a real scenario, this would be negotiated. Here we use the target of the first colluding firm.
                 first_colluding_idx = colluding_firms[0]
                 strat = firm_strategies[first_colluding_idx]
-                if hasattr(strat, 'target_price') and hasattr(strat, 'target_quantity'):
-                    collusion_manager.form_cartel(
-                        round_idx,
-                        strat.target_price,
-                        strat.target_quantity,
-                        colluding_firms
-                    )
+                if strat is not None:
+                    target_price = getattr(strat, "target_price", None)
+                    target_quantity = getattr(strat, "target_quantity", None)
+                    if target_price is not None and target_quantity is not None:
+                        collusion_manager.form_cartel(
+                            round_idx,
+                            target_price,
+                            target_quantity,
+                            colluding_firms,
+                        )
 
             # 5. Persist results and update histories
             for firm_id in range(num_firms):
-                firm_price = result.price if model == "cournot" else result.prices[firm_id]
-                
+                firm_price = (
+                    result.price if model == "cournot" else result.prices[firm_id]
+                )
+
                 # Update firm history
                 if model == "cournot":
-                    res = CournotResult(price=result.price, quantities=result.quantities, profits=result.profits)
+                    res_c = CournotResult(
+                        price=result.price,
+                        quantities=result.quantities,
+                        profits=result.profits,
+                    )
+                    firm_histories[firm_id].append(res_c)
                 else:
-                    res = BertrandResult(total_demand=result.total_demand, prices=result.prices, quantities=result.quantities, profits=result.profits)
-                firm_histories[firm_id].append(res)
+                    res_b = BertrandResult(
+                        total_demand=result.total_demand,
+                        prices=result.prices,
+                        quantities=result.quantities,
+                        profits=result.profits,
+                    )
+                    firm_histories[firm_id].append(res_b)
 
                 result_record = Result(
                     run_id=run.id,
@@ -225,16 +268,18 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                 db.add(result_record)
 
             # 6. Update actions for next round
-            new_actions = []
-            for i, strategy in enumerate(firm_strategies):
-                if strategy is None:
+            new_actions: List[Optional[float]] = []
+            for i, strat_opt in enumerate(firm_strategies):
+                if strat_opt is None:
                     # Adaptive Nash logic (handled below for simplicity or per-firm)
                     # For now, we'll store a placeholder and update later
                     new_actions.append(None)
                 else:
                     # Build rival histories for this firm
-                    rival_histories = [firm_histories[j] for j in range(num_firms) if j != i]
-                    
+                    rival_histories: List[
+                        Sequence[Union[CournotResult, BertrandResult]]
+                    ] = [firm_histories[j] for j in range(num_firms) if j != i]
+
                     # Determine bounds (could be expanded)
                     if model == "cournot":
                         a = params.get("a", 100.0)
@@ -243,36 +288,38 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                     else:
                         costs_i = costs[i]
                         bounds = (costs_i + 0.1, 1000.0)
-                    
+
                     market_params = {**params, "model_type": model}
-                    
+
                     try:
-                        action = strategy.next_action(
-                            round_idx, 
-                            firm_histories[i], 
-                            rival_histories, 
-                            bounds, 
-                            market_params
+                        action = strat_opt.next_action(
+                            round_idx,
+                            firm_histories[i],
+                            rival_histories,
+                            bounds,
+                            market_params,
                         )
                         new_actions.append(action)
                     except Exception as e:
-                        print(f"Strategy error for firm {i}: {e}. Falling back to Nash.")
+                        print(
+                            f"Strategy error for firm {i}: {e}. Falling back to Nash."
+                        )
                         new_actions.append(None)
-            
+
             # Handle Nash competitors and merge
             # First, get a baseline update for everyone
             nash_actions = adaptive_nash_strategy(
                 model, actions, result.profits, costs, params, round_idx, rounds
             )
-            
+
             # Use specific strategy action if available, else use Nash
-            final_actions = []
-            for i, action in enumerate(new_actions):
-                if action is not None:
-                    final_actions.append(action)
+            final_actions: List[float] = []
+            for i, action_val in enumerate(new_actions):
+                if action_val is not None:
+                    final_actions.append(float(action_val))
                 else:
-                    final_actions.append(nash_actions[i])
-            
+                    final_actions.append(float(nash_actions[i]))
+
             actions = validate_market_clearing(model, final_actions, costs, params)
 
         db.commit()

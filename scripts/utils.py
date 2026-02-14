@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session, sessionmaker
 try:
     from src.sim.models.models import Base
 except ImportError:
-    from sim.models.models import Base
+    # Fallback to local import if src is not available
+    from sim.models.models import Base  # type: ignore
 
 
 def print_header(title: str) -> None:

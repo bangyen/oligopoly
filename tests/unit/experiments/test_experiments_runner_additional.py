@@ -268,7 +268,7 @@ class TestExperimentRunner:
                 ),
             ]
 
-            mock_db = Mock(spec=Session)
+            Mock(spec=Session)
 
             with patch("src.sim.experiments.runner.run_game") as mock_run_game:
                 with patch(
@@ -303,7 +303,9 @@ class TestExperimentRunner:
                     }
 
                     csv_path = runner.run_experiment_batch(
-                        experiments, seeds_per_config=2, db=mock_db
+                        experiments,
+                        seeds_per_config=2,
+                        db_url="sqlite:///:memory:",
                     )
 
                     # Check that CSV file was created
@@ -327,14 +329,16 @@ class TestExperimentRunner:
                 )
             ]
 
-            mock_db = Mock(spec=Session)
+            Mock(spec=Session)
 
             with patch("src.sim.experiments.runner.run_game") as mock_run_game:
                 mock_run_game.side_effect = Exception("Simulation failed")
 
                 with pytest.raises(RuntimeError) as exc_info:
                     runner.run_experiment_batch(
-                        experiments, seeds_per_config=1, db=mock_db
+                        experiments,
+                        seeds_per_config=1,
+                        db_url="sqlite:///:memory:",
                     )
                 assert "Failed to run config test_config seed 0" in str(exc_info.value)
 
@@ -649,7 +653,6 @@ class TestRunExperimentBatchFromFile:
 
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
-                mock_db = Mock(spec=Session)
 
                 with patch("src.sim.experiments.runner.run_game") as mock_run_game:
                     with patch(
@@ -686,7 +689,7 @@ class TestRunExperimentBatchFromFile:
                         csv_path = run_experiment_batch_from_file(
                             config_path=config_path,
                             seeds_per_config=1,
-                            db=mock_db,
+                            db_url="sqlite:///:memory:",
                             artifacts_dir=temp_dir,
                         )
 
@@ -697,12 +700,12 @@ class TestRunExperimentBatchFromFile:
 
     def test_run_experiment_batch_from_file_file_not_found(self):
         """Test run_experiment_batch_from_file with non-existent file."""
-        mock_db = Mock(spec=Session)
+        Mock(spec=Session)
 
         with pytest.raises(FileNotFoundError) as exc_info:
             run_experiment_batch_from_file(
                 config_path="nonexistent.json",
                 seeds_per_config=1,
-                db=mock_db,
+                db_url="sqlite:///:memory:",
             )
         assert "Experiment config file not found" in str(exc_info.value)
