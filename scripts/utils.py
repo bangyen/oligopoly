@@ -11,7 +11,10 @@ from typing import Any, Dict, List
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from sim.models.models import Base
+try:
+    from src.sim.models.models import Base
+except ImportError:
+    from sim.models.models import Base
 
 
 def print_header(title: str) -> None:
