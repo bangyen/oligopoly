@@ -10,31 +10,24 @@ import tempfile
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from src.sim.experiments.runner import ExperimentConfig, ExperimentRunner
 from src.sim.models.models import Base
 
 
 @pytest.fixture
-def temp_db():
-    """Create a temporary database for testing."""
-    # Create temporary database file
+def temp_db_url():
+    """Create a temporary database for testing and return its URL."""
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
     temp_file.close()
 
-    # Create engine and session
-    engine = create_engine(f"sqlite:///{temp_file.name}")
-    session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-    # Create tables
+    db_url = f"sqlite:///{temp_file.name}"
+    engine = create_engine(db_url)
     Base.metadata.create_all(bind=engine)
 
-    db = session_local()
     try:
-        yield db
+        yield db_url
     finally:
-        db.close()
         os.unlink(temp_file.name)
 
 
@@ -62,7 +55,7 @@ def temp_artifacts_dir():
 
 
 def test_same_config_same_seed_produces_identical_results(
-    temp_db, sample_config, temp_artifacts_dir
+    temp_db_url, sample_config, temp_artifacts_dir
 ):
     """Test that same config + seed produces identical summary metrics."""
     runner = ExperimentRunner(temp_artifacts_dir)
@@ -72,10 +65,10 @@ def test_same_config_same_seed_produces_identical_results(
     seeds_per_config = 1
 
     # First run
-    csv_path_1 = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path_1 = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Second run with same seed
-    csv_path_2 = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path_2 = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read both CSV files
     import csv
@@ -122,7 +115,7 @@ def test_same_config_same_seed_produces_identical_results(
 
 
 def test_different_seeds_produce_different_results(
-    temp_db, sample_config, temp_artifacts_dir
+    temp_db_url, sample_config, temp_artifacts_dir
 ):
     """Test that different seeds produce different results."""
     runner = ExperimentRunner(temp_artifacts_dir)
@@ -130,7 +123,7 @@ def test_different_seeds_produce_different_results(
     experiments = [sample_config]
     seeds_per_config = 3  # Run with 3 different seeds
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read CSV results
     import csv
@@ -163,7 +156,7 @@ def test_different_seeds_produce_different_results(
     assert price_variation > 1e-6 or hhi_variation > 1e-6
 
 
-def test_multiple_configs_with_multiple_seeds(temp_db, temp_artifacts_dir):
+def test_multiple_configs_with_multiple_seeds(temp_db_url, temp_artifacts_dir):
     """Test running multiple configs with multiple seeds each."""
     # Create multiple configs
     configs = [
@@ -186,7 +179,7 @@ def test_multiple_configs_with_multiple_seeds(temp_db, temp_artifacts_dir):
     runner = ExperimentRunner(temp_artifacts_dir)
     seeds_per_config = 2
 
-    csv_path = runner.run_experiment_batch(configs, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(configs, seeds_per_config, temp_db_url)
 
     # Read CSV results
     import csv
@@ -216,14 +209,14 @@ def test_multiple_configs_with_multiple_seeds(temp_db, temp_artifacts_dir):
     assert len(set(config_2_seeds)) == 2
 
 
-def test_csv_contains_expected_columns(temp_db, sample_config, temp_artifacts_dir):
+def test_csv_contains_expected_columns(temp_db_url, sample_config, temp_artifacts_dir):
     """Test that CSV contains all expected columns."""
     runner = ExperimentRunner(temp_artifacts_dir)
 
     experiments = [sample_config]
     seeds_per_config = 1
 
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read CSV headers
     import csv
@@ -257,7 +250,7 @@ def test_csv_contains_expected_columns(temp_db, sample_config, temp_artifacts_di
     assert len(firm_columns) == 2  # Should have 2 firms in sample config
 
 
-def test_empty_results_handling(temp_db, temp_artifacts_dir):
+def test_empty_results_handling(temp_db_url, temp_artifacts_dir):
     """Test handling of empty simulation results."""
     # Create a config that produces minimal results
     config = ExperimentConfig(
@@ -273,7 +266,7 @@ def test_empty_results_handling(temp_db, temp_artifacts_dir):
     seeds_per_config = 1
 
     # Should not raise an exception
-    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db)
+    csv_path = runner.run_experiment_batch(experiments, seeds_per_config, temp_db_url)
 
     # Read results
     import csv

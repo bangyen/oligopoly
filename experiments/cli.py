@@ -112,7 +112,7 @@ Examples:
         print("Starting experiment batch...")
         # Use database URL for parallel runs
         db_url = f"sqlite:///{db_path}"
-        
+
         csv_path = run_experiment_batch_from_file(
             config_path=str(config_path),
             seeds_per_config=args.seeds,
