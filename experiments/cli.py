@@ -16,7 +16,8 @@ from scripts.utils import (
     create_experiment_database,
     print_verbose_summary,
 )
-from sim.experiments.runner import run_experiment_batch_from_file
+from src.sim.experiments.runner import run_experiment_batch_from_file
+from src.sim.experiments.visualizer import ExperimentVisualizer
 
 
 def main() -> None:
@@ -67,6 +68,18 @@ Examples:
         help="Enable verbose output",
     )
 
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Run experiments in parallel using multiprocessing",
+    )
+
+    parser.add_argument(
+        "--plot",
+        action="store_true",
+        help="Generate automated plots from results",
+    )
+
     args = parser.parse_args()
 
     # Validate inputs
@@ -97,11 +110,15 @@ Examples:
 
         # Run experiments
         print("Starting experiment batch...")
+        # Use database URL for parallel runs
+        db_url = f"sqlite:///{db_path}"
+        
         csv_path = run_experiment_batch_from_file(
             config_path=str(config_path),
             seeds_per_config=args.seeds,
-            db=db,
+            db_url=db_url,
             artifacts_dir=str(artifacts_dir),
+            parallel=args.parallel,
         )
 
         print("\nExperiment batch completed successfully!")
@@ -114,6 +131,15 @@ Examples:
                 rows = list(reader)
 
             print_verbose_summary(rows)
+
+        # Generate plots
+        if args.plot:
+            print("\nGenerating automated plots...")
+            visualizer = ExperimentVisualizer(output_dir=str(artifacts_dir / "plots"))
+            plot_paths = visualizer.generate_all_plots(csv_path)
+            print(f"Generated {len(plot_paths)} plots in: {artifacts_dir / 'plots'}")
+            for path in plot_paths:
+                print(f"  - {Path(path).name}")
 
         print("\n=== Experiment Complete ===")
 

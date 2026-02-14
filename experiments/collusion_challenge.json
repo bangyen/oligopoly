@@ -1,0 +1,52 @@
+[
+    {
+        "config_id": "collusion_benchmark",
+        "model": "cournot",
+        "rounds": 50,
+        "params": {
+            "a": 100,
+            "b": 1
+        },
+        "firms": [
+            {
+                "cost": 20,
+                "strategy_type": "collusive",
+                "target_price": 60,
+                "target_quantity": 20
+            },
+            {
+                "cost": 20,
+                "strategy_type": "collusive",
+                "target_price": 60,
+                "target_quantity": 20
+            },
+            {
+                "cost": 20,
+                "strategy_type": "nash"
+            }
+        ]
+    },
+    {
+        "config_id": "nash_baseline",
+        "model": "cournot",
+        "rounds": 50,
+        "params": {
+            "a": 100,
+            "b": 1
+        },
+        "firms": [
+            {
+                "cost": 20,
+                "strategy_type": "nash"
+            },
+            {
+                "cost": 20,
+                "strategy_type": "nash"
+            },
+            {
+                "cost": 20,
+                "strategy_type": "nash"
+            }
+        ]
+    }
+]

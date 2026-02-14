@@ -6,11 +6,14 @@ with different seeds and exporting summary metrics to CSV files.
 
 import csv
 import json
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+from os import cpu_count
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
+from tqdm import tqdm
 
 from src.sim.models.metrics import (
     calculate_hhi,
@@ -19,6 +22,30 @@ from src.sim.models.metrics import (
 )
 from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
 from src.sim.runners.runner import get_run_results, run_game
+
+def _simulation_worker(args):
+    """Top-level worker function for multiprocessing (must be picklable)."""
+    exp_config, seed, db_url, metrics_calc_func = args
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    engine = create_engine(db_url)
+    SessionLocal = sessionmaker(bind=engine)
+    db = SessionLocal()
+    try:
+        config = exp_config.to_simulation_config(seed)
+        run_id = run_game(exp_config.model, exp_config.rounds, config, db)
+        run_results = get_run_results(run_id, db)
+        metrics = metrics_calc_func(run_results, exp_config)
+        return {
+            "run_id": run_id,
+            "config_id": exp_config.config_id,
+            "seed": seed,
+            "model": exp_config.model,
+            "rounds": exp_config.rounds,
+            **metrics,
+        }
+    finally:
+        db.close()
 
 
 class ExperimentConfig:
@@ -156,7 +183,8 @@ class ExperimentRunner:
         self,
         experiments: List[ExperimentConfig],
         seeds_per_config: int,
-        db: Session,
+        db_url: str,
+        parallel: bool = False,
     ) -> str:
         """Run batch of experiments with multiple seeds.
 
@@ -188,46 +216,58 @@ class ExperimentRunner:
             "total_profit",
             "mean_profit_per_firm",
             "num_firms",
+            "cartel_duration",
+            "total_defections",
         ]
 
-        # Add firm-specific profit columns
+        # Add strategy types for each firm
         if experiments:
             max_firms = max(len(exp.firms) for exp in experiments)
             for i in range(max_firms):
+                headers.append(f"firm_{i}_strategy")
                 headers.append(f"firm_{i}_profit")
+                headers.append(f"firm_{i}_defections")
 
-        # Run experiments and collect results
-        results = []
+        # Prepare tasks for execution
+        tasks = []
         for exp_config in experiments:
-            print(
-                f"Running config {exp_config.config_id} with {seeds_per_config} seeds..."
-            )
-
             for seed in range(seeds_per_config):
-                try:
-                    # Run simulation
+                tasks.append((exp_config, seed))
+
+        results = []
+        total_tasks = len(tasks)
+
+        if parallel:
+            print(f"Running {total_tasks} simulations in parallel...")
+            worker_args = [(t[0], t[1], db_url, self._calculate_summary_metrics) for t in tasks]
+
+            with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+                futures = [executor.submit(_simulation_worker, arg) for arg in worker_args]
+                for future in tqdm(as_completed(futures), total=total_tasks, desc="Experiments"):
+                    results.append(future.result())
+        else:
+            print(f"Running {total_tasks} simulations sequentially...")
+            from sqlalchemy import create_engine
+            from sqlalchemy.orm import sessionmaker
+            engine = create_engine(db_url)
+            SessionLocal = sessionmaker(bind=engine)
+            db = SessionLocal()
+            try:
+                for exp_config, seed in tqdm(tasks, desc="Experiments"):
                     config = exp_config.to_simulation_config(seed)
                     run_id = run_game(exp_config.model, exp_config.rounds, config, db)
-
-                    # Get results and calculate metrics
                     run_results = get_run_results(run_id, db)
                     metrics = self._calculate_summary_metrics(run_results, exp_config)
-
-                    # Create result row
-                    row = {
+                    results.append({
                         "run_id": run_id,
                         "config_id": exp_config.config_id,
                         "seed": seed,
                         "model": exp_config.model,
                         "rounds": exp_config.rounds,
                         **metrics,
-                    }
-                    results.append(row)
-
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to run config {exp_config.config_id} seed {seed}: {e}"
-                    )
+                    })
+            finally:
+                db.close()
 
         # Write results to CSV
         self._write_csv(csv_path, headers, results)
@@ -336,12 +376,20 @@ class ExperimentRunner:
         avg_hhi = sum(hhi_values) / len(hhi_values) if hhi_values else 0.0
         avg_cs = sum(cs_values) / len(cs_values) if cs_values else 0.0
 
-        # Calculate firm-specific profits (total across all rounds)
-        firm_profits = {}
+        # Calculate firm-specific metrics
+        firm_metrics = {}
         for i, firm_data in enumerate(firms_data):
             total_firm_profit = sum(firm_data["profits"])
-            firm_profits[f"firm_{i}_profit"] = total_firm_profit
+            firm_metrics[f"firm_{i}_profit"] = total_firm_profit
+            
+            # Get strategy type from config if available
+            if i < len(exp_config.firms):
+                firm_metrics[f"firm_{i}_strategy"] = exp_config.firms[i].get("strategy_type", "nash")
+                
+            # Defections (placeholders until we fully integrate events in get_run_results)
+            firm_metrics[f"firm_{i}_defections"] = 0 
 
+        # Summary collusion metrics (placeholders)
         return {
             "avg_price": avg_price,
             "avg_hhi": avg_hhi,
@@ -349,7 +397,9 @@ class ExperimentRunner:
             "total_profit": total_profit,
             "mean_profit_per_firm": mean_profit_per_firm,
             "num_firms": len(exp_config.firms),
-            **firm_profits,
+            "cartel_duration": 0,
+            "total_defections": 0,
+            **firm_metrics,
         }
 
     def _calculate_cs_cournot(
@@ -391,8 +441,9 @@ class ExperimentRunner:
 def run_experiment_batch_from_file(
     config_path: str,
     seeds_per_config: int,
-    db: Session,
+    db_url: str,
     artifacts_dir: str = "artifacts",
+    parallel: bool = False,
 ) -> str:
     """Convenience function to run experiments from a config file.
 
@@ -407,4 +458,4 @@ def run_experiment_batch_from_file(
     """
     runner = ExperimentRunner(artifacts_dir)
     experiments = runner.load_experiments(config_path)
-    return runner.run_experiment_batch(experiments, seeds_per_config, db)
+    return runner.run_experiment_batch(experiments, seeds_per_config, db_url, parallel)
