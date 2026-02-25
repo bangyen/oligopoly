@@ -296,7 +296,10 @@ class TestBertrandBestResponse:
     def test_bertrand_best_response_rival_below_cost(self):
         """Test Bertrand best response when rival prices below cost."""
         price = bertrand_best_response(
-            alpha=200.0, beta=2.0, my_cost=10.0, rival_prices=[5.0]  # Below my cost
+            alpha=200.0,
+            beta=2.0,
+            my_cost=10.0,
+            rival_prices=[5.0],  # Below my cost
         )
 
         # Should set price to marginal cost plus small markup (1.05)

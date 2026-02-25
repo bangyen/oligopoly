@@ -653,7 +653,6 @@ class TestRunExperimentBatchFromFile:
 
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
-
                 with patch("src.sim.experiments.runner.run_game") as mock_run_game:
                     with patch(
                         "src.sim.experiments.runner.get_run_results"
