@@ -1,5 +1,7 @@
 # Experiment Runner
 
+> **Two-layer design:** This directory contains the **user-facing CLI and JSON configs**. The underlying simulation logic lives in [`src/sim/experiments/`](../src/sim/experiments/) — edit there to change how experiments run; edit here to change how they are invoked or configured.
+
 The experiment runner provides functionality for running batch simulations with multiple configurations and seeds, exporting summary metrics to CSV files.
 
 ## Features

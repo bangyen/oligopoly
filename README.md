@@ -46,7 +46,7 @@ Or open in Colab: [Colab Notebook](https://colab.research.google.com/github/bang
 ```plaintext
 oligopoly/
 ├── oligopoly_demo.ipynb # Colab notebook demo
-├── scripts/             # Demo and utility scripts
+├── scripts/             # Demo and utility scripts  (see [scripts/README.md](scripts/README.md))
 ├── tests/               # Unit/integration tests (79% coverage)
 ├── docs/                # Images and documentation
 ├── experiments/         # Batch experiment configurations
@@ -58,6 +58,22 @@ oligopoly/
     │   └── heatmap/     # Profit surface visualization
     └── main.py          # FastAPI application
 ```
+
+## Test Locations
+
+Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
+
+| Source | Tests |
+|--------|-------|
+| `src/sim/games/` | `tests/unit/games/` |
+| `src/sim/strategies/` | `tests/unit/strategies/` |
+| `src/sim/policy/` | `tests/unit/policy/` |
+| `src/sim/collusion.py` | `tests/unit/events/` + `tests/unit/strategies/` |
+| `src/sim/runners/` | `tests/unit/runners/` |
+| `src/sim/experiments/` | `tests/unit/experiments/` |
+| `src/sim/validation/` | `tests/unit/validation/` |
+| `src/sim/heatmap/` | `tests/unit/heatmap/` |
+| `src/main.py` (FastAPI) | `tests/unit/api/` + `tests/integration/` |
 
 ## Validation
 
