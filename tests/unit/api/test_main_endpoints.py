@@ -258,10 +258,17 @@ class TestRunManagementEndpoints:
                 assert "Run 999 not found" in response.json()["detail"]
 
     def test_list_runs_endpoint(self):
-        """Test list runs endpoint - this endpoint doesn't exist, so test 404."""
+        """Test list runs endpoint returns run list."""
         with TestClient(app) as client:
-            response = client.get("/runs?limit=10&offset=0")
-            assert response.status_code == 404
+            mock_db = Mock()
+            mock_db.query.return_value.order_by.return_value.all.return_value = []
+            app.dependency_overrides[get_db] = lambda: mock_db
+            try:
+                response = client.get("/runs")
+                assert response.status_code == 200
+                assert response.json() == []
+            finally:
+                app.dependency_overrides.clear()
 
 
 class TestPolicyEndpoints:

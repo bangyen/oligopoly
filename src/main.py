@@ -262,6 +262,27 @@ class ReplayResponse(BaseModel):
     frames: List[ReplayFrame] = Field(..., description="All replay frames")
 
 
+class RunSummary(BaseModel):
+    """Summary of a simulation run."""
+
+    id: str
+    model: str
+    rounds: int
+    created_at: str
+    status: str
+
+
+class RunDetail(BaseModel):
+    """Detailed information about a simulation run."""
+
+    id: str
+    model: str
+    rounds: int
+    created_at: str
+    updated_at: str
+    results: Optional[Dict[str, Any]] = None
+
+
 class HeatmapRequest(BaseModel):
     """Request model for heatmap endpoint."""
 
@@ -637,6 +658,49 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+@app.get("/runs", response_model=List[RunSummary])
+async def list_runs(db: Session = Depends(get_db)) -> List[RunSummary]:
+    """List simulation runs."""
+    try:
+        runs = db.query(Run).order_by(Run.created_at.desc()).all()
+        return [
+            RunSummary(
+                id=str(run.id),
+                model=str(run.model),
+                rounds=int(run.rounds),
+                created_at=run.created_at.isoformat(),
+                status="completed",
+            )
+            for run in runs
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list runs: {str(e)}")
+
+
+@app.get("/runs/{run_id}/detail", response_model=RunDetail)
+async def get_run_detail(run_id: str, db: Session = Depends(get_db)) -> RunDetail:
+    """Get detailed information about a simulation run."""
+    try:
+        run = db.query(Run).filter(Run.id == run_id).first()
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        results = get_run_results(run_id, db)
+        return RunDetail(
+            id=str(run.id),
+            model=str(run.model),
+            rounds=int(run.rounds),
+            created_at=run.created_at.isoformat(),
+            updated_at=run.updated_at.isoformat(),
+            results=results,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get run detail: {str(e)}"
+        )
 
 
 @app.post("/compare", response_model=ComparisonResponse)

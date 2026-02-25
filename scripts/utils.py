@@ -12,9 +12,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 try:
+    from src.sim.models.metrics import calculate_consumer_surplus as calc_cs
+    from src.sim.models.metrics import calculate_hhi as calc_hhi
     from src.sim.models.models import Base
 except ImportError:
     # Fallback to local import if src is not available
+    from sim.models.metrics import calculate_consumer_surplus as calc_cs  # type: ignore
+    from sim.models.metrics import calculate_hhi as calc_hhi  # type: ignore
     from sim.models.models import Base  # type: ignore
 
 
@@ -47,18 +51,16 @@ def calculate_hhi(quantities: List[float]) -> float:
     total_quantity = sum(quantities)
     if total_quantity == 0:
         return 0.0
-    market_shares = [q / total_quantity for q in quantities]
-    return sum(share**2 for share in market_shares) * 10000
+    # Convert quantities to shares as expected by the core metric function
+    shares = [q / total_quantity for q in quantities]
+    return calc_hhi(shares) * 10000  # Scale to match original script's 10k base
 
 
 def calculate_consumer_surplus(
     price: float, total_quantity: float, a: float, b: float
 ) -> float:
     """Calculate consumer surplus for linear demand curve."""
-    if total_quantity == 0:
-        return 0.0
-    # CS = 0.5 * (a - price) * total_quantity
-    return 0.5 * max(0, a - price) * total_quantity
+    return calc_cs(a, price, total_quantity)
 
 
 def create_demo_database(database_url: str = "sqlite:///:memory:") -> Any:
