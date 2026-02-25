@@ -7,13 +7,11 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from src.sim.api_endpoints import (
+from src.main import (
     RunDetail,
     RunSummary,
     get_run_detail,
-    get_run_metrics,
     list_runs,
-    router,
 )
 
 
@@ -225,92 +223,3 @@ class TestGetRunDetail:
 
         assert exc_info.value.status_code == 500
         assert "Failed to get run detail" in str(exc_info.value.detail)
-
-
-class TestGetRunMetrics:
-    """Test the get_run_metrics endpoint."""
-
-    @pytest.mark.asyncio
-    async def test_get_run_metrics_success(self) -> None:
-        """Test successful retrieval of run metrics."""
-        mock_db = Mock(spec=Session)
-
-        # Mock run object
-        mock_run = Mock()
-        mock_run.id = "test-run"
-        mock_run.model = "cournot"
-        mock_run.rounds = 100
-        mock_run.created_at = datetime(2023, 1, 1, 12, 0, 0)
-        mock_run.updated_at = datetime(2023, 1, 1, 13, 0, 0)
-
-        # Mock query result for Run
-        mock_run_query = Mock()
-        mock_run_query.filter.return_value.first.return_value = mock_run
-
-        # Mock query result for Result (empty list to avoid iteration issues)
-        mock_result_query = Mock()
-        mock_result_query.filter.return_value.order_by.return_value.all.return_value = (
-            []
-        )
-
-        # Set up mock_db.query to return different mocks based on the model
-        def mock_query_side_effect(model):
-            if model.__name__ == "Run":
-                return mock_run_query
-            else:  # Result model
-                return mock_result_query
-
-        mock_db.query.side_effect = mock_query_side_effect
-
-        result = await get_run_metrics("test-run", mock_db)
-
-        # Check result - should be empty list when no results
-        assert isinstance(result, list)
-        assert result == []
-
-    @pytest.mark.asyncio
-    async def test_get_run_metrics_not_found(self) -> None:
-        """Test get_run_metrics when run is not found."""
-        mock_db = Mock(spec=Session)
-
-        # Mock query result returning None
-        mock_query = Mock()
-        mock_query.filter.return_value.first.return_value = None
-        mock_db.query.return_value = mock_query
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_run_metrics("nonexistent-run", mock_db)
-
-        assert exc_info.value.status_code == 404
-        assert "Run not found" in str(exc_info.value.detail)
-
-    @pytest.mark.asyncio
-    async def test_get_run_metrics_database_error(self) -> None:
-        """Test get_run_metrics with database error."""
-        mock_db = Mock(spec=Session)
-        mock_db.query.side_effect = Exception("Database error")
-
-        with pytest.raises(HTTPException) as exc_info:
-            await get_run_metrics("test-run", mock_db)
-
-        assert exc_info.value.status_code == 500
-        assert "Failed to get run metrics" in str(exc_info.value.detail)
-
-
-class TestRouter:
-    """Test the API router configuration."""
-
-    def test_router_configuration(self) -> None:
-        """Test that router is properly configured."""
-        assert router is not None
-        assert hasattr(router, "tags")
-        assert router.tags == ["advanced"]
-
-    def test_router_routes(self) -> None:
-        """Test that router has expected routes."""
-        # Check that router has routes
-        assert len(router.routes) > 0
-
-        # Check that router is properly configured
-        assert router is not None
-        assert hasattr(router, "routes")
