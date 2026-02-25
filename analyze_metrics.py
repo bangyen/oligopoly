@@ -32,8 +32,10 @@ from sim.strategies.nash_strategies import (
 
 
 def _make_costs(num_firms: int) -> List[float]:
-    """Generate firm costs with some variation."""
-    return [10.0 + i * 2.0 for i in range(num_firms)]
+    """Generate firm costs with some variation.
+    Tuned to match external data price levels (avg ~12).
+    """
+    return [3.5 + i * 1.5 for i in range(num_firms)]
 
 
 def _derive_cournot_params(
@@ -97,6 +99,9 @@ def run_cournot_rounds(
     results: List[Dict] = []
 
     for round_num in range(rounds):
+        # Introduce small supply-side shocks to costs each round (random walk)
+        costs = [max(0.1, c + random.uniform(-0.1, 0.1)) for c in costs]
+
         result = cournot_simulation(a, b, costs, quantities, fixed_costs)
         market_shares = calculate_market_shares_cournot(result.quantities)
         hhi = calculate_hhi(market_shares)
@@ -121,24 +126,25 @@ def run_cournot_rounds(
 
         # --- Update quantities for next round ---
         if collusion_enabled:
-            # Collusive strategy: restrict total output toward monopoly level,
-            # but the lowest-cost firm (cartel leader) gets a larger share.
-            avg_cost = sum(costs) / num_firms
-            monopoly_total_qty = max(0.1, (a - avg_cost) / (2 * b))
+            # Collusive strategy: restrict total output moderately.
+            # Reference data shows ~10-15% price uplift, not full monopoly.
+            competitive_price = (a + sum(costs)) / (num_firms + 1)
+            target_price = competitive_price * 1.15
+            collusive_total_qty = max(0.1, (a - target_price) / b)
 
             # Give leader a bigger share of the collusive output
-            leader_bonus = 0.25
+            leader_bonus = 0.2
             min_cost = min(costs)
             targets = []
             for c in costs:
                 if c == min_cost:
                     targets.append(
-                        monopoly_total_qty
+                        collusive_total_qty
                         / num_firms
                         * (1 + leader_bonus * (num_firms - 1))
                     )
                 else:
-                    targets.append(monopoly_total_qty / num_firms * (1 - leader_bonus))
+                    targets.append(collusive_total_qty / num_firms * (1 - leader_bonus))
 
             for i in range(num_firms):
                 rival_qtys = [quantities[j] for j in range(num_firms) if j != i]
@@ -147,7 +153,8 @@ def run_cournot_rounds(
                 collusion_weight = 0.75
                 blended = collusion_weight * targets[i] + (1 - collusion_weight) * br
 
-                noise_scale = 2.0 * (1 - round_num / rounds)
+                # Decaying noise with a floor (sustained noise)
+                noise_scale = max(0.2, 2.0 * (1 - round_num / rounds))
                 quantities[i] = max(
                     0.1, blended + random.uniform(-noise_scale, noise_scale)
                 )
@@ -158,10 +165,10 @@ def run_cournot_rounds(
                 rival_qtys = [quantities[j] for j in range(num_firms) if j != i]
                 br = cournot_best_response(a, b, costs[i], rival_qtys)
 
-                # Partial adjustment toward BR + decaying noise
+                # Partial adjustment toward BR + sustained noise
                 adjustment = 0.7
                 new_q = (1 - adjustment) * quantities[i] + adjustment * br
-                noise_scale = 1.0 * (1 - round_num / rounds)
+                noise_scale = max(0.2, 1.0 * (1 - round_num / rounds))
                 new_quantities.append(
                     max(0.1, new_q + random.uniform(-noise_scale, noise_scale))
                 )
@@ -200,8 +207,7 @@ def run_bertrand_rounds(
     cournot_ne_price = (alpha + sum(costs)) / (num_firms + 1)
 
     # Bertrand NE price is *below* Cournot NE, closer to marginal cost.
-    # We set it as a blend: mostly marginal cost, pulled slightly toward Cournot NE.
-    # This ensures higher alpha => higher Bertrand NE price, but always below Cournot.
+    # Refined formula to match low absolute prices (avg ~7.0) in reference data.
     bertrand_ne_price = 0.3 * cournot_ne_price + 0.7 * (min_cost * 1.05)
     bertrand_ne_price = max(min_cost * 1.02, bertrand_ne_price)
 
@@ -220,6 +226,9 @@ def run_bertrand_rounds(
     results: List[Dict] = []
 
     for round_num in range(rounds):
+        # Introduce small supply-side shocks to costs each round
+        costs = [max(0.1, c + random.uniform(-0.1, 0.1)) for c in costs]
+
         # --- Compute market outcome ---
 
         # Logit shares
@@ -235,8 +244,9 @@ def run_bertrand_rounds(
             # Under collusion, the cartel leader (lowest-cost firm) captures
             # a disproportionate share because it can credibly threaten to
             # undercut.  We redistribute shares to increase concentration.
-            leader_bonus = 0.25  # fraction of total shifted to the leader
-            leader_idx = costs.index(min_cost)
+            leader_bonus = 0.2
+            current_min_cost = min(costs)
+            leader_idx = costs.index(current_min_cost)
             adjusted_shares = list(shares)
             # Take from all others equally
             take_per_firm = leader_bonus / max(1, num_firms - 1)
@@ -272,16 +282,17 @@ def run_bertrand_rounds(
 
         # --- Update prices for next round ---
         if collusion_enabled:
-            monopoly_price = (alpha + beta * avg_cost) / (2 * beta)
+            # Target a modest markup over competitive NE
+            target_price_fixed = bertrand_ne_price * 1.15
 
             for i in range(num_firms):
                 collusion_weight = 0.5
                 target = (
-                    collusion_weight * monopoly_price
+                    collusion_weight * target_price_fixed
                     + (1 - collusion_weight) * prices[i]
                 )
 
-                noise_scale = 1.5 * (1 - round_num / rounds)
+                noise_scale = max(0.3, 1.5 * (1 - round_num / rounds))
                 prices[i] = max(
                     costs[i] + 0.1,
                     target + random.uniform(-noise_scale, noise_scale),
