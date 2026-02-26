@@ -1,4 +1,4 @@
-"""Flask application serving the oligopoly simulation dashboard.
+"""FastAPI application serving the oligopoly simulation dashboard.
 
 Provides endpoints for simulation data visualization and real-time metrics.
 """
@@ -9,8 +9,13 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from flask import Flask, Response, jsonify, render_template, request
+import uvicorn
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
+# Add src to path for local imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sim.games.bertrand import (  # type: ignore[import-not-found]
@@ -27,11 +32,17 @@ from sim.strategies.strategies import (  # type: ignore[import-not-found]
     TitForTat,
 )
 
+# Configure logging
 logging.getLogger("sim.validation.economic_validation").setLevel(logging.ERROR)
 logging.getLogger("sim.games.cournot").setLevel(logging.ERROR)
 logging.getLogger("sim.games.bertrand").setLevel(logging.ERROR)
 
-app = Flask(__name__)
+app = FastAPI(title="Oligopoly Simulation Dashboard")
+
+# Setup static files and templates
+BASE_DIR = Path(__file__).parent
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
 def parse_list_param(param_str: Optional[str], default: List[float]) -> List[float]:
@@ -72,27 +83,28 @@ def get_strategies(
     return strategies
 
 
-@app.route("/")
-def dashboard() -> str:
+@app.get("/", response_class=HTMLResponse)
+async def dashboard(request: Request):
     """Render the main dashboard interface."""
-    return render_template("dashboard.html")
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
-@app.route("/api/simulation/cournot")
-def cournot_endpoint() -> Response:
+@app.get("/api/simulation/cournot")
+async def cournot_endpoint(
+    a: float = Query(100.0), b: float = Query(1.0), costs: Optional[str] = Query(None)
+):
     """Execute a Cournot simulation and return time series data."""
-    a = float(request.args.get("a", 100.0))
-    b = float(request.args.get("b", 1.0))
-    costs = parse_list_param(request.args.get("costs"), [20.0, 25.0, 30.0])
+    parsed_costs = parse_list_param(costs, [20.0, 25.0, 30.0])
 
     bounds = (0.0, a / b if b > 0 else 100.0)
 
     nash_quantities = [
-        (a - costs[i]) / (b * (len(costs) + 1)) for i in range(len(costs))
+        (a - parsed_costs[i]) / (b * (len(parsed_costs) + 1))
+        for i in range(len(parsed_costs))
     ]
 
     strategies = get_strategies(
-        len(costs),
+        len(parsed_costs),
         nash_quantities[0] if nash_quantities else 0.0,
         (max(0.0, min(nash_quantities) * 0.5), max(nash_quantities) * 1.5),
     )
@@ -122,7 +134,7 @@ def cournot_endpoint() -> Response:
             action = max(0.0, min(action, bounds[1]))
             actions.append(action)
 
-        result = cournot_simulation(a, b, costs, actions)
+        result = cournot_simulation(a, b, parsed_costs, actions)
 
         for firm_idx in range(len(strategies)):
             firm_result = CournotResult(
@@ -145,12 +157,12 @@ def cournot_endpoint() -> Response:
             for i in range(len(history["quantities"][last_10]))
         )
         / 10
-        for j in range(len(costs))
+        for j in range(len(parsed_costs))
     ]
     avg_profits = [
         sum(history["profits"][i][j] for i in range(len(history["profits"][last_10])))
         / 10
-        for j in range(len(costs))
+        for j in range(len(parsed_costs))
     ]
     avg_price = sum(history["prices"][last_10]) / 10
     total_q = sum(avg_quantities)
@@ -164,32 +176,33 @@ def cournot_endpoint() -> Response:
         "hhi": hhi,
     }
 
-    return jsonify(history)
+    return history
 
 
-@app.route("/api/simulation/bertrand")
-def bertrand_endpoint() -> Response:
+@app.get("/api/simulation/bertrand")
+async def bertrand_endpoint(
+    alpha: float = Query(200.0),
+    beta: float = Query(1.0),
+    costs: Optional[str] = Query(None),
+):
     """Execute a Bertrand simulation and return time series data.
 
     Uses narrower price ranges and cost-aware bounds to create realistic
     competition without extreme outcomes or firms pricing below cost.
     """
-    alpha = float(request.args.get("alpha", 200.0))
-    beta = float(request.args.get("beta", 1.0))
-    costs = parse_list_param(request.args.get("costs"), [20.0, 25.0, 30.0])
+    parsed_costs = parse_list_param(costs, [20.0, 25.0, 30.0])
 
     # Calculate a rough monopoly price for bounds reference
-    avg_cost = sum(costs) / len(costs) if costs else 0
+    avg_cost = sum(parsed_costs) / len(parsed_costs) if parsed_costs else 0
     monopoly_price = (alpha / beta + avg_cost) / 2
-    bounds = (min(costs) * 1.1, monopoly_price * 1.1)
+    bounds = (min(parsed_costs) * 1.1, monopoly_price * 1.1)
 
     # Use a simpler strategy set for Bertrand to avoid instability in dynamic setting
-    strategies = []
     nash_price = (
-        min(costs) * 1.05
+        min(parsed_costs) * 1.05
     )  # Approximate competitive price slightly above min cost
 
-    strategies = get_strategies(len(costs), nash_price, bounds)
+    strategies = get_strategies(len(parsed_costs), nash_price, bounds)
 
     firm_histories: List[List[BertrandResult]] = [[] for _ in strategies]
     history: Dict[str, Any] = {
@@ -213,10 +226,10 @@ def bertrand_endpoint() -> Response:
                 market_params={"alpha": alpha, "beta": beta},
             )
             # Enforce cost floor: never price below your own marginal cost
-            action = max(action, costs[firm_idx] * 1.1)
+            action = max(action, parsed_costs[firm_idx] * 1.1)
             actions.append(action)
 
-        result = bertrand_simulation(alpha, beta, costs, actions)
+        result = bertrand_simulation(alpha, beta, parsed_costs, actions)
 
         for firm_idx in range(len(strategies)):
             firm_result = BertrandResult(
@@ -232,36 +245,34 @@ def bertrand_endpoint() -> Response:
         history["quantities"].append(result.quantities)
         history["profits"].append(result.profits)
 
-    return jsonify(history)
+    return history
 
 
-@app.route("/api/metrics")
-def metrics_endpoint() -> Response:
+@app.get("/api/metrics")
+async def metrics_endpoint(
+    a: float = Query(100.0), b: float = Query(1.0), costs: Optional[str] = Query(None)
+):
     """Return theoretical Nash equilibrium for comparison.
 
     Pure game theory calculation with no simulation.
     """
-    a = float(request.args.get("a", 100.0))
-    b = float(request.args.get("b", 1.0))
-    costs = parse_list_param(request.args.get("costs"), [20.0, 25.0, 30.0])
+    parsed_costs = parse_list_param(costs, [20.0, 25.0, 30.0])
 
-    n = len(costs)
+    n = len(parsed_costs)
 
     # Calculate theoretical Nash equilibrium
-    nash_q = [(a - costs[i]) / (b * (n + 1)) for i in range(n)]
+    nash_q = [(a - parsed_costs[i]) / (b * (n + 1)) for i in range(n)]
     total_q = sum(nash_q)
     nash_price = max(0.0, a - b * total_q)
-    nash_profits = [(nash_price - costs[i]) * nash_q[i] for i in range(n)]
+    nash_profits = [(nash_price - parsed_costs[i]) * nash_q[i] for i in range(n)]
 
-    return jsonify(
-        {
-            "nash_quantities": nash_q,
-            "nash_price": nash_price,
-            "nash_profits": nash_profits,
-            "total_surplus": sum(nash_profits),
-        }
-    )
+    return {
+        "nash_quantities": nash_q,
+        "nash_price": nash_price,
+        "nash_profits": nash_profits,
+        "total_surplus": sum(nash_profits),
+    }
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+    uvicorn.run(app, host="0.0.0.0", port=5050)
