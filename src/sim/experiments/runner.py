@@ -300,16 +300,16 @@ class ExperimentRunner:
         """Calculate summary metrics for a simulation run.
 
         Args:
-            run_results: Results from get_run_results
+            run_results: Results from get_run_results (canonical nested dict format)
             exp_config: Original experiment configuration
 
         Returns:
             Dictionary of calculated metrics
         """
-        rounds_data = run_results["rounds_data"]
-        firms_data = run_results["firms_data"]
+        # Canonical format: results[round_idx][firm_id] = {action, price, quantity, profit}
+        results_nested = run_results.get("results", {})
 
-        if not rounds_data:
+        if not results_nested:
             # Handle empty results
             return {
                 "avg_price": 0.0,
@@ -321,101 +321,103 @@ class ExperimentRunner:
                 **{f"firm_{i}_profit": 0.0 for i in range(len(exp_config.firms))},
             }
 
-        # Calculate averages across rounds
-        avg_price = sum(round_data["price"] for round_data in rounds_data) / len(
-            rounds_data
-        )
-        total_profit = sum(round_data["total_profit"] for round_data in rounds_data)
-        mean_profit_per_firm = total_profit / len(exp_config.firms)
-
-        # Calculate HHI and consumer surplus for each round
         hhi_values = []
         cs_values = []
+        all_prices = []
+        all_total_profits = []
 
-        for round_data in rounds_data:
-            round_idx = round_data["round"]
+        # Per-firm cumulative profits keyed by firm_id
+        firm_total_profits: Dict[int, float] = {}
 
-            # Get firm data for this round
-            firm_quantities = []
-            firm_prices = []
-            for firm_data in firms_data:
-                if round_idx < len(firm_data["quantities"]):
-                    firm_quantities.append(firm_data["quantities"][round_idx])
-                    firm_prices.append(
-                        firm_data["actions"][round_idx]
-                    )  # actions are prices in Bertrand
+        for round_idx_key in sorted(results_nested.keys(), key=int):
+            round_firms = results_nested[round_idx_key]
+            if not round_firms:
+                continue
+
+            def _firm_id_key(fid: str) -> int:
+                try:
+                    return int(fid)
+                except ValueError:
+                    return int(fid.split("_")[1]) if "_" in fid else 0
+
+            firm_ids = sorted(round_firms.keys(), key=_firm_id_key)
+            quantities = [round_firms[fid]["quantity"] for fid in firm_ids]
+            prices = [round_firms[fid]["price"] for fid in firm_ids]
+            profits = [round_firms[fid]["profit"] for fid in firm_ids]
+
+            market_price = prices[0] if prices else 0.0
+            total_qty = sum(quantities)
+            total_profit = sum(profits)
+
+            all_prices.append(market_price)
+            all_total_profits.append(total_profit)
+
+            # Accumulate per-firm profits
+            for fid, profit in zip(firm_ids, profits):
+                try:
+                    fid_int = int(fid)
+                except ValueError:
+                    # Handle f"firm_{i}" format
+                    if fid.startswith("firm_"):
+                        fid_int = int(fid.split("_")[1])
+                    else:
+                        continue  # Unexpected ID format
+
+                firm_total_profits[fid_int] = (
+                    firm_total_profits.get(fid_int, 0.0) + profit
+                )
 
             if exp_config.model == "cournot":
-                # For Cournot, calculate HHI from quantities
-                market_shares = calculate_market_shares_cournot(firm_quantities)
+                market_shares = calculate_market_shares_cournot(quantities)
                 hhi = calculate_hhi(market_shares)
-
-                # Consumer surplus for Cournot
                 if exp_config.segments:
-                    # For segmented demand, use weighted average of segment parameters
                     weighted_alpha = sum(
-                        segment["weight"] * segment["alpha"]
-                        for segment in exp_config.segments
+                        seg["weight"] * seg["alpha"] for seg in exp_config.segments
                     )
                     cs = self._calculate_cs_cournot(
-                        weighted_alpha, round_data["price"], round_data["total_qty"]
+                        weighted_alpha, market_price, total_qty
                     )
                 else:
                     demand_a = exp_config.params.get("a", 100.0)
-                    cs = self._calculate_cs_cournot(
-                        demand_a, round_data["price"], round_data["total_qty"]
-                    )
-
+                    cs = self._calculate_cs_cournot(demand_a, market_price, total_qty)
             else:  # bertrand
-                # For Bertrand, calculate HHI from revenues
-                market_shares = calculate_market_shares_bertrand(
-                    firm_prices, firm_quantities
-                )
+                market_shares = calculate_market_shares_bertrand(prices, quantities)
                 hhi = calculate_hhi(market_shares)
-
-                # Consumer surplus for Bertrand
                 if exp_config.segments:
-                    # For segmented demand, use weighted average of segment parameters
                     weighted_alpha = sum(
-                        segment["weight"] * segment["alpha"]
-                        for segment in exp_config.segments
+                        seg["weight"] * seg["alpha"] for seg in exp_config.segments
                     )
                     cs = self._calculate_cs_bertrand(
-                        weighted_alpha, round_data["price"], round_data["total_qty"]
+                        weighted_alpha, market_price, total_qty
                     )
                 else:
                     demand_alpha = exp_config.params.get("alpha", 100.0)
                     cs = self._calculate_cs_bertrand(
-                        demand_alpha, round_data["price"], round_data["total_qty"]
+                        demand_alpha, market_price, total_qty
                     )
 
             hhi_values.append(hhi)
             cs_values.append(cs)
 
+        avg_price = sum(all_prices) / len(all_prices) if all_prices else 0.0
+        total_profit_all = sum(all_total_profits)
         avg_hhi = sum(hhi_values) / len(hhi_values) if hhi_values else 0.0
         avg_cs = sum(cs_values) / len(cs_values) if cs_values else 0.0
+        mean_profit_per_firm = total_profit_all / len(exp_config.firms)
 
-        # Calculate firm-specific metrics
         firm_metrics = {}
-        for i, firm_data in enumerate(firms_data):
-            total_firm_profit = sum(firm_data["profits"])
-            firm_metrics[f"firm_{i}_profit"] = total_firm_profit
-
-            # Get strategy type from config if available
-            if i < len(exp_config.firms):
-                firm_metrics[f"firm_{i}_strategy"] = exp_config.firms[i].get(
-                    "strategy_type", "nash"
-                )
-
-            # Defections (placeholders until we fully integrate events in get_run_results)
+        for i in range(len(exp_config.firms)):
+            firm_metrics[f"firm_{i}_profit"] = firm_total_profits.get(i, 0.0)
+            firm_metrics[f"firm_{i}_strategy"] = exp_config.firms[i].get(
+                "strategy_type", "nash"
+            )
             firm_metrics[f"firm_{i}_defections"] = 0
 
-        # Summary collusion metrics (placeholders)
         return {
             "avg_price": avg_price,
             "avg_hhi": avg_hhi,
             "avg_cs": avg_cs,
-            "total_profit": total_profit,
+            "total_profit": total_profit_all,
             "mean_profit_per_firm": mean_profit_per_firm,
             "num_firms": len(exp_config.firms),
             "cartel_duration": 0,

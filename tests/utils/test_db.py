@@ -93,10 +93,19 @@ def override_get_db_for_testing(app, get_db_func) -> None:
         app: FastAPI application instance
         get_db_func: Original get_db function to override
     """
+    # Create the test database ONCE for this override
+    database_url, _ = create_test_database()
+    # Create a sessionmaker for this specific database
+    engine = create_engine(
+        database_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     def test_get_db() -> Generator[Session, None, None]:
         """Test database dependency override."""
-        database_url, session = create_test_database()
+        session = testing_session_local()
         try:
             yield session
         finally:

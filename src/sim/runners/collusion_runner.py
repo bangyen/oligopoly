@@ -87,8 +87,15 @@ def run_collusion_game(
 
     collusion_manager = CollusionManager(regulator_state)
 
-    # Create run record
-    run = Run(model=model, rounds=rounds)
+    # Normalise params to a plain serializable dict for DB persistence
+    params_dict = (
+        params.model_dump()
+        if hasattr(params, "model_dump")
+        else params if isinstance(params, dict) else None
+    )
+
+    # Create run record — persist params so metrics can be recomputed faithfully later
+    run = Run(model=model, rounds=rounds, params=params_dict)
     db.add(run)
     db.flush()  # Get the run_id
 

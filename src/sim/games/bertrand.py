@@ -19,6 +19,11 @@ from ..validation.economic_validation import (
     validate_simulation_result,
 )
 
+# Re-export CLI parse helpers from their canonical location.
+# Implementation lives in _parsing.py; importing here preserves backward compatibility.
+from ._parsing import parse_costs as parse_costs  # noqa: F401
+from ._parsing import parse_prices as parse_prices  # noqa: F401
+
 
 @dataclass
 class BertrandResult:
@@ -446,49 +451,4 @@ def bertrand_segmented_simulation(
     )
 
 
-def parse_costs(costs_str: str) -> List[float]:
-    """Parse comma-separated costs string into list of floats.
-
-    Args:
-        costs_str: Comma-separated string of costs (e.g., "10,20,30")
-
-    Returns:
-        List of parsed cost values
-
-    Raises:
-        ValueError: If parsing fails or costs are invalid
-    """
-    if not costs_str.strip():
-        raise ValueError("Costs list cannot be empty")
-
-    try:
-        costs = [float(x.strip()) for x in costs_str.split(",") if x.strip()]
-        if not costs:
-            raise ValueError("Costs list cannot be empty")
-        return costs
-    except ValueError as e:
-        raise ValueError(f"Invalid costs format '{costs_str}': {e}")
-
-
-def parse_prices(prices_str: str) -> List[float]:
-    """Parse comma-separated prices string into list of floats.
-
-    Args:
-        prices_str: Comma-separated string of prices (e.g., "10,20,30")
-
-    Returns:
-        List of parsed price values
-
-    Raises:
-        ValueError: If parsing fails or prices are invalid
-    """
-    if not prices_str.strip():
-        raise ValueError("Prices list cannot be empty")
-
-    try:
-        prices = [float(x.strip()) for x in prices_str.split(",") if x.strip()]
-        if not prices:
-            raise ValueError("Prices list cannot be empty")
-        return prices
-    except ValueError as e:
-        raise ValueError(f"Invalid prices format '{prices_str}': {e}")
+# End of Bertrand implementation

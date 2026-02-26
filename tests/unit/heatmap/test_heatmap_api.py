@@ -208,7 +208,7 @@ class TestHeatmapAPI:
             response.status_code == 400
         ), f"Expected 400 for invalid firm index, got {response.status_code}"
 
-        # Test missing parameters
+        # Test partial parameters (Pydantic now fills defaults, so this succeeds)
         request_data = {
             "model": "cournot",
             "firm_i": 0,
@@ -216,14 +216,14 @@ class TestHeatmapAPI:
             "grid_size": 5,
             "action_range": [0.0, 20.0],
             "other_actions": [],
-            "params": {"a": 100.0},  # Missing 'b' parameter
+            "params": {"a": 100.0},  # 'b' omitted — Pydantic fills b=1.0 default
             "firms": [{"cost": 10.0}, {"cost": 15.0}],
         }
 
         response = client.post("/heatmap", json=request_data)
         assert (
-            response.status_code == 400
-        ), f"Expected 400 for missing parameters, got {response.status_code}"
+            response.status_code == 200
+        ), f"Expected 200 with Pydantic defaults, got {response.status_code}"
 
     def test_heatmap_api_bertrand_market_share(self):
         """Test that Bertrand API returns market share surface."""

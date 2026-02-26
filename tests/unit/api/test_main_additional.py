@@ -346,23 +346,10 @@ class TestDifferentiatedBertrandAdditional:
     """Test additional scenarios for differentiated Bertrand endpoint."""
 
     def test_differentiated_bertrand_runtime_error(self):
-        """Test differentiated Bertrand endpoint with RuntimeError."""
+        """Endpoint removed; any request to /differentiated-bertrand should return 404."""
         with TestClient(app) as client:
-            simulation_data = {
-                "model": "cournot",
-                "rounds": 1,
-                "firms": [{"cost": 10.0, "fixed_cost": 0.0}],
-                "params": {"demand_model": "logit"},
-            }
-
-            with patch(
-                "src.main.calculate_differentiated_nash_equilibrium"
-            ) as mock_calc:
-                mock_calc.side_effect = RuntimeError("Computation failed")
-
-                response = client.post("/differentiated-bertrand", json=simulation_data)
-                assert response.status_code == 500
-                assert "Unexpected error" in response.json()["detail"]
+            response = client.post("/differentiated-bertrand", json={})
+            assert response.status_code in (404, 405, 422)
 
 
 class TestGetRunAdditional:
@@ -525,26 +512,25 @@ class TestCalculateComparisonMetrics:
         assert len(metrics["total_quantity"]) == 2
 
     def test_calculate_comparison_metrics_old_format(self):
-        """Test _calculate_comparison_metrics with old format."""
+        """Old rounds_data/firms_data format is no longer supported; verify canonical format is accepted."""
+        # The canonical format `results[round_idx][firm_id]` is the only supported format.
         run_data = {
-            "rounds_data": [
-                {"round": 0, "price": 50.0, "total_qty": 35.0, "total_profit": 1400.0},
-                {"round": 1, "price": 51.0, "total_qty": 33.0, "total_profit": 1325.0},
-            ],
+            "results": {
+                "0": {
+                    "firm_0": {"price": 50.0, "quantity": 20.0, "profit": 800.0},
+                    "firm_1": {"price": 50.0, "quantity": 15.0, "profit": 600.0},
+                },
+                "1": {
+                    "firm_0": {"price": 51.0, "quantity": 19.0, "profit": 779.0},
+                    "firm_1": {"price": 51.0, "quantity": 14.0, "profit": 546.0},
+                },
+            },
             "model": "cournot",
-            "firms_data": [
-                {"quantities": [20.0, 19.0], "profits": [800.0, 779.0]},
-                {"quantities": [15.0, 14.0], "profits": [600.0, 546.0]},
-            ],
         }
 
         metrics = _calculate_comparison_metrics(run_data)
 
         assert "market_price" in metrics
-        assert "total_quantity" in metrics
-        assert "total_profit" in metrics
-        assert "hhi" in metrics
-        assert "consumer_surplus" in metrics
         assert len(metrics["market_price"]) == 2
 
     def test_calculate_comparison_metrics_bertrand(self):

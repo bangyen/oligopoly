@@ -93,35 +93,33 @@ def test_get_run_valid_id(setup_database: None) -> None:
     assert "model" in data
     assert "rounds" in data
     assert "created_at" in data
-    assert "rounds_data" in data
-    assert "firms_data" in data
+    assert "results" in data
+    assert "metrics" in data
 
-    # Verify arrays have equal length
-    assert len(data["rounds_data"]) == data["rounds"]
-    assert len(data["firms_data"]) == 2
+    # Verify rounds length
+    assert len(data["results"]) == data["rounds"]
+    assert len(data["metrics"]) == data["rounds"]
 
-    for firm_data in data["firms_data"]:
-        assert len(firm_data["actions"]) == data["rounds"]
-        assert len(firm_data["quantities"]) == data["rounds"]
-        assert len(firm_data["profits"]) == data["rounds"]
+    # Verify all price, qty, profit are finite and qty, price >= 0 in results
+    for ridx in data["results"]:
+        round_firms = data["results"][ridx]
+        for fid in round_firms:
+            firm_data = round_firms[fid]
+            assert isinstance(firm_data["price"], (int, float))
+            assert firm_data["price"] >= 0
+            assert isinstance(firm_data["quantity"], (int, float))
+            assert firm_data["quantity"] >= 0
+            assert isinstance(firm_data["profit"], (int, float))
+            assert isinstance(firm_data["action"], (int, float))
+            assert firm_data["action"] >= 0
 
-    # Verify all price, qty, profit are finite and qty, price >= 0
-    for round_data in data["rounds_data"]:
-        assert isinstance(round_data["price"], (int, float))
-        assert round_data["price"] >= 0
-        assert isinstance(round_data["total_qty"], (int, float))
-        assert round_data["total_qty"] >= 0
-        assert isinstance(round_data["total_profit"], (int, float))
-
-    for firm_data in data["firms_data"]:
-        for action in firm_data["actions"]:
-            assert isinstance(action, (int, float))
-            assert action >= 0
-        for qty in firm_data["quantities"]:
-            assert isinstance(qty, (int, float))
-            assert qty >= 0
-        for profit in firm_data["profits"]:
-            assert isinstance(profit, (int, float))
+    # Verify metrics structure
+    for ridx in data["metrics"]:
+        m = data["metrics"][ridx]
+        assert "hhi" in m
+        assert "consumer_surplus" in m
+        assert "market_price" in m
+        assert m["market_price"] >= 0
 
 
 def test_get_run_invalid_id(setup_database: None) -> None:
@@ -153,17 +151,13 @@ def test_get_run_bertrand_model(setup_database: None) -> None:
 
     # Verify Bertrand-specific structure
     assert data["model"] == "bertrand"
-    assert len(data["rounds_data"]) == 2
-    assert len(data["firms_data"]) == 2
+    assert len(data["results"]) == 2
 
-    # Verify all prices are non-negative
-    for round_data in data["rounds_data"]:
-        assert round_data["price"] >= 0
-
-    # Verify all quantities are non-negative
-    for firm_data in data["firms_data"]:
-        for qty in firm_data["quantities"]:
-            assert qty >= 0
+    # Verify quantities are non-negative
+    for ridx in data["results"]:
+        for fid in data["results"][ridx]:
+            assert data["results"][ridx][fid]["quantity"] >= 0
+            assert data["results"][ridx][fid]["price"] >= 0
 
 
 def test_get_run_large_simulation(setup_database: None) -> None:
@@ -187,14 +181,11 @@ def test_get_run_large_simulation(setup_database: None) -> None:
 
     # Verify structure
     assert data["rounds"] == 10
-    assert len(data["rounds_data"]) == 10
-    assert len(data["firms_data"]) == 4
+    assert len(data["results"]) == 10
 
-    # Verify all firms have data for all rounds
-    for firm_data in data["firms_data"]:
-        assert len(firm_data["actions"]) == 10
-        assert len(firm_data["quantities"]) == 10
-        assert len(firm_data["profits"]) == 10
+    # Verify all firms have data
+    for ridx in data["results"]:
+        assert len(data["results"][ridx]) == 4
 
 
 def test_get_run_data_types(setup_database: None) -> None:
@@ -220,18 +211,21 @@ def test_get_run_data_types(setup_database: None) -> None:
     assert isinstance(data["model"], str)
     assert isinstance(data["rounds"], int)
     assert isinstance(data["created_at"], str)
-    assert isinstance(data["rounds_data"], list)
-    assert isinstance(data["firms_data"], list)
+    assert isinstance(data["results"], dict)
+    assert isinstance(data["metrics"], dict)
 
     # Verify nested data types
-    for round_data in data["rounds_data"]:
-        assert isinstance(round_data["round"], int)
-        assert isinstance(round_data["price"], (int, float))
-        assert isinstance(round_data["total_qty"], (int, float))
-        assert isinstance(round_data["total_profit"], (int, float))
+    for ridx in data["results"]:
+        round_firms = data["results"][ridx]
+        for fid in round_firms:
+            firm_data = round_firms[fid]
+            assert isinstance(firm_data["price"], (int, float))
+            assert isinstance(firm_data["quantity"], (int, float))
+            assert isinstance(firm_data["profit"], (int, float))
+            assert isinstance(firm_data["action"], (int, float))
 
-    for firm_data in data["firms_data"]:
-        assert isinstance(firm_data["firm_id"], int)
-        assert isinstance(firm_data["actions"], list)
-        assert isinstance(firm_data["quantities"], list)
-        assert isinstance(firm_data["profits"], list)
+    for ridx in data["metrics"]:
+        m = data["metrics"][ridx]
+        assert isinstance(m["hhi"], (int, float))
+        assert isinstance(m["consumer_surplus"], (int, float))
+        assert isinstance(m["market_price"], (int, float))

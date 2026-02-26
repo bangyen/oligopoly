@@ -7,7 +7,7 @@ for health checks and simulation management.
 import math
 import os
 import time
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -34,10 +34,6 @@ from src.sim.models.metrics import (
     calculate_round_metrics_cournot,
 )
 from src.sim.models.models import Base, DemandSegment, Event, Run, SegmentedDemand
-from src.sim.models.product_differentiation import (
-    ProductCharacteristics,
-    calculate_differentiated_nash_equilibrium,
-)
 from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
 from src.sim.runners.runner import get_run_results, run_game
 
@@ -128,17 +124,37 @@ class EnhancedDemandConfig(BaseModel):
     )
 
 
+class CournotParams(BaseModel):
+    """Typed demand parameters for the Cournot competition model."""
+
+    a: float = Field(100.0, gt=0, description="Demand intercept P = a - b*Q")
+    b: float = Field(
+        1.0, gt=0, description="Demand slope (price sensitivity to quantity)"
+    )
+
+
+class BertrandParams(BaseModel):
+    """Typed demand parameters for the Bertrand competition model."""
+
+    alpha: float = Field(
+        100.0, gt=0, description="Demand intercept Q(p) = alpha - beta*p"
+    )
+    beta: float = Field(1.0, gt=0, description="Demand slope")
+
+
 class SimulationRequest(BaseModel):
     """Request model for simulation endpoint."""
 
     model: str = Field(
         ...,
-        pattern="^(cournot|bertrand|differentiated_bertrand)$",
+        pattern="^(cournot|bertrand)$",
         description="Competition model type",
     )
     rounds: int = Field(..., gt=0, le=1000, description="Number of simulation rounds")
-    params: Dict[str, Any] = Field(
-        default_factory=dict, description="Market parameters"
+    params: Union[CournotParams, BertrandParams, None] = Field(
+        default=None,
+        description="Typed market demand parameters. Use CournotParams (a, b) for "
+        "cournot and BertrandParams (alpha, beta) for bertrand.",
     )
     firms: List[FirmConfig] = Field(
         ..., min_length=1, max_length=10, description="Firm configurations"
@@ -300,9 +316,9 @@ class HeatmapRequest(BaseModel):
     other_actions: List[float] = Field(
         ..., description="Fixed actions for all other firms"
     )
-    params: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Market parameters (a, b for Cournot; alpha, beta for Bertrand)",
+    params: Union[CournotParams, BertrandParams, None] = Field(
+        default=None,
+        description="Typed demand parameters. Use CournotParams for cournot, BertrandParams for bertrand.",
     )
     firms: List[FirmConfig] = Field(
         ..., min_length=2, max_length=10, description="Firm configurations"
@@ -406,52 +422,89 @@ async def simulate(
                 detail="All fixed costs must be non-negative",
             )
 
-        # Check if costs are too high relative to demand parameters
+        # Build typed params dict from the request
+        raw_params = request.params
         if request.model == "cournot":
-            a = request.params.get("a", 100.0)
-            b = request.params.get("b", 1.0)
+            # Cournot model: need a, b
+            if raw_params is not None and (
+                hasattr(raw_params, "a") and hasattr(raw_params, "b")
+            ):
+                params = (
+                    raw_params.model_dump()
+                    if hasattr(raw_params, "model_dump")
+                    else dict(raw_params)
+                )
+            elif raw_params is None:
+                params = {"a": 100.0, "b": 1.0}
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cournot model requires CournotParams (fields: a, b)",
+                )
+        elif request.model == "bertrand":
+            # Bertrand model: need alpha, beta
+            if raw_params is not None and (
+                hasattr(raw_params, "alpha") and hasattr(raw_params, "beta")
+            ):
+                params = (
+                    raw_params.model_dump()
+                    if hasattr(raw_params, "model_dump")
+                    else dict(raw_params)
+                )
+            elif raw_params is None:
+                params = {"alpha": 100.0, "beta": 1.0}
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bertrand model requires BertrandParams (fields: alpha, beta)",
+                )
+        else:
+            # Should not happen due to Pydantic validation on `model` field
+            raise HTTPException(
+                status_code=400, detail=f"Unknown model type: {request.model}"
+            )
+
+        # Parameter extraction logic above handles type-specific validation
+        # (params variable is now a validated dict or defaults)
+
+        # Cross-validate params vs model
+        if request.model == "cournot":
+            a = params.get("a", 100.0)
+            b = params.get("b", 1.0)
 
             if any(cost >= a for cost in costs):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Firm costs cannot exceed demand intercept (a={a}). Firms with costs >= {a} would never be profitable.",
                 )
-
-            # Check if demand slope is too flat (creates unrealistic conditions)
             if b < 0.1:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Demand slope (b={b}) is too flat. This creates unrealistic market conditions. Use b >= 0.1.",
+                    detail=f"Demand slope (b={b}) is too flat. Use b >= 0.1.",
                 )
 
         elif request.model == "bertrand":
-            alpha = request.params.get("alpha", 100.0)
-            beta = request.params.get("beta", 1.0)
+            alpha = params.get("alpha", 100.0)
+            beta = params.get("beta", 1.0)
 
             if any(cost >= alpha for cost in costs):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Firm costs cannot exceed demand intercept (alpha={alpha}). Firms with costs >= {alpha} would never be profitable.",
                 )
-
-            # Check if demand slope is too flat
             if beta < 0.1:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Demand slope (beta={beta}) is too flat. This creates unrealistic market conditions. Use beta >= 0.1.",
+                    detail=f"Demand slope (beta={beta}) is too flat. Use beta >= 0.1.",
                 )
 
         # Convert Pydantic models to dict format expected by run_game
+        # Use standardized params dict for simulation config
         config: Dict[str, Any] = {
-            "params": request.params,
+            "params": params,
             "firms": [
-                {
-                    "cost": firm.cost,
-                    "fixed_cost": firm.fixed_cost,
-                }
-                for firm in request.firms
+                {"cost": f.cost, "fixed_cost": f.fixed_cost} for f in request.firms
             ],
-            "demand_type": request.demand_type,
             "seed": request.seed,
             "events": (
                 [
@@ -524,59 +577,12 @@ async def simulate(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-@app.post("/differentiated-bertrand", response_model=SimulationResponse)
-async def simulate_differentiated_bertrand(
-    request: SimulationRequest, db: Session = Depends(get_db)
-) -> SimulationResponse:
-    """Run differentiated Bertrand competition simulation.
-
-    Executes differentiated Bertrand competition with product differentiation,
-    allowing for horizontal and vertical differentiation between products.
-
-    Args:
-        request: Simulation configuration with product characteristics
-        db: Database session for persistence
-
-    Returns:
-        SimulationResponse containing the unique run_id
-
-    Raises:
-        HTTPException: If simulation fails or configuration is invalid
-    """
-    try:
-        # For simplified version, use default quality for all firms
-        # In the future, this could be extended to support quality differentiation
-        products = [
-            ProductCharacteristics(quality=1.0)  # Default quality
-            for firm in request.firms
-        ]
-
-        costs = [firm.cost for firm in request.firms]
-
-        # Get demand model parameters
-        demand_model = request.params.get("demand_model", "logit")
-        demand_params = request.params.get("demand_params", {})
-        total_market_size = request.params.get("total_market_size", 100.0)
-
-        # Calculate Nash equilibrium
-        equilibrium_prices, result = calculate_differentiated_nash_equilibrium(
-            products, costs, demand_model, demand_params, total_market_size
-        )
-
-        # Create run record
-        run = Run(model="differentiated_bertrand", rounds=1)
-        db.add(run)
-        db.flush()
-
-        # Store results (simplified for this example)
-        # In a full implementation, you'd store detailed round-by-round data
-
-        return SimulationResponse(run_id=str(run.id))
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+# The /differentiated-bertrand endpoint has been intentionally removed.
+# The underlying calculate_differentiated_nash_equilibrium function always
+# returned a stub response (rounds=1, no time-series data) that was
+# indistinguishable from a real simulation response. Remove until the feature
+# is complete. To run a Bertrand competition, use POST /simulate with
+# model="bertrand".
 
 
 @app.get("/runs/{run_id}")
@@ -599,39 +605,32 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     try:
         results = get_run_results(run_id, db)
-        results_dict = dict(results)
 
-        # Calculate metrics for each round
-        rounds_data = results_dict.get("results", {})
-        model = results_dict.get("model", "cournot")
+        model = results.get("model", "cournot")
+        rounds_data = results.get("results", {})
+        # Use persisted params; fall back to narrow defaults only if params was never stored
+        stored_params = results.get("params") or {}
 
         metrics = {}
-        for round_idx, round_data in rounds_data.items():
+        for round_idx, round_firms in rounds_data.items():
             round_idx = int(round_idx)
-
-            # Extract firm data
-            firms_data = list(round_data.values())
+            firms_data = list(round_firms.values())
             if not firms_data:
                 continue
 
-            # Get quantities, prices, and profits
             quantities = [firm["quantity"] for firm in firms_data]
             prices = [firm["price"] for firm in firms_data]
             profits = [firm["profit"] for firm in firms_data]
 
-            # Calculate market metrics
             if model == "cournot":
-                market_price = (
-                    prices[0] if prices else 0.0
-                )  # All firms have same price in Cournot
-                # Use default demand parameters - in real implementation, these should be stored
-                demand_a = 100.0  # This should come from the simulation parameters
+                market_price = prices[0] if prices else 0.0
+                demand_a = float(stored_params.get("a", 100.0))
                 hhi, cs = calculate_round_metrics_cournot(
                     quantities, market_price, demand_a
                 )
             else:  # bertrand
                 total_demand = sum(quantities)
-                demand_alpha = 100.0  # This should come from the simulation parameters
+                demand_alpha = float(stored_params.get("alpha", 100.0))
                 hhi, cs = calculate_round_metrics_bertrand(
                     prices, quantities, total_demand, demand_alpha
                 )
@@ -649,10 +648,8 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
                 "num_firms": len(firms_data),
             }
 
-        # Add metrics to results
-        results_dict["metrics"] = metrics
-
-        return results_dict
+        results["metrics"] = metrics
+        return results
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -731,9 +728,19 @@ async def compare_scenarios(
                 f"Left: {request.left_config.rounds}, Right: {request.right_config.rounds}",
             )
 
+        # Normalise params to plain dicts (may come in as CournotParams/BertrandParams objects)
+        def _params_to_dict(
+            params: Optional[Union[CournotParams, BertrandParams]],
+        ) -> dict:
+            if params is None:
+                return {}
+            return (
+                params.model_dump() if hasattr(params, "model_dump") else dict(params)
+            )
+
         # Run left scenario
         left_config: Dict[str, Any] = {
-            "params": request.left_config.params,
+            "params": _params_to_dict(request.left_config.params),
             "firms": [{"cost": firm.cost} for firm in request.left_config.firms],
             "seed": request.left_config.seed,
             "events": (
@@ -767,7 +774,7 @@ async def compare_scenarios(
 
         # Run right scenario
         right_config: Dict[str, Any] = {
-            "params": request.right_config.params,
+            "params": _params_to_dict(request.right_config.params),
             "firms": [{"cost": firm.cost} for firm in request.right_config.firms],
             "seed": request.right_config.seed,
             "events": (
@@ -902,111 +909,58 @@ async def get_comparison_results(
 def _calculate_comparison_metrics(run_data: Dict[str, Any]) -> Dict[str, List[float]]:
     """Calculate metrics arrays for comparison from run data.
 
+    Expects the canonical nested-dict format from get_run_results:
+    ``results[round_idx][firm_id] = {action, price, quantity, profit}``
+
     Args:
-        run_data: Dictionary containing run results and metadata
+        run_data: Dictionary containing run results, params, and metadata
 
     Returns:
         Dictionary with metric names as keys and arrays of values as values
     """
-    # Check if this is the new format (with "results" key) or old format (with "rounds_data" key)
-    if "results" in run_data:
-        # New format from strategy/collusion runners
-        rounds_data = run_data.get("results", {})
-        model = run_data.get("model", "cournot")
+    rounds_data = run_data.get("results", {})
+    model = run_data.get("model", "cournot")
+    stored_params = run_data.get("params") or {}
 
-        metrics: Dict[str, List[float]] = {
-            "market_price": [],
-            "total_quantity": [],
-            "total_profit": [],
-            "hhi": [],
-            "consumer_surplus": [],
-        }
+    metrics: Dict[str, List[float]] = {
+        "market_price": [],
+        "total_quantity": [],
+        "total_profit": [],
+        "hhi": [],
+        "consumer_surplus": [],
+    }
 
-        for round_idx in sorted(rounds_data.keys(), key=int):
-            round_data = rounds_data[round_idx]
-            firms_data = list(round_data.values())
-            if not firms_data:
-                continue
+    for round_idx in sorted(rounds_data.keys(), key=int):
+        round_firms = rounds_data[round_idx]
+        firms_data = list(round_firms.values())
+        if not firms_data:
+            continue
 
-            # Get quantities, prices, and profits
-            quantities = [firm["quantity"] for firm in firms_data]
-            prices = [firm["price"] for firm in firms_data]
-            profits = [firm["profit"] for firm in firms_data]
+        quantities = [firm["quantity"] for firm in firms_data]
+        prices = [firm["price"] for firm in firms_data]
+        profits = [firm["profit"] for firm in firms_data]
 
-            # Calculate market metrics
-            if model == "cournot":
-                market_price = prices[0] if prices else 0.0
-                demand_a = 100.0  # Default demand parameter
-                hhi, cs = calculate_round_metrics_cournot(
-                    quantities, market_price, demand_a
-                )
-            else:  # bertrand
-                total_demand = sum(quantities)
-                demand_alpha = 100.0  # Default demand parameter
-                # For Bertrand, we need to reconstruct the prices list from the result
-                # Since we only store the market price, we'll use that for all firms
-                market_price = min(prices) if prices else 0.0
-                firm_prices = [market_price] * len(quantities)
-                hhi, cs = calculate_round_metrics_bertrand(
-                    firm_prices, quantities, total_demand, demand_alpha
-                )
-
-            metrics["market_price"].append(
-                market_price if model == "cournot" else min(prices) if prices else 0.0
+        if model == "cournot":
+            market_price = prices[0] if prices else 0.0
+            demand_a = float(stored_params.get("a", 100.0))
+            hhi, cs = calculate_round_metrics_cournot(
+                quantities, market_price, demand_a
             )
-            metrics["total_quantity"].append(sum(quantities))
-            metrics["total_profit"].append(sum(profits))
-            metrics["hhi"].append(hhi)
-            metrics["consumer_surplus"].append(cs)
+        else:  # bertrand
+            total_demand = sum(quantities)
+            demand_alpha = float(stored_params.get("alpha", 100.0))
+            market_price = min(prices) if prices else 0.0
+            hhi, cs = calculate_round_metrics_bertrand(
+                prices, quantities, total_demand, demand_alpha
+            )
 
-        return metrics
-    else:
-        # Old format from basic runner
-        rounds_data = run_data.get("rounds_data", [])
-        model = run_data.get("model", "cournot")
+        metrics["market_price"].append(market_price)
+        metrics["total_quantity"].append(sum(quantities))
+        metrics["total_profit"].append(sum(profits))
+        metrics["hhi"].append(hhi)
+        metrics["consumer_surplus"].append(cs)
 
-        metrics = {
-            "market_price": [],
-            "total_quantity": [],
-            "total_profit": [],
-            "hhi": [],
-            "consumer_surplus": [],
-        }
-
-        for round_data in rounds_data:
-            round_idx = round_data.get("round", 0)
-            price = round_data.get("price", 0.0)
-            total_qty = round_data.get("total_qty", 0.0)
-            total_profit = round_data.get("total_profit", 0.0)
-
-            # For basic runner, we need to estimate quantities per firm
-            # This is a simplified approach - in practice, you'd want to store more detailed data
-            num_firms = len(run_data.get("firms_data", []))
-            if num_firms > 0:
-                avg_qty_per_firm = total_qty / num_firms
-                quantities = [avg_qty_per_firm] * num_firms
-            else:
-                quantities = [total_qty]
-
-            # Calculate market metrics
-            if model == "cournot":
-                demand_a = 100.0  # Default demand parameter
-                hhi, cs = calculate_round_metrics_cournot(quantities, price, demand_a)
-            else:  # bertrand
-                demand_alpha = 100.0  # Default demand parameter
-                # For Bertrand, we need to create a prices list with the same length as quantities
-                firm_prices = [price] * len(quantities)
-                hhi, cs = calculate_round_metrics_bertrand(
-                    firm_prices, quantities, total_qty, demand_alpha
-                )
-
-            metrics["market_price"].append(price)
-            metrics["total_quantity"].append(total_qty)
-            metrics["total_profit"].append(total_profit)
-            metrics["hhi"].append(hhi)
-            metrics["consumer_surplus"].append(cs)
-
-        return metrics
+    return metrics
 
 
 @app.get("/runs/{run_id}/events", response_model=EventsResponse)
@@ -1190,15 +1144,20 @@ async def compute_heatmap(request: HeatmapRequest) -> HeatmapResponse:
 
         # Compute heatmap based on model type
         if request.model == "cournot":
-            # Validate Cournot parameters
-            if "a" not in request.params or "b" not in request.params:
+            # Resolve demand parameters from typed CournotParams or defaults
+            # Use hasattr check to be robust against class instance mismatches from re-imports
+            if request.params is not None and (
+                hasattr(request.params, "a") and hasattr(request.params, "b")
+            ):
+                a = getattr(request.params, "a")
+                b = getattr(request.params, "b")
+            elif request.params is None:
+                a, b = 100.0, 1.0
+            else:
                 raise HTTPException(
                     status_code=400,
-                    detail="Cournot model requires 'a' and 'b' parameters in params",
+                    detail="Cournot model requires CournotParams (fields: a, b)",
                 )
-
-            a = request.params["a"]
-            b = request.params["b"]
 
             if request.segments:
                 # Segmented demand
@@ -1235,15 +1194,20 @@ async def compute_heatmap(request: HeatmapRequest) -> HeatmapResponse:
                 market_share_surface = None
 
         else:  # bertrand
-            # Validate Bertrand parameters
-            if "alpha" not in request.params or "beta" not in request.params:
+            # Resolve demand parameters from typed BertrandParams or defaults
+            # Use hasattr check to be robust against class instance mismatches from re-imports
+            if request.params is not None and (
+                hasattr(request.params, "alpha") and hasattr(request.params, "beta")
+            ):
+                alpha = getattr(request.params, "alpha")
+                beta = getattr(request.params, "beta")
+            elif request.params is None:
+                alpha, beta = 100.0, 1.0
+            else:
                 raise HTTPException(
                     status_code=400,
-                    detail="Bertrand model requires 'alpha' and 'beta' parameters in params",
+                    detail="Bertrand model requires BertrandParams (fields: alpha, beta)",
                 )
-
-            alpha = request.params["alpha"]
-            beta = request.params["beta"]
 
             if request.segments:
                 # Segmented demand

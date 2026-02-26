@@ -100,8 +100,19 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
     if seed is not None:
         random.seed(seed)
 
-    # Create run record
-    run = Run(model=model, rounds=rounds)
+    # Normalise params to a plain serializable dict for DB persistence.
+    # The caller may pass a Pydantic model (CournotParams / BertrandParams),
+    # a plain dict, or None.
+    params_dict: Optional[dict] = None
+    if params is not None:
+        if hasattr(params, "model_dump"):
+            params_dict = params.model_dump()
+        elif isinstance(params, dict):
+            params_dict = params
+        # else: unsupported type — leave as None
+
+    # Create run record — persist params so metrics can be recomputed faithfully later
+    run = Run(model=model, rounds=rounds, params=params_dict)
     db.add(run)
     db.flush()
 
@@ -397,12 +408,15 @@ def _run_bertrand_round(
 def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:
     """Retrieve time-series results for a simulation run.
 
+    Returns results in the canonical nested-dict format:
+    ``results[round_idx][firm_id] = {action, price, quantity, profit}``
+
     Args:
         run_id: Unique identifier for the simulation run
         db: Database session
 
     Returns:
-        Dictionary containing time-series data with arrays of equal length
+        Dictionary with keys: run_id, model, rounds, created_at, params, results
 
     Raises:
         ValueError: If run_id is not found
@@ -412,56 +426,31 @@ def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:
     if not run:
         raise ValueError(f"Run {run_id} not found")
 
-    # Get all results for this run, ordered by round and firm
-    results = (
+    # Get all results ordered by round then firm
+    db_results = (
         db.query(Result)
         .filter(Result.run_id == run_id)
         .order_by(Result.round_idx, Result.firm_id)
         .all()
     )
 
-    if not results:
-        return {
-            "run_id": run_id,
-            "model": run.model,
-            "rounds": run.rounds,
-            "created_at": run.created_at.isoformat(),
-            "rounds_data": [],
-            "firms_data": [],
+    # Build canonical nested dict: results[round_idx][firm_id] = {...}
+    nested: Dict[str, Dict[str, Dict[str, float]]] = {}
+    for r in db_results:
+        ridx = str(r.round_idx)
+        fid = f"firm_{r.firm_id}"
+        nested.setdefault(ridx, {})[fid] = {
+            "action": float(r.action),
+            "price": float(r.price),
+            "quantity": float(r.qty),
+            "profit": float(r.profit),
         }
-
-    # Group results by round
-    rounds_data = []
-    num_firms = len(set(r.firm_id for r in results))
-
-    for round_idx in range(run.rounds):
-        round_results = [r for r in results if r.round_idx == round_idx]
-        if round_results:
-            round_data = {
-                "round": round_idx,
-                "price": round_results[0].price,  # Same price for all firms in a round
-                "total_qty": sum(r.qty for r in round_results),
-                "total_profit": sum(r.profit for r in round_results),
-            }
-            rounds_data.append(round_data)
-
-    # Group results by firm
-    firms_data = []
-    for firm_id in range(num_firms):
-        firm_results = [r for r in results if r.firm_id == firm_id]
-        firm_data = {
-            "firm_id": firm_id,
-            "actions": [r.action for r in firm_results],
-            "quantities": [r.qty for r in firm_results],
-            "profits": [r.profit for r in firm_results],
-        }
-        firms_data.append(firm_data)
 
     return {
         "run_id": run_id,
-        "model": run.model,
-        "rounds": run.rounds,
+        "model": str(run.model),
+        "rounds": int(run.rounds),
         "created_at": run.created_at.isoformat(),
-        "rounds_data": rounds_data,
-        "firms_data": firms_data,
+        "params": run.params or {},
+        "results": nested,
     }

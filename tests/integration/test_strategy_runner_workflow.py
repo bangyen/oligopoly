@@ -62,13 +62,15 @@ class TestStrategyRunnerWorkflow:
 
         results = get_run_results(run_id, db_session)
 
-        assert "firms_data" in results
-        firms_data = results["firms_data"]
+        assert "results" in results
 
-        # Each firm should have consistent actions (within bounds)
-        for firm_idx, firm_data in enumerate(firms_data):
-            actions = firm_data["actions"]
+        # Verify that static strategies maintain consistent actions
+        for firm_idx in range(len(strategies)):
+            fid = f"firm_{firm_idx}"
             expected_value = strategies[firm_idx].value
+
+            # Extract actions for this firm across all rounds
+            actions = [results["results"][str(r)][fid]["action"] for r in range(10)]
 
             # Actions should be consistent (static strategy)
             for action in actions:
@@ -143,11 +145,11 @@ class TestStrategyRunnerWorkflow:
         from src.sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
-        firms_data = results["firms_data"]
 
         # Each firm should have varied actions (not all the same)
-        for firm_idx, firm_data in enumerate(firms_data):
-            actions = firm_data["actions"]
+        for firm_idx in range(len(strategies)):
+            fid = f"firm_{firm_idx}"
+            actions = [results["results"][str(r)][fid]["action"] for r in range(20)]
             # Actions should vary (RandomWalk explores)
             action_variance = max(actions) - min(actions)
             assert action_variance > 0.1  # Should have some variation
@@ -183,11 +185,11 @@ class TestStrategyRunnerWorkflow:
         from src.sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
-        firms_data = results["firms_data"]
 
         # Each firm should have actions within bounds
-        for firm_data in firms_data:
-            actions = firm_data["actions"]
+        for firm_idx in range(len(strategies)):
+            fid = f"firm_{firm_idx}"
+            actions = [results["results"][str(r)][fid]["action"] for r in range(15)]
             for action in actions:
                 assert bounds[0] <= action <= bounds[1]
 
@@ -259,14 +261,13 @@ class TestStrategyRunnerWorkflow:
         from src.sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
-        firms_data = results["firms_data"]
+        assert len(results["results"]) == 25
 
-        assert len(firms_data) == 4  # Should have 4 firms
-
-        # Each firm should have actions for all rounds
-        for firm_data in firms_data:
-            actions = firm_data["actions"]
-            assert len(actions) == 25  # Should have actions for all rounds
+        for firm_idx in range(len(strategies)):
+            fid = f"firm_{firm_idx}"
+            # Check that each firm has data in all rounds
+            for ridx in range(25):
+                assert fid in results["results"][str(ridx)]
 
     def test_strategy_bounds_enforcement(self, db_session):
         """Test that strategies respect action bounds."""
@@ -300,11 +301,11 @@ class TestStrategyRunnerWorkflow:
         from src.sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
-        firms_data = results["firms_data"]
 
-        for firm_data in firms_data:
-            actions = firm_data["actions"]
-            for action in actions:
+        for firm_idx in range(len(strategies)):
+            fid = f"firm_{firm_idx}"
+            for ridx in range(10):
+                action = results["results"][str(ridx)][fid]["action"]
                 assert bounds[0] <= action <= bounds[1]
 
     def test_strategy_seed_reproducibility(self, db_session):
@@ -347,17 +348,14 @@ class TestStrategyRunnerWorkflow:
         results_1 = get_run_results(run_id_1, db_session)
         results_2 = get_run_results(run_id_2, db_session)
 
-        firms_data_1 = results_1["firms_data"]
-        firms_data_2 = results_2["firms_data"]
-
         # Actions should be identical (Static strategies are deterministic)
-        for firm_idx in range(len(firms_data_1)):
-            actions_1 = firms_data_1[firm_idx]["actions"]
-            actions_2 = firms_data_2[firm_idx]["actions"]
-
-            for round_idx in range(len(actions_1)):
+        for firm_idx in range(len(strategies)):
+            fid = f"firm_{firm_idx}"
+            for round_idx in range(10):
+                action1 = results_1["results"][str(round_idx)][fid]["action"]
+                action2 = results_2["results"][str(round_idx)][fid]["action"]
                 # Static strategies should be perfectly identical
-                assert abs(actions_1[round_idx] - actions_2[round_idx]) < 0.001
+                assert abs(action1 - action2) < 0.001
 
     def test_strategy_performance_metrics(self, db_session):
         """Test that strategy runner produces valid performance metrics."""
@@ -390,27 +388,24 @@ class TestStrategyRunnerWorkflow:
 
         results = get_run_results(run_id, db_session)
 
-        assert "rounds_data" in results
-        assert "firms_data" in results
+        assert "results" in results
 
-        rounds_data = results["rounds_data"]
-        firms_data = results["firms_data"]
+        # Should have data for all 20 rounds
+        assert len(results["results"]) == 20
 
-        # Should have data for all rounds
-        assert len(rounds_data) == 20
-        assert len(firms_data) == 3
-
-        # Check that profits are calculated
-        for firm_data in firms_data:
-            profits = firm_data["profits"]
-            assert len(profits) == 20
+        # Check that profits and actions are reasonable for each firm
+        for firm_idx in range(3):
+            fid = f"firm_{firm_idx}"
+            profits = [results["results"][str(r)][fid]["profit"] for r in range(20)]
+            actions = [results["results"][str(r)][fid]["action"] for r in range(20)]
             # Profits should be reasonable (not all zero or negative)
             assert any(profit > 0 for profit in profits)
+            assert all(action >= 0 for action in actions)
 
-        # Check that market metrics are calculated
-        for round_data in rounds_data:
-            assert "price" in round_data
-            assert "total_qty" in round_data
-            assert "total_profit" in round_data
-            assert round_data["price"] > 0
-            assert round_data["total_qty"] > 0
+        # Check that market price is consistent across firms in a round
+        for ridx_str in results["results"]:
+            round_firms = results["results"][ridx_str]
+            prices = [f["price"] for f in round_firms.values()]
+            # All firms should see the same market price in Cournot
+            assert len(set(prices)) == 1
+            assert prices[0] > 0

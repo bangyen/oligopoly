@@ -277,29 +277,26 @@ class TestExperimentRunner:
                     # Mock run_game to return run IDs
                     mock_run_game.side_effect = ["run_1", "run_2", "run_3", "run_4"]
 
-                    # Mock get_run_results to return test data
+                    # Mock get_run_results to return test data in canonical format
                     mock_get_results.return_value = {
-                        "rounds_data": [
-                            {
-                                "round": 0,
-                                "price": 50.0,
-                                "total_qty": 20.0,
-                                "total_profit": 800.0,
+                        "results": {
+                            "0": {
+                                "firm_0": {
+                                    "price": 50.0,
+                                    "quantity": 20.0,
+                                    "profit": 800.0,
+                                    "action": 20.0,
+                                }
                             },
-                            {
-                                "round": 1,
-                                "price": 51.0,
-                                "total_qty": 19.0,
-                                "total_profit": 779.0,
+                            "1": {
+                                "firm_0": {
+                                    "price": 51.0,
+                                    "quantity": 19.0,
+                                    "profit": 779.0,
+                                    "action": 19.0,
+                                }
                             },
-                        ],
-                        "firms_data": [
-                            {
-                                "quantities": [20.0, 19.0],
-                                "profits": [800.0, 779.0],
-                                "actions": [20.0, 19.0],
-                            }
-                        ],
+                        }
                     }
 
                     csv_path = runner.run_experiment_batch(
@@ -355,7 +352,7 @@ class TestExperimentRunner:
                 firms=[{"cost": 10.0}, {"cost": 12.0}],
             )
 
-            run_results = {"rounds_data": [], "firms_data": []}
+            run_results = {"results": {}}
 
             metrics = runner._calculate_summary_metrics(run_results, exp_config)
 
@@ -382,32 +379,36 @@ class TestExperimentRunner:
             )
 
             run_results = {
-                "rounds_data": [
-                    {
-                        "round": 0,
-                        "price": 50.0,
-                        "total_qty": 35.0,
-                        "total_profit": 1400.0,
+                "results": {
+                    "0": {
+                        "firm_0": {
+                            "price": 50.0,
+                            "quantity": 20.0,
+                            "profit": 800.0,
+                            "action": 20.0,
+                        },
+                        "firm_1": {
+                            "price": 50.0,
+                            "quantity": 15.0,
+                            "profit": 600.0,
+                            "action": 15.0,
+                        },
                     },
-                    {
-                        "round": 1,
-                        "price": 51.0,
-                        "total_qty": 33.0,
-                        "total_profit": 1325.0,
+                    "1": {
+                        "firm_0": {
+                            "price": 51.0,
+                            "quantity": 19.0,
+                            "profit": 779.0,
+                            "action": 19.0,
+                        },
+                        "firm_1": {
+                            "price": 51.0,
+                            "quantity": 14.0,
+                            "profit": 546.0,
+                            "action": 14.0,
+                        },
                     },
-                ],
-                "firms_data": [
-                    {
-                        "quantities": [20.0, 19.0],
-                        "profits": [800.0, 779.0],
-                        "actions": [20.0, 19.0],
-                    },
-                    {
-                        "quantities": [15.0, 14.0],
-                        "profits": [600.0, 546.0],
-                        "actions": [15.0, 14.0],
-                    },
-                ],
+                },
             }
 
             metrics = runner._calculate_summary_metrics(run_results, exp_config)
@@ -433,32 +434,36 @@ class TestExperimentRunner:
             )
 
             run_results = {
-                "rounds_data": [
-                    {
-                        "round": 0,
-                        "price": 50.0,
-                        "total_qty": 35.0,
-                        "total_profit": 1400.0,
+                "results": {
+                    "0": {
+                        "firm_0": {
+                            "price": 50.0,
+                            "quantity": 20.0,
+                            "profit": 800.0,
+                            "action": 45.0,
+                        },
+                        "firm_1": {
+                            "price": 47.0,
+                            "quantity": 15.0,
+                            "profit": 600.0,
+                            "action": 47.0,
+                        },
                     },
-                    {
-                        "round": 1,
-                        "price": 51.0,
-                        "total_qty": 33.0,
-                        "total_profit": 1325.0,
+                    "1": {
+                        "firm_0": {
+                            "price": 51.0,
+                            "quantity": 19.0,
+                            "profit": 779.0,
+                            "action": 46.0,
+                        },
+                        "firm_1": {
+                            "price": 48.0,
+                            "quantity": 14.0,
+                            "profit": 546.0,
+                            "action": 48.0,
+                        },
                     },
-                ],
-                "firms_data": [
-                    {
-                        "quantities": [20.0, 19.0],
-                        "profits": [800.0, 779.0],
-                        "actions": [45.0, 46.0],  # Prices in Bertrand
-                    },
-                    {
-                        "quantities": [15.0, 14.0],
-                        "profits": [600.0, 546.0],
-                        "actions": [47.0, 48.0],  # Prices in Bertrand
-                    },
-                ],
+                },
             }
 
             metrics = runner._calculate_summary_metrics(run_results, exp_config)
@@ -488,27 +493,24 @@ class TestExperimentRunner:
             )
 
             run_results = {
-                "rounds_data": [
-                    {
-                        "round": 0,
-                        "price": 50.0,
-                        "total_qty": 35.0,
-                        "total_profit": 1400.0,
+                "results": {
+                    "0": {
+                        "firm_0": {
+                            "price": 50.0,
+                            "quantity": 35.0,
+                            "profit": 1400.0,
+                            "action": 35.0,
+                        },
                     },
-                    {
-                        "round": 1,
-                        "price": 51.0,
-                        "total_qty": 33.0,
-                        "total_profit": 1325.0,
+                    "1": {
+                        "firm_0": {
+                            "price": 51.0,
+                            "quantity": 33.0,
+                            "profit": 1325.0,
+                            "action": 33.0,
+                        },
                     },
-                ],
-                "firms_data": [
-                    {
-                        "quantities": [35.0, 33.0],
-                        "profits": [1400.0, 1325.0],
-                        "actions": [35.0, 33.0],
-                    }
-                ],
+                },
             }
 
             metrics = runner._calculate_summary_metrics(run_results, exp_config)
@@ -660,29 +662,26 @@ class TestRunExperimentBatchFromFile:
                         # Mock run_game to return run IDs
                         mock_run_game.return_value = "run_1"
 
-                        # Mock get_run_results to return test data
+                        # Mock get_run_results to return test data in canonical format
                         mock_get_results.return_value = {
-                            "rounds_data": [
-                                {
-                                    "round": 0,
-                                    "price": 50.0,
-                                    "total_qty": 20.0,
-                                    "total_profit": 800.0,
+                            "results": {
+                                "0": {
+                                    "firm_0": {
+                                        "price": 50.0,
+                                        "quantity": 20.0,
+                                        "profit": 800.0,
+                                        "action": 20.0,
+                                    }
                                 },
-                                {
-                                    "round": 1,
-                                    "price": 51.0,
-                                    "total_qty": 19.0,
-                                    "total_profit": 779.0,
+                                "1": {
+                                    "firm_0": {
+                                        "price": 51.0,
+                                        "quantity": 19.0,
+                                        "profit": 779.0,
+                                        "action": 19.0,
+                                    }
                                 },
-                            ],
-                            "firms_data": [
-                                {
-                                    "quantities": [20.0, 19.0],
-                                    "profits": [800.0, 779.0],
-                                    "actions": [20.0, 19.0],
-                                }
-                            ],
+                            }
                         }
 
                         csv_path = run_experiment_batch_from_file(
