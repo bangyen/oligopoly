@@ -98,7 +98,10 @@ def test_idempotency_different_seeds(setup_database: None) -> None:
     data2 = client.get(f"/runs/{run_id2}").json()
 
     # Compare first round actions (should be different with different seeds)
-    assert data1["firms_data"][0]["actions"][0] != data2["firms_data"][0]["actions"][0]
+    assert (
+        data1["results"]["0"]["firm_0"]["action"]
+        != data2["results"]["0"]["firm_0"]["action"]
+    )
 
 
 def test_idempotency_same_seed(setup_database: None) -> None:
@@ -128,22 +131,29 @@ def test_idempotency_same_seed(setup_database: None) -> None:
     data2 = client.get(f"/runs/{run_id2}").json()
 
     # Compare first round results (should be identical with same seed)
-    assert data1["firms_data"][0]["actions"][0] == data2["firms_data"][0]["actions"][0]
-    assert data1["firms_data"][1]["actions"][0] == data2["firms_data"][1]["actions"][0]
+    assert (
+        data1["results"]["0"]["firm_0"]["action"]
+        == data2["results"]["0"]["firm_0"]["action"]
+    )
+    assert (
+        data1["results"]["0"]["firm_1"]["action"]
+        == data2["results"]["0"]["firm_1"]["action"]
+    )
 
     # Compare all rounds
     for round_idx in range(3):
+        ridx = str(round_idx)
         assert (
-            data1["firms_data"][0]["actions"][round_idx]
-            == data2["firms_data"][0]["actions"][round_idx]
+            data1["results"][ridx]["firm_0"]["action"]
+            == data2["results"][ridx]["firm_0"]["action"]
         )
         assert (
-            data1["firms_data"][1]["actions"][round_idx]
-            == data2["firms_data"][1]["actions"][round_idx]
+            data1["results"][ridx]["firm_1"]["action"]
+            == data2["results"][ridx]["firm_1"]["action"]
         )
         assert (
-            data1["rounds_data"][round_idx]["price"]
-            == data2["rounds_data"][round_idx]["price"]
+            data1["metrics"][ridx]["market_price"]
+            == data2["metrics"][ridx]["market_price"]
         )
 
 
@@ -174,7 +184,10 @@ def test_idempotency_no_seed(setup_database: None) -> None:
     data2 = client.get(f"/runs/{run_id2}").json()
 
     # First round actions should be different (random initialization)
-    assert data1["firms_data"][0]["actions"][0] != data2["firms_data"][0]["actions"][0]
+    assert (
+        data1["results"]["0"]["firm_0"]["action"]
+        != data2["results"]["0"]["firm_0"]["action"]
+    )
 
 
 def test_idempotency_bertrand_model(setup_database: None) -> None:
@@ -204,8 +217,14 @@ def test_idempotency_bertrand_model(setup_database: None) -> None:
     data2 = client.get(f"/runs/{run_id2}").json()
 
     # Compare first round results
-    assert data1["firms_data"][0]["actions"][0] == data2["firms_data"][0]["actions"][0]
-    assert data1["firms_data"][1]["actions"][0] == data2["firms_data"][1]["actions"][0]
+    assert (
+        data1["results"]["0"]["firm_0"]["action"]
+        == data2["results"]["0"]["firm_0"]["action"]
+    )
+    assert (
+        data1["results"]["0"]["firm_1"]["action"]
+        == data2["results"]["0"]["firm_1"]["action"]
+    )
 
 
 def test_idempotency_different_configs(setup_database: None) -> None:
@@ -242,7 +261,9 @@ def test_idempotency_different_configs(setup_database: None) -> None:
     data2 = client.get(f"/runs/{run_id2}").json()
 
     # Prices should be different due to different demand parameters
-    assert data1["rounds_data"][0]["price"] != data2["rounds_data"][0]["price"]
+    assert (
+        data1["metrics"]["0"]["market_price"] != data2["metrics"]["0"]["market_price"]
+    )
 
 
 def test_idempotency_multiple_firms(setup_database: None) -> None:
@@ -273,7 +294,7 @@ def test_idempotency_multiple_firms(setup_database: None) -> None:
 
     # Compare all firms' first round actions
     for firm_idx in range(4):
+        fid = f"firm_{firm_idx}"
         assert (
-            data1["firms_data"][firm_idx]["actions"][0]
-            == data2["firms_data"][firm_idx]["actions"][0]
+            data1["results"]["0"][fid]["action"] == data2["results"]["0"][fid]["action"]
         )

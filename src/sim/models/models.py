@@ -397,7 +397,8 @@ class Run(Base):  # type: ignore
     """Simulation run tracking.
 
     Stores metadata about multi-round simulation runs including
-    the model type, number of rounds, and creation timestamp.
+    the model type, number of rounds, creation timestamp, and the
+    market demand parameters used (for faithful metric re-computation).
     """
 
     __tablename__ = "runs"
@@ -405,6 +406,7 @@ class Run(Base):  # type: ignore
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     model = Column(String(20), nullable=False)  # "cournot" or "bertrand"
     rounds = Column(Integer, nullable=False)
+    params = Column(JSON, nullable=True)  # Market demand parameters (a/b or alpha/beta)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Relationships

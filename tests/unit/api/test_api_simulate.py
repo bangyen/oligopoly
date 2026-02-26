@@ -98,7 +98,7 @@ def test_api_simulate_no_firms() -> None:
 
 
 def test_persistence_counts() -> None:
-    """Test DB has exactly `rounds` rows for given run_id; results rows == rounds * num_firms."""
+    """Test DB has exactly `rounds` entries for given run_id; results nested by round then firm."""
     request_data = {
         "model": "cournot",
         "rounds": 4,
@@ -118,20 +118,16 @@ def test_persistence_counts() -> None:
 
     # Verify rounds count
     assert data["rounds"] == 4
-    assert len(data["rounds_data"]) == 4
+    results = data["results"]
+    assert len(results) == 4  # 4 rounds
 
-    # Verify firms count
-    assert len(data["firms_data"]) == 3
-
-    # Verify each firm has results for all rounds
-    for firm_data in data["firms_data"]:
-        assert len(firm_data["actions"]) == 4
-        assert len(firm_data["quantities"]) == 4
-        assert len(firm_data["profits"]) == 4
+    # Verify 3 firms per round
+    for round_idx, round_firms in results.items():
+        assert len(round_firms) == 3
 
 
 def test_get_run_valid_id() -> None:
-    """Test GET /runs/{id} returns arrays of equal length with valid data."""
+    """Test GET /runs/{id} returns canonical nested-dict format with valid data."""
     request_data = {
         "model": "cournot",
         "rounds": 3,
@@ -153,35 +149,21 @@ def test_get_run_valid_id() -> None:
     assert "model" in data
     assert "rounds" in data
     assert "created_at" in data
-    assert "rounds_data" in data
-    assert "firms_data" in data
+    assert "results" in data
+    assert "params" in data
 
-    # Verify arrays have equal length
-    assert len(data["rounds_data"]) == data["rounds"]
-    assert len(data["firms_data"]) == 2
+    results = data["results"]
+    assert len(results) == data["rounds"]
 
-    for firm_data in data["firms_data"]:
-        assert len(firm_data["actions"]) == data["rounds"]
-        assert len(firm_data["quantities"]) == data["rounds"]
-        assert len(firm_data["profits"]) == data["rounds"]
-
-    # Verify all price, qty, profit are finite and qty, price >= 0
-    for round_data in data["rounds_data"]:
-        assert isinstance(round_data["price"], (int, float))
-        assert round_data["price"] >= 0
-        assert isinstance(round_data["total_qty"], (int, float))
-        assert round_data["total_qty"] >= 0
-        assert isinstance(round_data["total_profit"], (int, float))
-
-    for firm_data in data["firms_data"]:
-        for action in firm_data["actions"]:
-            assert isinstance(action, (int, float))
-            assert action >= 0
-        for qty in firm_data["quantities"]:
-            assert isinstance(qty, (int, float))
-            assert qty >= 0
-        for profit in firm_data["profits"]:
-            assert isinstance(profit, (int, float))
+    for round_idx, round_firms in results.items():
+        assert len(round_firms) == 2  # 2 firms
+        for firm_id, firm_data in round_firms.items():
+            assert isinstance(firm_data["action"], (int, float))
+            assert isinstance(firm_data["price"], (int, float))
+            assert firm_data["price"] >= 0
+            assert isinstance(firm_data["quantity"], (int, float))
+            assert firm_data["quantity"] >= 0
+            assert isinstance(firm_data["profit"], (int, float))
 
 
 def test_get_run_invalid_id() -> None:
@@ -242,8 +224,14 @@ def test_idempotency_same_seed() -> None:
     data2 = client.get(f"/runs/{run_id2}").json()
 
     # Compare first round results (should be identical with same seed)
-    assert data1["firms_data"][0]["actions"][0] == data2["firms_data"][0]["actions"][0]
-    assert data1["firms_data"][1]["actions"][0] == data2["firms_data"][1]["actions"][0]
+    assert (
+        data1["results"]["0"]["firm_0"]["action"]
+        == data2["results"]["0"]["firm_0"]["action"]
+    )
+    assert (
+        data1["results"]["0"]["firm_1"]["action"]
+        == data2["results"]["0"]["firm_1"]["action"]
+    )
 
 
 def test_bertrand_simulation_results() -> None:
@@ -266,14 +254,10 @@ def test_bertrand_simulation_results() -> None:
 
     # Verify Bertrand-specific structure
     assert data["model"] == "bertrand"
-    assert len(data["rounds_data"]) == 2
-    assert len(data["firms_data"]) == 2
-
-    # Verify all prices are non-negative
-    for round_data in data["rounds_data"]:
-        assert round_data["price"] >= 0
-
-    # Verify all quantities are non-negative
-    for firm_data in data["firms_data"]:
-        for qty in firm_data["quantities"]:
-            assert qty >= 0
+    results = data["results"]
+    assert len(results) == 2  # 2 rounds
+    for round_idx, round_firms in results.items():
+        assert len(round_firms) == 2  # 2 firms
+        for firm_id, firm_data in round_firms.items():
+            assert firm_data["price"] >= 0
+            assert firm_data["quantity"] >= 0

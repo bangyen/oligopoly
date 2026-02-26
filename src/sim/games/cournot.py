@@ -18,6 +18,11 @@ from ..validation.economic_validation import (
     validate_simulation_result,
 )
 
+# Re-export CLI parse helpers from their canonical location.
+# Implementation lives in _parsing.py; importing here preserves backward compatibility.
+from ._parsing import parse_costs as parse_costs  # noqa: F401
+from ._parsing import parse_quantities as parse_quantities  # noqa: F401
+
 
 @dataclass
 class CournotResult:
@@ -315,49 +320,4 @@ def cournot_segmented_simulation(
     return result
 
 
-def parse_costs(costs_str: str) -> List[float]:
-    """Parse comma-separated costs string into list of floats.
-
-    Args:
-        costs_str: Comma-separated string of costs (e.g., "10,20,30")
-
-    Returns:
-        List of parsed cost values
-
-    Raises:
-        ValueError: If parsing fails or costs are invalid
-    """
-    if not costs_str.strip():
-        raise ValueError("Costs list cannot be empty")
-
-    try:
-        costs = [float(x.strip()) for x in costs_str.split(",") if x.strip()]
-        if not costs:
-            raise ValueError("Costs list cannot be empty")
-        return costs
-    except ValueError as e:
-        raise ValueError(f"Invalid costs format '{costs_str}': {e}")
-
-
-def parse_quantities(quantities_str: str) -> List[float]:
-    """Parse comma-separated quantities string into list of floats.
-
-    Args:
-        quantities_str: Comma-separated string of quantities (e.g., "10,20,30")
-
-    Returns:
-        List of parsed quantity values
-
-    Raises:
-        ValueError: If parsing fails or quantities are invalid
-    """
-    if not quantities_str.strip():
-        raise ValueError("Quantities list cannot be empty")
-
-    try:
-        quantities = [float(x.strip()) for x in quantities_str.split(",") if x.strip()]
-        if not quantities:
-            raise ValueError("Quantities list cannot be empty")
-        return quantities
-    except ValueError as e:
-        raise ValueError(f"Invalid quantities format '{quantities_str}': {e}")
+# End of Cournot implementation

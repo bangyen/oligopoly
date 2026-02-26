@@ -5,7 +5,8 @@ defect from collusion, or respond to regulatory interventions.
 """
 
 import random
-from dataclasses import dataclass
+import warnings
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from ..collusion import CollusionEventType, CollusionManager
@@ -28,6 +29,9 @@ class CollusiveStrategy:
         0.5  # How much regulatory pressure affects defection
     )
     seed: Optional[int] = None
+    # Collusion manager injected at construction; can also be supplied per-call.
+    # If neither is provided, the strategy degrades to midpoint and emits a warning.
+    collusion_manager: Optional[CollusionManager] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize random state."""
@@ -174,13 +178,28 @@ class CollusiveStrategy:
         """
         min_bound, max_bound = bounds
 
+        # Resolve collusion manager: prefer per-call arg, then fall back to instance field
+        effective_manager = (
+            collusion_manager
+            if collusion_manager is not None
+            else self.collusion_manager
+        )
+
+        if effective_manager is None:
+            warnings.warn(
+                "CollusiveStrategy.next_action called without a collusion_manager. "
+                "Strategy degrades to midpoint action. Inject collusion_manager via "
+                "the constructor field or the collusion_manager argument.",
+                stacklevel=2,
+            )
+
         # If cartel is active, decide whether to follow or defect
-        if collusion_manager and collusion_manager.is_cartel_active():
-            cartel = collusion_manager.current_cartel
+        if effective_manager and effective_manager.is_cartel_active():
+            cartel = effective_manager.current_cartel
             if cartel:
                 # Check if we should defect
                 if self.should_defect(
-                    round_num, my_history, rival_histories, collusion_manager
+                    round_num, my_history, rival_histories, effective_manager
                 ):
                     # Defect by undercutting/overproducing
                     model_type = market_params.get("model_type", "cournot")
@@ -210,6 +229,9 @@ class CartelStrategy:
     Useful for testing cartel stability and as a baseline comparison.
     """
 
+    # Collusion manager injected at construction; can also be supplied per-call.
+    collusion_manager: Optional[CollusionManager] = field(default=None, repr=False)
+
     def next_action(
         self,
         round_num: int,
@@ -235,9 +257,24 @@ class CartelStrategy:
         """
         min_bound, max_bound = bounds
 
+        # Resolve collusion manager: prefer per-call arg, then fall back to instance field
+        effective_manager = (
+            collusion_manager
+            if collusion_manager is not None
+            else self.collusion_manager
+        )
+
+        if effective_manager is None:
+            warnings.warn(
+                "CartelStrategy.next_action called without a collusion_manager. "
+                "Strategy degrades to midpoint action. Inject collusion_manager via "
+                "the constructor field or the collusion_manager argument.",
+                stacklevel=2,
+            )
+
         # If cartel is active, follow the agreement
-        if collusion_manager and collusion_manager.is_cartel_active():
-            cartel = collusion_manager.current_cartel
+        if effective_manager and effective_manager.is_cartel_active():
+            cartel = effective_manager.current_cartel
             if cartel:
                 # Determine if this is Cournot (quantity) or Bertrand (price) model
                 model_type = market_params.get("model_type", "cournot")
@@ -262,6 +299,8 @@ class OpportunisticStrategy:
     profit_threshold_multiplier: float = 1.3  # Minimum profit advantage to defect
     risk_tolerance: float = 0.5  # Risk tolerance for defection
     seed: Optional[int] = None
+    # Collusion manager injected at construction; can also be supplied per-call.
+    collusion_manager: Optional[CollusionManager] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize random state."""
@@ -421,13 +460,28 @@ class OpportunisticStrategy:
         """
         min_bound, max_bound = bounds
 
+        # Resolve collusion manager: prefer per-call arg, then fall back to instance field
+        effective_manager = (
+            collusion_manager
+            if collusion_manager is not None
+            else self.collusion_manager
+        )
+
+        if effective_manager is None:
+            warnings.warn(
+                "OpportunisticStrategy.next_action called without a collusion_manager. "
+                "Strategy degrades to midpoint action. Inject collusion_manager via "
+                "the constructor field or the collusion_manager argument.",
+                stacklevel=2,
+            )
+
         # If cartel is active, decide whether to defect
         if (
-            collusion_manager
-            and collusion_manager.is_cartel_active()
+            effective_manager
+            and effective_manager.is_cartel_active()
             and my_cost is not None
         ):
-            cartel = collusion_manager.current_cartel
+            cartel = effective_manager.current_cartel
             if cartel:
                 model_type = market_params.get("model_type", "cournot")
 
@@ -436,7 +490,7 @@ class OpportunisticStrategy:
                     round_num,
                     my_history,
                     rival_histories,
-                    collusion_manager,
+                    effective_manager,
                     my_cost,
                     market_params,
                 ):

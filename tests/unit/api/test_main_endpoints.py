@@ -436,72 +436,20 @@ class TestErrorHandling:
 
 
 class TestDifferentiatedBertrandEndpoint:
-    """Test differentiated Bertrand endpoint."""
+    """Test that the removed /differentiated-bertrand endpoint is gone."""
 
     def test_differentiated_bertrand_endpoint(self):
-        """Test differentiated Bertrand endpoint."""
+        """Endpoint was a stub and has been intentionally removed; expect 404 or 405."""
         with TestClient(app) as client:
-            simulation_data = {
-                "model": "cournot",  # Model doesn't matter for this endpoint
-                "rounds": 1,
-                "firms": [
-                    {"cost": 10.0, "strategy": "nash"},
-                    {"cost": 12.0, "strategy": "nash"},
-                ],
-                "params": {
-                    "demand_model": "logit",
-                    "demand_params": {},
-                    "total_market_size": 100.0,
-                },
-            }
-
-            with patch("src.main.get_db") as mock_get_db:
-                mock_db = Mock()
-                mock_get_db.return_value = mock_db
-
-                # Mock the database operations
-                mock_run = Mock()
-                mock_run.id = 1
-                mock_db.add.return_value = None
-                mock_db.flush.return_value = None
-
-                with patch(
-                    "src.main.calculate_differentiated_nash_equilibrium"
-                ) as mock_calc:
-                    mock_calc.return_value = ([50.0, 52.0], {"equilibrium": True})
-
-                    # Override the dependency
-                    app.dependency_overrides[get_db] = lambda: mock_db
-                    try:
-                        response = client.post(
-                            "/differentiated-bertrand", json=simulation_data
-                        )
-
-                        assert response.status_code == 200
-                        data = response.json()
-                        assert "run_id" in data
-                    finally:
-                        app.dependency_overrides.clear()
+            response = client.post("/differentiated-bertrand", json={})
+            # FastAPI returns 404 for unknown routes
+            assert response.status_code in (404, 405, 422)
 
     def test_differentiated_bertrand_endpoint_error(self):
-        """Test differentiated Bertrand endpoint with error."""
+        """Stub endpoint removed — should not be reachable."""
         with TestClient(app) as client:
-            simulation_data = {
-                "model": "cournot",
-                "rounds": 1,
-                "firms": [{"cost": 10.0, "strategy": "nash"}],
-                "params": {"demand_model": "invalid"},
-            }
-
-            with patch(
-                "src.main.calculate_differentiated_nash_equilibrium"
-            ) as mock_calc:
-                mock_calc.side_effect = ValueError("Invalid demand model")
-
-                response = client.post("/differentiated-bertrand", json=simulation_data)
-
-                assert response.status_code == 400
-                assert "Invalid demand model" in response.json()["detail"]
+            response = client.post("/differentiated-bertrand", json={})
+            assert response.status_code in (404, 405, 422)
 
 
 class TestCompareEndpoints:
@@ -611,8 +559,21 @@ class TestCompareEndpoints:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
-                with patch("src.main.run_game") as mock_run_game:
+                mock_results = {
+                    "results": {
+                        "0": {
+                            "firm_0": {"price": 50.0, "quantity": 20.0, "profit": 800.0}
+                        }
+                    },
+                    "model": "cournot",
+                    "rounds": 10,
+                }
+
+                with patch("src.main.run_game") as mock_run_game, patch(
+                    "src.main.get_run_results"
+                ) as mock_get_results:
                     mock_run_game.side_effect = ["run_1", "run_2"]
+                    mock_get_results.return_value = mock_results
 
                     # Override the dependency
                     app.dependency_overrides[get_db] = lambda: mock_db
@@ -985,60 +946,46 @@ class TestHeatmapEndpoint:
                 app.dependency_overrides.clear()
 
     def test_heatmap_endpoint_missing_cournot_params(self):
-        """Test heatmap endpoint with missing Cournot parameters."""
+        """Passing only `a` without `b` is fine — Pydantic supplies the `b` default."""
         with TestClient(app) as client:
             heatmap_data = {
                 "model": "cournot",
                 "firm_i": 0,
                 "firm_j": 1,
-                "grid_size": 10,
+                "grid_size": 5,
                 "action_range": [10.0, 50.0],
                 "other_actions": [],
-                "params": {"a": 100.0},  # Missing 'b' parameter
+                "params": {"a": 100.0},  # 'b' omitted — Pydantic default applies
                 "firms": [
                     {"cost": 10.0, "fixed_cost": 0.0},
                     {"cost": 12.0, "fixed_cost": 0.0},
                 ],
             }
 
-            # Override the dependency
-            mock_db = Mock()
-            app.dependency_overrides[get_db] = lambda: mock_db
-            try:
-                response = client.post("/heatmap", json=heatmap_data)
-
-                assert response.status_code == 400
-                assert "'a' and 'b' parameters" in response.json()["detail"]
-            finally:
-                app.dependency_overrides.clear()
+            response = client.post("/heatmap", json=heatmap_data)
+            # With typed params, Pydantic fills b=1.0 default so this should succeed
+            assert response.status_code == 200
 
     def test_heatmap_endpoint_missing_bertrand_params(self):
-        """Test heatmap endpoint with missing Bertrand parameters."""
+        """Passing only `alpha` without `beta` is fine — Pydantic supplies the `beta` default."""
         with TestClient(app) as client:
             heatmap_data = {
                 "model": "bertrand",
                 "firm_i": 0,
                 "firm_j": 1,
-                "grid_size": 10,
+                "grid_size": 5,
                 "action_range": [20.0, 60.0],
                 "other_actions": [],
-                "params": {"alpha": 200.0},  # Missing 'beta' parameter
+                "params": {"alpha": 200.0},  # 'beta' omitted — Pydantic default applies
                 "firms": [
                     {"cost": 10.0, "fixed_cost": 0.0},
                     {"cost": 12.0, "fixed_cost": 0.0},
                 ],
             }
 
-            # Override the dependency
-            mock_db = Mock()
-            app.dependency_overrides[get_db] = lambda: mock_db
-            try:
-                response = client.post("/heatmap", json=heatmap_data)
-
-                assert response.status_code == 400
-                assert "'alpha' and 'beta' parameters" in response.json()["detail"]
-            finally:
-                app.dependency_overrides.clear()
+            response = client.post("/heatmap", json=heatmap_data)
+            # With typed params, Pydantic fills beta=1.0 default so this should succeed
+            assert response.status_code == 200
 
     def test_heatmap_endpoint_with_segments(self):
         """Test heatmap endpoint with segmented demand."""

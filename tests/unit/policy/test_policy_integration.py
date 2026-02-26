@@ -8,7 +8,7 @@ import atexit
 import math
 import os
 import tempfile
-from typing import Generator
+from typing import Any, Dict, Generator
 
 import pytest
 from sqlalchemy import create_engine
@@ -48,6 +48,21 @@ def setup_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
 
 
+def _round_summary(results: Dict[str, Any], round_idx: int) -> Dict[str, float]:
+    """Extract aggregate round-level metrics from canonical nested results dict."""
+    round_firms = results["results"].get(
+        str(round_idx), results["results"].get(round_idx, {})
+    )
+    prices = [f["price"] for f in round_firms.values()]
+    quantities = [f["quantity"] for f in round_firms.values()]
+    profits = [f["profit"] for f in round_firms.values()]
+    return {
+        "price": prices[0] if prices else 0.0,  # All firms share the same Cournot price
+        "total_qty": sum(quantities),
+        "total_profit": sum(profits),
+    }
+
+
 def test_tax_policy_integration(setup_database: None) -> None:
     """Test that tax policy reduces profits by the expected amount."""
     db = TestingSessionLocal()
@@ -75,13 +90,9 @@ def test_tax_policy_integration(setup_database: None) -> None:
         run_id_with_tax = run_game("cournot", 3, config_with_tax, db)
         results_with_tax = get_run_results(run_id_with_tax, db)
 
-        # Compare results
-        rounds_data_no_tax = results_no_tax["rounds_data"]
-        rounds_data_with_tax = results_with_tax["rounds_data"]
-
         # Round 0 should be identical (no tax applied)
-        round_0_no_tax = rounds_data_no_tax[0]
-        round_0_with_tax = rounds_data_with_tax[0]
+        round_0_no_tax = _round_summary(results_no_tax, 0)
+        round_0_with_tax = _round_summary(results_with_tax, 0)
 
         assert math.isclose(
             round_0_no_tax["total_profit"],
@@ -90,8 +101,8 @@ def test_tax_policy_integration(setup_database: None) -> None:
         ), f"Round 0 total profits should be identical, got {round_0_no_tax['total_profit']} vs {round_0_with_tax['total_profit']}"
 
         # Round 1 should have 20% tax applied
-        round_1_no_tax = rounds_data_no_tax[1]
-        round_1_with_tax = rounds_data_with_tax[1]
+        round_1_no_tax = _round_summary(results_no_tax, 1)
+        round_1_with_tax = _round_summary(results_with_tax, 1)
 
         expected_taxed_profit = round_1_no_tax["total_profit"] * 0.8  # 20% tax
         assert math.isclose(
@@ -99,8 +110,8 @@ def test_tax_policy_integration(setup_database: None) -> None:
         ), f"Round 1: expected {expected_taxed_profit}, got {round_1_with_tax['total_profit']}"
 
         # Round 2 should be identical again (no tax applied)
-        round_2_no_tax = rounds_data_no_tax[2]
-        round_2_with_tax = rounds_data_with_tax[2]
+        round_2_no_tax = _round_summary(results_no_tax, 2)
+        round_2_with_tax = _round_summary(results_with_tax, 2)
 
         assert math.isclose(
             round_2_no_tax["total_profit"],
@@ -141,13 +152,9 @@ def test_subsidy_policy_integration(setup_database: None) -> None:
         run_id_with_subsidy = run_game("cournot", 2, config_with_subsidy, db)
         results_with_subsidy = get_run_results(run_id_with_subsidy, db)
 
-        # Compare results
-        rounds_data_no_subsidy = results_no_subsidy["rounds_data"]
-        rounds_data_with_subsidy = results_with_subsidy["rounds_data"]
-
         # Round 0 should have subsidy applied
-        round_0_no_subsidy = rounds_data_no_subsidy[0]
-        round_0_with_subsidy = rounds_data_with_subsidy[0]
+        round_0_no_subsidy = _round_summary(results_no_subsidy, 0)
+        round_0_with_subsidy = _round_summary(results_with_subsidy, 0)
 
         # Calculate expected subsidy effect
         total_qty = round_0_no_subsidy["total_qty"]
@@ -162,8 +169,8 @@ def test_subsidy_policy_integration(setup_database: None) -> None:
         ), f"Round 0: expected {expected_subsidized_profit}, got {round_0_with_subsidy['total_profit']}"
 
         # Round 1 should be identical (no subsidy applied)
-        round_1_no_subsidy = rounds_data_no_subsidy[1]
-        round_1_with_subsidy = rounds_data_with_subsidy[1]
+        round_1_no_subsidy = _round_summary(results_no_subsidy, 1)
+        round_1_with_subsidy = _round_summary(results_with_subsidy, 1)
 
         assert math.isclose(
             round_1_no_subsidy["total_profit"],
@@ -204,13 +211,9 @@ def test_price_cap_policy_integration(setup_database: None) -> None:
         run_id_with_cap = run_game("cournot", 2, config_with_cap, db)
         results_with_cap = get_run_results(run_id_with_cap, db)
 
-        # Compare results
-        rounds_data_no_cap = results_no_cap["rounds_data"]
-        rounds_data_with_cap = results_with_cap["rounds_data"]
-
         # Round 0 should have price cap applied if needed
-        round_0_no_cap = rounds_data_no_cap[0]
-        round_0_with_cap = rounds_data_with_cap[0]
+        round_0_no_cap = _round_summary(results_no_cap, 0)
+        round_0_with_cap = _round_summary(results_with_cap, 0)
 
         # Check that price is capped
         price_no_cap = round_0_no_cap["price"]
@@ -222,8 +225,6 @@ def test_price_cap_policy_integration(setup_database: None) -> None:
 
         if price_no_cap > 50.0:
             # If original price exceeded cap, profits should be recalculated
-            # We can't easily calculate expected profits without knowing individual firm quantities
-            # So we just verify that the price is capped and profits are different
             assert (
                 price_with_cap == 50.0
             ), f"Price should be exactly 50.0 when capped, got {price_with_cap}"
@@ -234,8 +235,8 @@ def test_price_cap_policy_integration(setup_database: None) -> None:
             ), "Profits should be different when price cap is applied"
 
         # Round 1 should be identical (no cap applied)
-        round_1_no_cap = rounds_data_no_cap[1]
-        round_1_with_cap = rounds_data_with_cap[1]
+        round_1_no_cap = _round_summary(results_no_cap, 1)
+        round_1_with_cap = _round_summary(results_with_cap, 1)
 
         assert math.isclose(
             round_1_no_cap["total_profit"],

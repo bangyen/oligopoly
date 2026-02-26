@@ -115,17 +115,22 @@ def test_get_run_results_structure(setup_database: None) -> None:
         assert "model" in results
         assert "rounds" in results
         assert "created_at" in results
-        assert "rounds_data" in results
-        assert "firms_data" in results
+        assert "results" in results
 
-        # Verify arrays have equal length
-        assert len(results["rounds_data"]) == rounds
-        assert len(results["firms_data"]) == 2
+        # Verify rounds length
+        assert len(results["results"]) == rounds
 
-        for firm_data in results["firms_data"]:
-            assert len(firm_data["actions"]) == rounds
-            assert len(firm_data["quantities"]) == rounds
-            assert len(firm_data["profits"]) == rounds
+        # Verify first round has correct number of firms
+        assert len(results["results"]["0"]) == 2
+
+        for round_idx in results["results"]:
+            round_data = results["results"][round_idx]
+            for fid in round_data:
+                firm_data = round_data[fid]
+                assert "action" in firm_data
+                assert "price" in firm_data
+                assert "quantity" in firm_data
+                assert "profit" in firm_data
 
     finally:
         db.close()
@@ -146,22 +151,17 @@ def test_get_run_results_validation(setup_database: None) -> None:
         results = get_run_results(run_id, db)
 
         # Verify all price, qty, profit are finite and qty, price >= 0
-        for round_data in results["rounds_data"]:
-            assert isinstance(round_data["price"], (int, float))
-            assert round_data["price"] >= 0
-            assert isinstance(round_data["total_qty"], (int, float))
-            assert round_data["total_qty"] >= 0
-            assert isinstance(round_data["total_profit"], (int, float))
-
-        for firm_data in results["firms_data"]:
-            for action in firm_data["actions"]:
-                assert isinstance(action, (int, float))
-                assert action >= 0
-            for qty in firm_data["quantities"]:
-                assert isinstance(qty, (int, float))
-                assert qty >= 0
-            for profit in firm_data["profits"]:
-                assert isinstance(profit, (int, float))
+        for ridx in results["results"]:
+            round_firms = results["results"][ridx]
+            for fid in round_firms:
+                firm_data = round_firms[fid]
+                assert isinstance(firm_data["price"], (int, float))
+                assert firm_data["price"] >= 0
+                assert isinstance(firm_data["quantity"], (int, float))
+                assert firm_data["quantity"] >= 0
+                assert isinstance(firm_data["profit"], (int, float))
+                assert isinstance(firm_data["action"], (int, float))
+                assert firm_data["action"] >= 0
 
     finally:
         db.close()
@@ -205,8 +205,8 @@ def test_bertrand_persistence(setup_database: None) -> None:
         # Verify results structure
         results = get_run_results(run_id, db)
         assert results["model"] == "bertrand"
-        assert len(results["rounds_data"]) == rounds
-        assert len(results["firms_data"]) == num_firms
+        assert len(results["results"]) == rounds
+        assert len(results["results"]["0"]) == num_firms
 
     finally:
         db.close()
