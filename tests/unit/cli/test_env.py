@@ -40,6 +40,7 @@ def test_alembic_migration_smoke() -> None:
 
         subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
 
-        # Verify the command was called (in real scenario)
-        # In this smoke test, we just verify no exceptions are raised
-        assert True  # If we get here, no exceptions were raised
+        # Verify the command was called correctly
+        mock_run.assert_called_once_with(
+            ["alembic", "upgrade", "head"], capture_output=True, text=True
+        )

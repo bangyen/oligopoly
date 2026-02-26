@@ -64,8 +64,12 @@ class TestComparisonDashboard:
     def test_comparison_tab_renders(self):
         """Test that the comparison tab renders without errors."""
         # This is a basic smoke test - in a real implementation,
-        # you would use UI testing frameworks
-        assert True  # Placeholder for actual UI testing
+        # you would use UI testing frameworks like Selenium or Playwright.
+        # For now, we verify that the mock infrastructure is ready for the UI.
+        comparison_data = mock_run_comparison({}, {}, "")
+        assert "left_run_id" in comparison_data
+        assert "right_run_id" in comparison_data
+        assert len(comparison_data["left_metrics"]["market_price"]) == 5
 
     def test_scenario_config_forms(self):
         """Test that scenario configuration forms work correctly."""
