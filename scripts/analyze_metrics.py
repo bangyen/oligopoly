@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sim.games.cournot import cournot_simulation
 from sim.models.metrics import (
@@ -445,7 +445,7 @@ def main() -> None:
             print(f"  {name}: corr={metrics['correlation']:.3f}")
 
     # Export dataset
-    output_file = Path(__file__).parent / "oligopoly_data.json.gz"
+    output_file = Path(__file__).parent.parent / "oligopoly_data.json.gz"
     print(f"\nExporting dataset to {output_file}...")
     with gzip.open(output_file, "wt") as f:
         json.dump(all_results, f, indent=2)
