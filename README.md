@@ -4,7 +4,7 @@
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](tests/)
 [![License](https://img.shields.io/github/license/bangyen/oligopoly)](LICENSE)
 
-**Advanced Oligopoly Market Simulation: 98.5% collusion detection accuracy, 1e-6 calculation precision, 72.3% strategy adaptation rate**  
+**Advanced Oligopoly Market Simulation: Validated collusion detection, research-grade calculation precision, and adaptive learning strategies**  
 
 <p align="center">
   <img src="docs/cournot_heatmap.png" alt="Oligopoly Dashboard" width="600">
@@ -12,51 +12,50 @@
 
 ## Quickstart
 
-Clone the repo and run the demo:
+Clone the repo and initialize the environment:
 
 ```bash
 git clone https://github.com/bangyen/oligopoly.git
 cd oligopoly
-pip install -e .
-pytest   # optional: run tests
-python scripts/strategy_demo.py
+just init      # or: pip install -e ".[dev]"
+just test      # or: pytest
+python -m scripts.strategy_demo
 ```
 
 Or open in Colab: [Colab Notebook](https://colab.research.google.com/github/bangyen/oligopoly/blob/main/oligopoly_demo.ipynb).
 
 ## Results
 
-| Capability | Performance | Impact |
-|------------|-------------|---------|
-| Collusion Detection | **98.5%** | Identifies cartel behavior |
-| Calculation Precision | **1e-6** | Research-grade accuracy |
-| Strategy Adaptation | **72.3%** | Firms learn & evolve |
+| Capability | Description |
+|------------|-------------|
+| Collusion Detection | Identifies cartel behavior with configurable tolerance |
+| Calculation Precision | Research-grade mathematical accuracy (1e-6) |
+| Strategy Adaptation | Firms learn and evolve using Q-learning and Fictitious Play |
 
 ## Features
 
-- **Collusion Detection** — 98.5% accuracy in identifying cartel behavior with 5% tolerance threshold.  
-- **Policy Analysis** — Quantifies tax/subsidy effects with 1e-6 mathematical precision and measurable price impacts.  
-- **Learning Strategies** — 72.3% strategy adaptation rate with Q-learning and Fictitious Play algorithms.  
-- **Interactive Dashboard** — Real-time visualization with Flask and profit surface heatmaps.  
-- **REST API** — FastAPI with 460ms response time for simulation and analysis endpoints.  
-- **Batch Experiments** — Statistical analysis with CSV export and reproducible seed management.  
+- **Collusion Detection** — Accurate identification of cartel behavior and defections.  
+- **Policy Analysis** — Quantifies tax/subsidy effects with high mathematical precision.  
+- **Learning Strategies** — Supports Q-learning, Fictitious Play, and Tit-for-Tat algorithms.  
+- **Interactive Dashboard** — Real-time visualization using FastAPI and Jinja2 templates.  
+- **REST API** — Comprehensive FastAPI endpoints for simulation management and analysis.  
+- **Batch Experiments** — Statistical analysis with reproducible seed management and CSV export.  
 
 ## Repo Structure
 
 ```plaintext
 oligopoly/
-├── oligopoly_demo.ipynb # Colab notebook demo
-├── scripts/             # Demo and utility scripts  (see [scripts/README.md](scripts/README.md))
-├── tests/               # Unit/integration tests (79% coverage)
-├── docs/                # Images and documentation
+├── dashboard/           # FastAPI visualization dashboard
 ├── experiments/         # Batch experiment configurations
-└── src/                 # Core implementation
-    ├── sim/             # Simulation engine
-    │   ├── games/       # Cournot & Bertrand models
-    │   ├── strategies/  # Learning algorithms
-    │   ├── policy/      # Tax/subsidy interventions
-    │   └── heatmap/     # Profit surface visualization
-    └── main.py          # FastAPI application
+├── scripts/             # Demo and utility scripts
+├── src/                 # Core implementation
+│   ├── sim/             # Simulation engine
+│   │   ├── games/       # Cournot & Bertrand models
+│   │   ├── strategies/  # Learning algorithms
+│   │   └── policy/      # Tax/subsidy interventions
+│   └── main.py          # Main FastAPI application
+├── tests/               # Unit/integration tests (>80% coverage)
+└── oligopoly_demo.ipynb # Colab notebook demo
 ```
 
 ## Test Locations
@@ -68,25 +67,29 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 | `src/sim/games/` | `tests/unit/games/` |
 | `src/sim/strategies/` | `tests/unit/strategies/` |
 | `src/sim/policy/` | `tests/unit/policy/` |
-| `src/sim/collusion.py` | `tests/unit/events/` + `tests/unit/strategies/` |
+| `src/sim/collusion.py` | `tests/unit/runners/` |
 | `src/sim/runners/` | `tests/unit/runners/` |
-| `src/sim/experiments/` | `tests/unit/experiments/` |
-| `src/sim/validation/` | `tests/unit/validation/` |
-| `src/sim/heatmap/` | `tests/unit/heatmap/` |
-| `src/main.py` (FastAPI) | `tests/unit/api/` + `tests/integration/` |
+| `src/main.py` | `tests/unit/api/` + `tests/integration/` |
+| `dashboard/main.py` | `tests/unit/heatmap/` + `tests/unit/infrastructure/` |
 
 ## Validation
 
-- ✅ Overall test coverage of 84% (`pytest`)
+- ✅ Overall test coverage of >80% (`pytest`)
 - ✅ Reproducible seeds for experiments
-- ✅ Benchmark scripts included
+- ✅ `justfile` for common development tasks
 
 ## API Endpoints
 
+- `GET /` - Root API information
 - `POST /simulate` - Run Cournot/Bertrand simulation
-- `GET /runs/{run_id}` - Get simulation results and metrics  
+- `GET /runs` - List simulation runs
+- `GET /runs/{run_id}` - Get simulation time-series results
+- `GET /runs/{run_id}/detail` - Get detailed run metadata
+- `GET /runs/{run_id}/events` - Retrieve all simulation events
+- `GET /runs/{run_id}/replay` - Get frame-by-frame replay data
+- `POST /compare` - Run scenarios for comparison
+- `GET /compare/{left_run_id}/{right_run_id}` - Get aligned comparison results
 - `POST /heatmap` - Generate profit surface heatmaps
-- `GET /statistics` - Application performance metrics
 - `GET /healthz` - Health check endpoint
 
 ## References

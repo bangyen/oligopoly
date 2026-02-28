@@ -82,7 +82,7 @@ api:
         exit 1
     fi
 
-# start Flask dashboard
+# start FastAPI dashboard
 dashboard:
     echo "Starting dashboard..."
     echo "Dashboard will be available at http://localhost:5050"
