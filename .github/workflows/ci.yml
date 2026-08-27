@@ -44,6 +44,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -126,17 +131,32 @@ jobs:
       - name: Smoke-test dashboard
         run: |
           echo "Starting FastAPI dashboard..."
-          pip install -e .
-          python dashboard/main.py &
+          # Install into a dedicated venv: mixing ~/.local packages with the
+          # runner's system jinja2 previously loaded two starlette copies and
+          # broke template dispatch.
+          python -m venv /tmp/dashboard-venv
+          /tmp/dashboard-venv/bin/pip install -q -e .
+          /tmp/dashboard-venv/bin/python dashboard/main.py &
           DASHBOARD_PID=$!
 
-          # Poll until the dashboard answers instead of sleeping a fixed time
-          timeout 60 bash -c 'until curl -sf http://localhost:5050 >/dev/null; do sleep 2; done'
+          # Wait for the port to answer at all (any status, including 5xx), so a
+          # failing page reports its status instead of timing out with exit 124.
+          if ! timeout 60 bash -c 'until curl -s -o /dev/null http://localhost:5050; do sleep 2; done'; then
+            echo "ERROR: dashboard never started listening on :5050"
+            kill $DASHBOARD_PID 2>/dev/null || true
+            exit 1
+          fi
 
-          # Assert the page actually rendered, so this step can fail
-          BODY=$(curl -sf http://localhost:5050)
-          echo "$BODY" | head -c 400
-          if ! echo "$BODY" | grep -qi "<html"; then
+          STATUS=$(curl -s -o /tmp/dashboard-body.html -w '%{http_code}' http://localhost:5050)
+          echo "GET / -> $STATUS"
+          head -c 500 /tmp/dashboard-body.html
+
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: dashboard returned HTTP $STATUS, expected 200"
+            kill $DASHBOARD_PID 2>/dev/null || true
+            exit 1
+          fi
+          if ! grep -qi "<html" /tmp/dashboard-body.html; then
             echo "ERROR: dashboard did not return an HTML page"
             kill $DASHBOARD_PID 2>/dev/null || true
             exit 1
