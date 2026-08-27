@@ -82,7 +82,9 @@ def get_strategies(
 @app.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Render the main dashboard interface."""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    # Request-first form; the legacy (name, {"request": ...}) order is deprecated
+    # and misdispatches when two starlette copies are importable at once.
+    return templates.TemplateResponse(request, "dashboard.html")
 
 
 @app.get("/api/simulation/cournot")
