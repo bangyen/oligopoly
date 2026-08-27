@@ -10,12 +10,7 @@ import gzip
 import json
 import math
 import random
-import sys
 from pathlib import Path
-from typing import Dict, List
-
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sim.games.cournot import cournot_simulation
 from sim.models.metrics import (
@@ -31,7 +26,7 @@ from sim.strategies.nash_strategies import (
 # ---------------------------------------------------------------------------
 
 
-def _make_costs(num_firms: int) -> List[float]:
+def _make_costs(num_firms: int) -> list[float]:
     """Generate firm costs with some variation.
     Tuned to match external data price levels (avg ~12).
     """
@@ -85,7 +80,7 @@ def run_cournot_rounds(
     base_price: float,
     collusion_enabled: bool,
     rounds: int = 15,
-) -> List[Dict]:
+) -> list[dict]:
     """Run multiple rounds of Cournot simulation using best-response dynamics."""
 
     a, b = _derive_cournot_params(base_price, demand_elasticity)
@@ -96,7 +91,7 @@ def run_cournot_rounds(
     nash_quantities = [max(1.0, (a - c) / (b * (num_firms + 1))) for c in costs]
     quantities = [max(0.1, q + random.uniform(-2, 2)) for q in nash_quantities]
 
-    results: List[Dict] = []
+    results: list[dict] = []
 
     for round_num in range(rounds):
         # Introduce small supply-side shocks to costs each round (random walk)
@@ -188,7 +183,7 @@ def run_bertrand_rounds(
     base_price: float,
     collusion_enabled: bool,
     rounds: int = 15,
-) -> List[Dict]:
+) -> list[dict]:
     """Run rounds of differentiated-products Bertrand competition.
 
     Uses a logit-style demand allocation so that lower-priced firms capture
@@ -223,7 +218,7 @@ def run_bertrand_rounds(
     # Price sensitivity for logit allocation
     price_sensitivity = 0.3
 
-    results: List[Dict] = []
+    results: list[dict] = []
 
     for round_num in range(rounds):
         # Introduce small supply-side shocks to costs each round
@@ -326,7 +321,7 @@ def run_bertrand_rounds(
 # ---------------------------------------------------------------------------
 
 
-def analyze_metric_combinations(all_results: List[Dict]) -> Dict:
+def analyze_metric_combinations(all_results: list[dict]) -> dict:
     """Analyze different metric combinations for visual interest."""
     metric_pairs = [
         ("price", "hhi", "Price vs Market Concentration"),
@@ -401,7 +396,7 @@ def main() -> None:
 
     random.seed(42)
 
-    all_results: List[Dict] = []
+    all_results: list[dict] = []
     num_firms_list = [2, 3, 4, 5]
     elasticities = [1.5, 2.0, 2.5]
     base_prices = [30, 40, 50]

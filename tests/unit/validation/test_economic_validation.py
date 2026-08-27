@@ -6,7 +6,7 @@ realistic market behavior and prevent unrealistic outcomes.
 
 import pytest
 
-from src.sim.validation.economic_validation import (
+from sim.validation.economic_validation import (
     EconomicValidationError,
     EconomicValidationResult,
     enforce_economic_constraints,

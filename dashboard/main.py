@@ -5,18 +5,14 @@ Provides endpoints for simulation data visualization and real-time metrics.
 
 import logging
 import random
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
-# Add src to path for local imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from sim.games.bertrand import (  # type: ignore[import-not-found]
     BertrandResult,
@@ -45,7 +41,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
-def parse_list_param(param_str: Optional[str], default: List[float]) -> List[float]:
+def parse_list_param(param_str: str | None, default: list[float]) -> list[float]:
     """Parse a comma-separated string into a list of floats."""
     if not param_str:
         return default
@@ -57,7 +53,7 @@ def parse_list_param(param_str: Optional[str], default: List[float]) -> List[flo
 
 def get_strategies(
     n_firms: int, nash_value: float, bounds: tuple[float, float]
-) -> List[Any]:
+) -> list[Any]:
     """Generate strategies for N firms."""
     strategies = []
 
@@ -91,7 +87,7 @@ async def dashboard(request: Request):
 
 @app.get("/api/simulation/cournot")
 async def cournot_endpoint(
-    a: float = Query(100.0), b: float = Query(1.0), costs: Optional[str] = Query(None)
+    a: float = Query(100.0), b: float = Query(1.0), costs: str | None = Query(None)
 ):
     """Execute a Cournot simulation and return time series data."""
     parsed_costs = parse_list_param(costs, [20.0, 25.0, 30.0])
@@ -109,8 +105,8 @@ async def cournot_endpoint(
         (max(0.0, min(nash_quantities) * 0.5), max(nash_quantities) * 1.5),
     )
 
-    firm_histories: List[List[CournotResult]] = [[] for _ in strategies]
-    history: Dict[str, Any] = {
+    firm_histories: list[list[CournotResult]] = [[] for _ in strategies]
+    history: dict[str, Any] = {
         "quantities": [],
         "prices": [],
         "profits": [],
@@ -183,7 +179,7 @@ async def cournot_endpoint(
 async def bertrand_endpoint(
     alpha: float = Query(200.0),
     beta: float = Query(1.0),
-    costs: Optional[str] = Query(None),
+    costs: str | None = Query(None),
 ):
     """Execute a Bertrand simulation and return time series data.
 
@@ -204,8 +200,8 @@ async def bertrand_endpoint(
 
     strategies = get_strategies(len(parsed_costs), nash_price, bounds)
 
-    firm_histories: List[List[BertrandResult]] = [[] for _ in strategies]
-    history: Dict[str, Any] = {
+    firm_histories: list[list[BertrandResult]] = [[] for _ in strategies]
+    history: dict[str, Any] = {
         "prices": [],
         "quantities": [],
         "profits": [],
@@ -250,7 +246,7 @@ async def bertrand_endpoint(
 
 @app.get("/api/metrics")
 async def metrics_endpoint(
-    a: float = Query(100.0), b: float = Query(1.0), costs: Optional[str] = Query(None)
+    a: float = Query(100.0), b: float = Query(1.0), costs: str | None = Query(None)
 ):
     """Return theoretical Nash equilibrium for comparison.
 

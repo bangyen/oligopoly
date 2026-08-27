@@ -6,12 +6,12 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from src.sim.heatmap.cournot_heatmap import (
+from sim.heatmap.cournot_heatmap import (
     compute_cournot_heatmap,
     compute_cournot_segmented_heatmap,
     create_quantity_grid,
 )
-from src.sim.models.models import DemandSegment, SegmentedDemand
+from sim.models.models import DemandSegment, SegmentedDemand
 
 
 class TestCreateQuantityGrid:
@@ -80,7 +80,7 @@ class TestComputeCournotHeatmap:
         q_j_grid = [6.0, 12.0, 18.0]
         other_quantities = [8.0]  # For firm 2
 
-        with patch("src.sim.heatmap.cournot_heatmap.cournot_simulation") as mock_sim:
+        with patch("sim.heatmap.cournot_heatmap.cournot_simulation") as mock_sim:
             # Mock simulation result
             mock_result = Mock()
             mock_result.profits = [25.0, 15.0, 5.0]
@@ -168,7 +168,7 @@ class TestComputeCournotHeatmap:
         q_j_grid = [6.0]
         other_quantities = [8.0, 10.0]  # For firms 0 and 2
 
-        with patch("src.sim.heatmap.cournot_heatmap.cournot_simulation") as mock_sim:
+        with patch("sim.heatmap.cournot_heatmap.cournot_simulation") as mock_sim:
             mock_result = Mock()
             mock_result.profits = [0.0, 0.0, 0.0, 0.0]
             mock_sim.return_value = mock_result
@@ -206,7 +206,7 @@ class TestComputeCournotSegmentedHeatmap:
         other_quantities = [8.0]
 
         with patch(
-            "src.sim.heatmap.cournot_heatmap.cournot_segmented_simulation"
+            "sim.heatmap.cournot_heatmap.cournot_segmented_simulation"
         ) as mock_sim:
             # Mock simulation result
             mock_result = Mock()
@@ -277,7 +277,7 @@ class TestComputeCournotSegmentedHeatmap:
         other_quantities = [8.0, 10.0]  # For firms 0 and 2
 
         with patch(
-            "src.sim.heatmap.cournot_heatmap.cournot_segmented_simulation"
+            "sim.heatmap.cournot_heatmap.cournot_segmented_simulation"
         ) as mock_sim:
             mock_result = Mock()
             mock_result.profits = [0.0, 0.0, 0.0, 0.0]

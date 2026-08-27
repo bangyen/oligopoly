@@ -6,9 +6,9 @@ more when price rises, demonstrating different price sensitivity across segments
 
 import math
 
-from src.sim.games.bertrand import bertrand_segmented_simulation
-from src.sim.games.cournot import cournot_segmented_simulation
-from src.sim.models.models import DemandSegment, SegmentedDemand
+from sim.games.bertrand import bertrand_segmented_simulation
+from sim.games.cournot import cournot_segmented_simulation
+from sim.models.models import DemandSegment, SegmentedDemand
 
 
 class TestPriceElasticityDifferences:

@@ -9,11 +9,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.main import app, get_db
-from src.sim.events.event_logger import EventLogger
-from src.sim.events.event_types import EventType
-from src.sim.events.replay import ReplaySystem
-from src.sim.models.models import Base, Run
+from sim.api import app, get_db
+from sim.events.event_logger import EventLogger
+from sim.events.event_types import EventType
+from sim.events.replay import ReplaySystem
+from sim.models.models import Base, Run
 
 
 # Test database setup
@@ -111,7 +111,7 @@ class TestReplaySequence:
     def test_replay_returns_frames_1_to_t(self, test_db, test_run):
         """Test that replay returns frames 1..T with metric snapshots."""
         # Create some mock results data
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         # Add mock results for rounds 0, 1, 2
         for round_idx in range(3):
@@ -158,7 +158,7 @@ class TestReplaySequence:
         test_db.commit()
 
         # Add mock results
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         for round_idx in range(3):
             for firm_id in range(2):
@@ -234,7 +234,7 @@ class TestFeedApiSchema:
     def test_replay_api_schema(self, test_client, test_db, test_run):
         """Test that replay API returns correct schema."""
         # Add mock results
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         for round_idx in range(2):
             for firm_id in range(2):
@@ -366,7 +366,7 @@ class TestReplaySystem:
     def test_get_frame(self, test_db, test_run):
         """Test getting individual frames."""
         # Add mock results
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         for firm_id in range(2):
             result = Result(
@@ -400,7 +400,7 @@ class TestReplaySystem:
         test_db.commit()
 
         # Add mock results
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         for round_idx in range(2):
             for firm_id in range(2):
@@ -444,7 +444,7 @@ class TestReplaySystem:
         event_logger.log_event(EventType.CARTEL_FORMED, round_idx=1)
         test_db.commit()
 
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         for round_idx in range(2):
             for firm_id in range(2):

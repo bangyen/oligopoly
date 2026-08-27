@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 
 from sqlalchemy.orm import Session
 
-from src.sim.database import SessionLocal, get_db, get_settings
+from sim.database import SessionLocal, get_db, get_settings
 
 
 class TestDatabaseConfiguration:
@@ -12,7 +12,7 @@ class TestDatabaseConfiguration:
 
     def test_engine_creation(self) -> None:
         """Test that engine is created and configured."""
-        from src.sim.database import engine
+        from sim.database import engine
 
         assert engine is not None
         assert hasattr(engine, "url")
@@ -20,7 +20,7 @@ class TestDatabaseConfiguration:
 
     def test_engine_configuration(self) -> None:
         """Test that engine has proper configuration."""
-        from src.sim.database import engine
+        from sim.database import engine
 
         # Test that engine has expected attributes
         assert engine is not None
@@ -44,7 +44,7 @@ class TestGetDb:
         assert hasattr(db_gen, "__next__")
         assert hasattr(db_gen, "__iter__")
 
-    @patch("src.sim.database.SessionLocal")
+    @patch("sim.database.SessionLocal")
     def test_get_db_session_management(self, mock_session_local: Mock) -> None:
         """Test that get_db properly manages database sessions."""
         # Mock session
@@ -67,7 +67,7 @@ class TestGetDb:
 
         mock_session.close.assert_called_once()
 
-    @patch("src.sim.database.SessionLocal")
+    @patch("sim.database.SessionLocal")
     def test_get_db_exception_handling(self, mock_session_local: Mock) -> None:
         """Test that get_db properly handles exceptions."""
         # Mock session that raises an exception
@@ -118,7 +118,7 @@ class TestDatabaseIntegration:
 
     def test_database_url_configuration(self) -> None:
         """Test that database URL is properly configured."""
-        from src.sim.database import engine
+        from sim.database import engine
 
         # Test that engine has a valid URL
         assert str(engine.url) is not None

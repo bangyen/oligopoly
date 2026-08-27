@@ -9,13 +9,13 @@ This module tests the enhanced simulation functions that support:
 
 import pytest
 
-from src.sim.games.enhanced_simulation import (
+from sim.games.enhanced_simulation import (
     EnhancedSimulationConfig,
     enhanced_bertrand_simulation,
     enhanced_cournot_simulation,
     validate_enhanced_economic_parameters,
 )
-from src.sim.models.models import CostStructure, IsoelasticDemand
+from sim.models.models import CostStructure, IsoelasticDemand
 
 
 class TestEnhancedCostStructure:

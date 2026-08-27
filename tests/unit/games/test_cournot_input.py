@@ -6,7 +6,7 @@ ensuring that invalid inputs are properly rejected with meaningful error message
 
 import pytest
 
-from src.sim.games.cournot import (
+from sim.games.cournot import (
     cournot_simulation,
     parse_costs,
     parse_quantities,

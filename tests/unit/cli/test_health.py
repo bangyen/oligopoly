@@ -6,7 +6,7 @@ the expected status and response format.
 
 from fastapi.testclient import TestClient
 
-from src.main import app
+from sim.api import app
 
 client = TestClient(app)
 

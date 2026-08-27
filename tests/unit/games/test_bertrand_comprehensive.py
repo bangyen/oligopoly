@@ -7,7 +7,7 @@ CLI functionality, and input validation.
 
 import pytest
 
-from src.sim.games.bertrand import (
+from sim.games.bertrand import (
     allocate_demand,
     bertrand_simulation,
     calculate_demand,

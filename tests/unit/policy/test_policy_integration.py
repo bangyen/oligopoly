@@ -8,15 +8,16 @@ import atexit
 import math
 import os
 import tempfile
-from typing import Any, Dict, Generator
+from collections.abc import Generator
+from typing import Any
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.sim.models.models import Base
-from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
-from src.sim.runners.runner import get_run_results, run_game
+from sim.models.models import Base
+from sim.policy.policy_shocks import PolicyEvent, PolicyType
+from sim.runners.runner import get_run_results, run_game
 
 # Create temporary database file
 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
@@ -48,7 +49,7 @@ def setup_database() -> Generator[None, None, None]:
     Base.metadata.drop_all(bind=engine)
 
 
-def _round_summary(results: Dict[str, Any], round_idx: int) -> Dict[str, float]:
+def _round_summary(results: dict[str, Any], round_idx: int) -> dict[str, float]:
     """Extract aggregate round-level metrics from canonical nested results dict."""
     round_firms = results["results"].get(
         str(round_idx), results["results"].get(round_idx, {})

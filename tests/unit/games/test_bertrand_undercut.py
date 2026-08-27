@@ -6,7 +6,7 @@ including edge cases for undercutting, ties, and demand non-negativity.
 
 import pytest
 
-from src.sim.games.bertrand import (
+from sim.games.bertrand import (
     allocate_demand,
     bertrand_simulation,
     calculate_demand,

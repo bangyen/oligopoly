@@ -5,7 +5,7 @@ class and its methods to ensure proper functionality and stable
 string representations.
 """
 
-from src.sim.models.models import Demand
+from sim.models.models import Demand
 
 
 def test_demand_creation() -> None:

@@ -5,7 +5,7 @@ ensuring that market prices are computed correctly based on demand parameters
 and total quantity supplied.
 """
 
-from src.sim.games.cournot import cournot_simulation
+from sim.games.cournot import cournot_simulation
 
 
 class TestCournotPrice:

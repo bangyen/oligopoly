@@ -5,7 +5,7 @@ ensuring that individual firm profits are computed correctly based on
 market price, firm costs, and quantities chosen.
 """
 
-from src.sim.games.cournot import cournot_simulation
+from sim.games.cournot import cournot_simulation
 
 
 class TestCournotProfit:

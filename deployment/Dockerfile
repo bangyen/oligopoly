@@ -18,9 +18,6 @@ COPY src/ ./src/
 # Install Python dependencies
 RUN pip install --no-cache-dir -e .
 
-# Set Python path
-ENV PYTHONPATH=/app/src
-
 # Change ownership to non-root user
 RUN chown -R appuser:appuser /app
 
@@ -31,4 +28,4 @@ USER appuser
 EXPOSE 8000
 
 # Default command
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "sim.api:app", "--host", "0.0.0.0", "--port", "8000"]

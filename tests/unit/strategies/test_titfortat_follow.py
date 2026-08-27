@@ -1,11 +1,11 @@
 """Test TitForTat follow behavior."""
 
 import math
-from typing import List, Sequence, Union
+from collections.abc import Sequence
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import TitForTat
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import TitForTat
 
 
 def test_titfortat_follow() -> None:
@@ -51,7 +51,7 @@ def test_titfortat_follow() -> None:
     ]
 
     for rival_results, expected_mean in test_cases:
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]] = [
+        rival_histories: list[Sequence[CournotResult | BertrandResult]] = [
             [result] for result in rival_results
         ]
 

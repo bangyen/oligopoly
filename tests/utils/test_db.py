@@ -7,13 +7,13 @@ for tests, eliminating duplication across test files.
 import atexit
 import os
 import tempfile
-from typing import Generator
+from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.sim.models.models import Base
+from sim.models.models import Base
 
 
 class TestDatabaseManager:

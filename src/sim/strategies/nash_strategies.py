@@ -6,10 +6,10 @@ equilibrium outcomes.
 """
 
 import random
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from src.sim.models.models import SegmentedDemand
+    from sim.models.models import SegmentedDemand
 
 
 def should_firm_exit(
@@ -29,8 +29,8 @@ def should_firm_exit(
 
 
 def validate_profitable_production(
-    quantities: List[float], costs: List[float], price: float
-) -> List[float]:
+    quantities: list[float], costs: list[float], price: float
+) -> list[float]:
     """Ensure firms don't produce when price < marginal cost.
 
     Args:
@@ -51,8 +51,8 @@ def validate_profitable_production(
 
 
 def cournot_nash_equilibrium(
-    a: float, b: float, costs: List[float], fixed_costs: Optional[List[float]] = None
-) -> Tuple[List[float], float, List[float]]:
+    a: float, b: float, costs: list[float], fixed_costs: list[float] | None = None
+) -> tuple[list[float], float, list[float]]:
     """Calculate Cournot Nash equilibrium quantities, price, and profits.
 
     For n firms with costs c_i and demand P = a - b*Q, the Nash equilibrium
@@ -147,8 +147,8 @@ def cournot_nash_equilibrium(
 
 
 def bertrand_nash_equilibrium(
-    alpha: float, beta: float, costs: List[float]
-) -> Tuple[List[float], List[float], List[float], float]:
+    alpha: float, beta: float, costs: list[float]
+) -> tuple[list[float], list[float], list[float], float]:
     """Calculate Bertrand Nash equilibrium prices, quantities, and profits.
 
     Implements a more realistic Bertrand model that allows for differentiated competition
@@ -265,7 +265,7 @@ def bertrand_nash_equilibrium(
 
 
 def cournot_best_response(
-    a: float, b: float, my_cost: float, rival_quantities: List[float]
+    a: float, b: float, my_cost: float, rival_quantities: list[float]
 ) -> float:
     """Calculate Cournot best response quantity for a firm.
 
@@ -287,7 +287,7 @@ def cournot_best_response(
 
 
 def bertrand_best_response(
-    alpha: float, beta: float, my_cost: float, rival_prices: List[float]
+    alpha: float, beta: float, my_cost: float, rival_prices: list[float]
 ) -> float:
     """Calculate Bertrand best response price for a firm.
 
@@ -334,13 +334,13 @@ def bertrand_best_response(
 
 def adaptive_nash_strategy(
     model: str,
-    current_actions: List[float],
-    profits: List[float],
-    costs: List[float],
-    params: Dict[str, Any],
+    current_actions: list[float],
+    profits: list[float],
+    costs: list[float],
+    params: dict[str, Any],
     round_idx: int,
     max_rounds: int,
-) -> List[float]:
+) -> list[float]:
     """Adaptive strategy that converges to Nash equilibrium.
 
     This strategy gradually moves firms toward their Nash equilibrium actions
@@ -439,8 +439,8 @@ def adaptive_nash_strategy(
 
 
 def cournot_segmented_nash_equilibrium(
-    segmented_demand: "SegmentedDemand", costs: List[float]
-) -> Tuple[List[float], float, List[float]]:
+    segmented_demand: "SegmentedDemand", costs: list[float]
+) -> tuple[list[float], float, list[float]]:
     """Calculate Cournot Nash equilibrium for segmented demand.
 
     For segmented demand, we need to solve the Nash equilibrium using
@@ -466,8 +466,8 @@ def cournot_segmented_nash_equilibrium(
 
 
 def validate_market_clearing(
-    model: str, actions: List[float], costs: List[float], params: Dict[str, Any]
-) -> List[float]:
+    model: str, actions: list[float], costs: list[float], params: dict[str, Any]
+) -> list[float]:
     """Validate and adjust actions to ensure market clearing conditions.
 
     Ensures that:
@@ -535,7 +535,7 @@ def validate_market_clearing(
 
 
 def validate_economic_parameters(
-    model: str, params: Dict[str, Any], costs: List[float]
+    model: str, params: dict[str, Any], costs: list[float]
 ) -> None:
     """Validate that economic parameters create a viable market.
 

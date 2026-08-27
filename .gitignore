@@ -59,3 +59,5 @@ htmlcov/
 artifacts/
 oligopoly_data.json
 oligopoly_data.json.gz
+# Stray local test databases
+tmp_*.db

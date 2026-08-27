@@ -5,10 +5,8 @@ They belong here — in a dedicated adapter module — rather than in the core
 game simulation modules (cournot.py / bertrand.py).
 """
 
-from typing import List
 
-
-def parse_costs(costs_str: str) -> List[float]:
+def parse_costs(costs_str: str) -> list[float]:
     """Parse comma-separated costs string into list of floats.
 
     Args:
@@ -32,7 +30,7 @@ def parse_costs(costs_str: str) -> List[float]:
         raise ValueError(f"Invalid costs format '{costs_str}': {e}")
 
 
-def parse_prices(prices_str: str) -> List[float]:
+def parse_prices(prices_str: str) -> list[float]:
     """Parse comma-separated prices string into list of floats.
 
     Args:
@@ -56,7 +54,7 @@ def parse_prices(prices_str: str) -> List[float]:
         raise ValueError(f"Invalid prices format '{prices_str}': {e}")
 
 
-def parse_quantities(quantities_str: str) -> List[float]:
+def parse_quantities(quantities_str: str) -> list[float]:
     """Parse comma-separated quantities string into list of floats.
 
     Args:

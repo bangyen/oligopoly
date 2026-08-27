@@ -8,7 +8,6 @@ import math
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
 
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import declarative_base, relationship
@@ -93,7 +92,7 @@ class CostStructure:
 
     marginal_cost: float  # Variable cost per unit
     fixed_cost: float = 0.0  # Fixed cost per period
-    capacity_limit: Optional[float] = None  # Maximum production capacity
+    capacity_limit: float | None = None  # Maximum production capacity
     economies_of_scale: float = 1.0  # Cost reduction factor (1.0 = no economies)
 
     def __post_init__(self) -> None:

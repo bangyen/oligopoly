@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app, get_db
+from sim.api import app, get_db
 
 
 @pytest.fixture(scope="module")
@@ -33,7 +33,7 @@ class TestDatabaseDependency:
         """Test database dependency returns session."""
         # This is a simple test of the dependency function
         # In a real test, you'd mock the database
-        with patch("src.main.SessionLocal") as mock_session_local:
+        with patch("sim.api.SessionLocal") as mock_session_local:
             mock_session = Mock()
             mock_session_local.return_value = mock_session
 
@@ -73,7 +73,7 @@ class TestSimulateEndpoint:
                 "params": {"a": 100.0, "b": 1.0},
             }
 
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
@@ -84,7 +84,7 @@ class TestSimulateEndpoint:
                 mock_db.commit.return_value = None
                 mock_db.refresh.return_value = None
 
-                with patch("src.main.run_game") as mock_run_game:
+                with patch("sim.api.run_game") as mock_run_game:
                     mock_run_game.return_value = "run_123"  # Return a run_id string
 
                     response = client.post("/simulate", json=simulation_data)
@@ -134,14 +134,16 @@ class TestSimulateEndpoint:
                 "params": {"a": -10.0, "b": 1.0},  # Invalid negative intercept
             }
 
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
                 response = client.post("/simulate", json=simulation_data)
 
-                assert response.status_code == 500
-                assert "Unexpected error" in response.json()["detail"]
+                assert response.status_code == 400
+                assert (
+                    "Cournot model requires CournotParams" in response.json()["detail"]
+                )
 
 
 class TestHeatmapEndpoints:
@@ -224,7 +226,7 @@ class TestRunManagementEndpoints:
     def test_get_run_endpoint(self):
         """Test get run endpoint."""
         with TestClient(app) as client:
-            with patch("src.main.get_run_results") as mock_get_run_results:
+            with patch("sim.api.get_run_results") as mock_get_run_results:
                 # Mock the get_run_results function to return test data
                 mock_get_run_results.return_value = {
                     "id": 1,
@@ -248,7 +250,7 @@ class TestRunManagementEndpoints:
     def test_get_run_endpoint_not_found(self):
         """Test get run endpoint with non-existent run."""
         with TestClient(app) as client:
-            with patch("src.main.get_run_results") as mock_get_run_results:
+            with patch("sim.api.get_run_results") as mock_get_run_results:
                 # Mock the function to raise ValueError for non-existent run
                 mock_get_run_results.side_effect = ValueError("Run 999 not found")
 
@@ -284,7 +286,7 @@ class TestPolicyEndpoints:
                 "duration": 3,
             }
 
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
@@ -324,7 +326,7 @@ class TestMetricsEndpoints:
                 "demand_params": {"a": 100.0, "b": 1.0},
             }
 
-            with patch("src.main.calculate_round_metrics_cournot") as mock_calculate:
+            with patch("sim.api.calculate_round_metrics_cournot") as mock_calculate:
                 mock_calculate.return_value = {
                     "hhi": 0.5,
                     "consumer_surplus": 1000.0,
@@ -355,7 +357,7 @@ class TestReplayEndpoints:
     def test_replay_endpoint(self):
         """Test replay endpoint."""
         with TestClient(app) as client:
-            with patch("src.main.ReplaySystem") as mock_replay_system:
+            with patch("sim.api.ReplaySystem") as mock_replay_system:
                 # Mock the ReplaySystem methods
                 mock_replay = Mock()
 
@@ -388,7 +390,7 @@ class TestReplayEndpoints:
     def test_replay_endpoint_invalid_run(self):
         """Test replay endpoint with invalid run ID."""
         with TestClient(app) as client:
-            with patch("src.main.ReplaySystem") as mock_replay_system:
+            with patch("sim.api.ReplaySystem") as mock_replay_system:
                 # Mock the ReplaySystem to raise ValueError for non-existent run
                 mock_replay_system.side_effect = ValueError("Run 999 not found")
 
@@ -426,7 +428,7 @@ class TestErrorHandling:
                 "params": {"a": 100.0, "b": 1.0},
             }
 
-            with patch("src.main.run_game") as mock_run_game:
+            with patch("sim.api.run_game") as mock_run_game:
                 mock_run_game.side_effect = Exception("Internal error")
 
                 response = client.post("/simulate", json=simulation_data)
@@ -477,11 +479,11 @@ class TestCompareEndpoints:
                 },
             }
 
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
-                with patch("src.main.run_game") as mock_run_game:
+                with patch("sim.api.run_game") as mock_run_game:
                     mock_run_game.side_effect = ["run_1", "run_2"]
 
                     # Override the dependency
@@ -555,7 +557,7 @@ class TestCompareEndpoints:
                 },
             }
 
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
@@ -569,9 +571,10 @@ class TestCompareEndpoints:
                     "rounds": 10,
                 }
 
-                with patch("src.main.run_game") as mock_run_game, patch(
-                    "src.main.get_run_results"
-                ) as mock_get_results:
+                with (
+                    patch("sim.api.run_game") as mock_run_game,
+                    patch("sim.api.get_run_results") as mock_get_results,
+                ):
                     mock_run_game.side_effect = ["run_1", "run_2"]
                     mock_get_results.return_value = mock_results
 
@@ -628,7 +631,7 @@ class TestCompareEndpoints:
     def test_get_comparison_results_endpoint(self):
         """Test get comparison results endpoint."""
         with TestClient(app) as client:
-            with patch("src.main.get_run_results") as mock_get_run_results:
+            with patch("sim.api.get_run_results") as mock_get_run_results:
                 # Mock results for both runs
                 mock_left_results = {
                     "id": "run_1",
@@ -681,7 +684,7 @@ class TestCompareEndpoints:
     def test_get_comparison_results_different_rounds(self):
         """Test get comparison results with different number of rounds."""
         with TestClient(app) as client:
-            with patch("src.main.get_run_results") as mock_get_run_results:
+            with patch("sim.api.get_run_results") as mock_get_run_results:
                 # Mock results with different number of rounds
                 mock_left_results = {
                     "id": "run_1",
@@ -727,7 +730,7 @@ class TestEventsEndpoint:
     def test_get_run_events_endpoint(self):
         """Test get run events endpoint."""
         with TestClient(app) as client:
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
@@ -769,7 +772,7 @@ class TestEventsEndpoint:
     def test_get_run_events_endpoint_not_found(self):
         """Test get run events endpoint with non-existent run."""
         with TestClient(app) as client:
-            with patch("src.main.get_db") as mock_get_db:
+            with patch("sim.api.get_db") as mock_get_db:
                 mock_db = Mock()
                 mock_get_db.return_value = mock_db
 
@@ -807,7 +810,7 @@ class TestHeatmapEndpoint:
                 ],
             }
 
-            with patch("src.main.compute_cournot_heatmap") as mock_compute:
+            with patch("sim.api.compute_cournot_heatmap") as mock_compute:
                 import numpy as np
 
                 mock_compute.return_value = (
@@ -842,7 +845,7 @@ class TestHeatmapEndpoint:
                 ],
             }
 
-            with patch("src.main.compute_bertrand_heatmap") as mock_compute:
+            with patch("sim.api.compute_bertrand_heatmap") as mock_compute:
                 import numpy as np
 
                 mock_compute.return_value = (
@@ -1008,7 +1011,7 @@ class TestHeatmapEndpoint:
                 ],
             }
 
-            with patch("src.main.compute_cournot_segmented_heatmap") as mock_compute:
+            with patch("sim.api.compute_cournot_segmented_heatmap") as mock_compute:
                 import numpy as np
 
                 mock_compute.return_value = (
@@ -1040,7 +1043,7 @@ class TestHeatmapEndpoint:
                 ],
             }
 
-            with patch("src.main.compute_cournot_heatmap") as mock_compute:
+            with patch("sim.api.compute_cournot_heatmap") as mock_compute:
                 mock_compute.side_effect = ValueError("400: Invalid parameters")
 
                 response = client.post("/heatmap", json=heatmap_data)

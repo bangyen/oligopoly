@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from src.sim.config import Settings, get_settings, reload_settings
+from sim.config import Settings, get_settings, reload_settings
 
 
 class TestSettings:

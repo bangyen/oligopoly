@@ -8,7 +8,7 @@ produce different run_ids.
 import atexit
 import os
 import tempfile
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,8 +16,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.main import app, get_db
-from src.sim.models.models import Base
+from sim.api import app, get_db
+from sim.models.models import Base
 
 # Create temporary database file
 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")

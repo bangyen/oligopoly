@@ -9,9 +9,9 @@ import math
 
 import pytest
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.policy.policy_shocks import apply_price_cap_shock
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.policy.policy_shocks import apply_price_cap_shock
 
 
 def test_price_cap_cournot_no_cap_needed() -> None:

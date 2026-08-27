@@ -4,12 +4,10 @@ This test verifies that over 200 steps, all actions chosen by the Q-learning
 strategy stay within the specified action grid bounds.
 """
 
-from typing import List
-
 import pytest
 
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import QLearning
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import QLearning
 
 
 def test_action_bounds_200_steps() -> None:
@@ -38,7 +36,7 @@ def test_action_bounds_200_steps() -> None:
     market_params: dict[str, float] = {}
 
     # Track all actions over 200 steps
-    actions_chosen: List[float] = []
+    actions_chosen: list[float] = []
 
     # First action (round 0)
     action1 = q_learning.next_action(
@@ -123,7 +121,7 @@ def test_action_bounds_different_grids() -> None:
         market_params: dict[str, float] = {}
 
         # Generate 50 actions
-        actions_chosen: List[float] = []
+        actions_chosen: list[float] = []
 
         # First action
         action1 = q_learning.next_action(
@@ -181,7 +179,7 @@ def test_action_bounds_edge_cases() -> None:
     market_params: dict[str, float] = {}
 
     # Generate 100 actions
-    actions_chosen: List[float] = []
+    actions_chosen: list[float] = []
 
     # First action
     action1 = q_learning_small_step.next_action(
@@ -223,7 +221,7 @@ def test_action_bounds_edge_cases() -> None:
     bounds = (0.0, 100.0)
 
     # Generate 50 actions
-    actions_chosen_large: List[float] = []
+    actions_chosen_large: list[float] = []
 
     # First action
     action1 = q_learning_large_step.next_action(
@@ -281,7 +279,7 @@ def test_action_bounds_clamping() -> None:
     market_params: dict[str, float] = {}
 
     # Generate actions
-    actions_chosen: List[float] = []
+    actions_chosen: list[float] = []
 
     # First action
     action1 = q_learning.next_action(

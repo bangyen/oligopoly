@@ -5,7 +5,7 @@ to ensure realistic market behavior and prevent unrealistic outcomes.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -15,9 +15,9 @@ class EconomicValidationResult:
     """Result of economic validation with warnings and errors."""
 
     is_valid: bool
-    warnings: List[str]
-    errors: List[str]
-    metrics: Dict[str, float]
+    warnings: list[str]
+    errors: list[str]
+    metrics: dict[str, float]
 
 
 class EconomicValidationError(Exception):
@@ -69,7 +69,7 @@ def validate_demand_parameters(a: float, b: float, alpha: float, beta: float) ->
 
 
 def validate_cost_structure(
-    costs: List[float], fixed_costs: Optional[List[float]] = None
+    costs: list[float], fixed_costs: list[float] | None = None
 ) -> None:
     """Validate firm cost structures for economic realism.
 
@@ -121,11 +121,11 @@ def validate_cost_structure(
 
 def validate_simulation_result(
     model: str,
-    prices: List[float],
-    quantities: List[float],
-    profits: List[float],
-    costs: List[float],
-    demand_params: Dict[str, float],
+    prices: list[float],
+    quantities: list[float],
+    profits: list[float],
+    costs: list[float],
+    demand_params: dict[str, float],
 ) -> EconomicValidationResult:
     """Validate simulation results for economic realism.
 
@@ -140,8 +140,8 @@ def validate_simulation_result(
     Returns:
         EconomicValidationResult with validation status and metrics
     """
-    warnings_list: List[str] = []
-    errors_list: List[str] = []
+    warnings_list: list[str] = []
+    errors_list: list[str] = []
 
     # Basic validation
     if not quantities or not profits or not costs:
@@ -244,7 +244,7 @@ def validate_simulation_result(
         warnings_list.append("Negative total industry profit")
 
     # Calculate efficiency metrics
-    metrics: Dict[str, float] = {
+    metrics: dict[str, float] = {
         "total_quantity": float(total_quantity),
         "total_profit": float(total_profit),
         "market_price": float(market_price),
@@ -278,11 +278,11 @@ def validate_simulation_result(
 
 
 def enforce_economic_constraints(
-    quantities: List[float],
-    costs: List[float],
+    quantities: list[float],
+    costs: list[float],
     market_price: float,
     min_quantity: float = 0.0,
-) -> List[float]:
+) -> list[float]:
     """Enforce economic constraints on quantities.
 
     Args:
@@ -307,7 +307,7 @@ def enforce_economic_constraints(
     return adjusted_quantities
 
 
-def validate_market_evolution_config(config: Dict[str, Any]) -> None:
+def validate_market_evolution_config(config: dict[str, Any]) -> None:
     """Validate market evolution configuration parameters.
 
     Args:
@@ -347,7 +347,7 @@ def validate_market_evolution_config(config: Dict[str, Any]) -> None:
 
 
 def log_economic_warnings(
-    result: EconomicValidationResult, logger: Optional[Any] = None
+    result: EconomicValidationResult, logger: Any | None = None
 ) -> None:
     """Log economic validation warnings and errors.
 

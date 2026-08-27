@@ -5,12 +5,11 @@ the Q-learning strategy chooses actions randomly from the action grid.
 """
 
 from collections import Counter
-from typing import List
 
 import pytest
 
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import QLearning
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import QLearning
 
 
 def test_q_init_random_actions() -> None:
@@ -35,7 +34,7 @@ def test_q_init_random_actions() -> None:
     ), f"Expected {expected_actions}, got {actual_actions}"
 
     # Test multiple actions to verify randomness
-    actions_chosen: List[float] = []
+    actions_chosen: list[float] = []
     bounds = (0.0, 10.0)
     market_params: dict[str, float] = {}
 
@@ -96,7 +95,7 @@ def test_q_init_with_history() -> None:
     mock_history = [CournotResult(price=50.0, quantities=[2.0], profits=[100.0])]
 
     # Generate actions with history
-    actions_chosen: List[float] = []
+    actions_chosen: list[float] = []
     bounds = (0.0, 5.0)
     market_params: dict[str, float] = {}
 

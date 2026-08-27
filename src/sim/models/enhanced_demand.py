@@ -6,7 +6,7 @@ network effects, and dynamic demand evolution.
 
 import math
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -36,10 +36,10 @@ class CESDemand:
 
     def calculate_demand(
         self,
-        prices: List[float],
-        qualities: List[float],
-        market_share: Optional[List[float]] = None,
-    ) -> List[float]:
+        prices: list[float],
+        qualities: list[float],
+        market_share: list[float] | None = None,
+    ) -> list[float]:
         """Calculate demand using CES function.
 
         Args:
@@ -87,8 +87,8 @@ class CESDemand:
         return demands
 
     def calculate_market_shares(
-        self, prices: List[float], qualities: List[float]
-    ) -> List[float]:
+        self, prices: list[float], qualities: list[float]
+    ) -> list[float]:
         """Calculate market shares using CES function."""
         demands = self.calculate_demand(prices, qualities)
         total_demand = sum(demands)
@@ -126,11 +126,11 @@ class NetworkEffectsDemand:
 
     def calculate_demand(
         self,
-        prices: List[float],
-        current_users: List[float],
-        qualities: List[float],
+        prices: list[float],
+        current_users: list[float],
+        qualities: list[float],
         price_sensitivity: float = 1.0,
-    ) -> List[float]:
+    ) -> list[float]:
         """Calculate demand with network effects.
 
         Args:
@@ -167,8 +167,8 @@ class NetworkEffectsDemand:
         return demands
 
     def calculate_network_value(
-        self, current_users: List[float], qualities: List[float]
-    ) -> List[float]:
+        self, current_users: list[float], qualities: list[float]
+    ) -> list[float]:
         """Calculate network value for each product."""
         if len(current_users) != len(qualities):
             raise ValueError("Current_users and qualities must have same length")
@@ -220,10 +220,10 @@ class DynamicDemand:
     def calculate_demand(
         self,
         round_num: int,
-        prices: List[float],
-        qualities: List[float],
+        prices: list[float],
+        qualities: list[float],
         price_sensitivity: float = 1.0,
-    ) -> Tuple[List[float], float]:
+    ) -> tuple[list[float], float]:
         """Calculate dynamic demand for current round.
 
         Args:
@@ -287,7 +287,7 @@ class MultiSegmentDemand:
     Each segment has different preferences and price sensitivities.
     """
 
-    segments: List[Dict[str, float]]  # List of segment parameters
+    segments: list[dict[str, float]]  # List of segment parameters
 
     def __post_init__(self) -> None:
         """Validate multi-segment demand parameters."""
@@ -316,10 +316,10 @@ class MultiSegmentDemand:
 
     def calculate_demand(
         self,
-        prices: List[float],
-        qualities: List[float],
+        prices: list[float],
+        qualities: list[float],
         total_market_size: float = 100.0,
-    ) -> List[float]:
+    ) -> list[float]:
         """Calculate demand across multiple segments.
 
         Args:
@@ -364,10 +364,10 @@ class MultiSegmentDemand:
 
     def calculate_market_shares(
         self,
-        prices: List[float],
-        qualities: List[float],
+        prices: list[float],
+        qualities: list[float],
         total_market_size: float = 100.0,
-    ) -> List[float]:
+    ) -> list[float]:
         """Calculate market shares across multiple segments."""
         demands = self.calculate_demand(prices, qualities, total_market_size)
         total_demand = sum(demands)
@@ -380,7 +380,7 @@ class MultiSegmentDemand:
 
 def create_enhanced_demand_function(
     demand_type: str, **kwargs: Any
-) -> Union[CESDemand, NetworkEffectsDemand, DynamicDemand, MultiSegmentDemand]:
+) -> CESDemand | NetworkEffectsDemand | DynamicDemand | MultiSegmentDemand:
     """Factory function to create enhanced demand functions.
 
     Args:
@@ -406,11 +406,11 @@ def create_enhanced_demand_function(
 
 
 def calculate_enhanced_demand_elasticity(
-    demand_function: Union[
-        CESDemand, NetworkEffectsDemand, DynamicDemand, MultiSegmentDemand
-    ],
-    prices: List[float],
-    qualities: List[float],
+    demand_function: (
+        CESDemand | NetworkEffectsDemand | DynamicDemand | MultiSegmentDemand
+    ),
+    prices: list[float],
+    qualities: list[float],
     price_index: int = 0,
     price_change: float = 0.01,
 ) -> float:

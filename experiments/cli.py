@@ -16,8 +16,8 @@ from scripts.utils import (
     create_experiment_database,
     print_verbose_summary,
 )
-from src.sim.experiments.runner import run_experiment_batch_from_file
-from src.sim.experiments.visualizer import ExperimentVisualizer
+from sim.experiments.runner import run_experiment_batch_from_file
+from sim.experiments.visualizer import ExperimentVisualizer
 
 
 def main() -> None:

@@ -1,7 +1,6 @@
 """Simple configuration management for oligopoly simulation."""
 
 from functools import lru_cache
-from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,7 +28,7 @@ class Settings(BaseSettings):
     # API
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8000, ge=1, le=65535)
-    cors_origins: List[str] = Field(default=["*"])
+    cors_origins: list[str] = Field(default=["*"])
 
     # Simulation
     max_rounds: int = Field(default=1000, ge=1, le=10000)

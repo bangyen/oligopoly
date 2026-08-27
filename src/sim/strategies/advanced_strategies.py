@@ -6,8 +6,9 @@ including Deep Q-Networks, Fictitious Play, and behavioral economics elements.
 
 import math
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, Union, cast
+from typing import Any, Protocol, cast
 
 import numpy as np
 
@@ -19,9 +20,9 @@ from ..games.cournot import CournotResult
 class MarketState:
     """Rich market state information for advanced strategies."""
 
-    prices: List[float]
-    quantities: List[float]
-    market_shares: List[float]
+    prices: list[float]
+    quantities: list[float]
+    market_shares: list[float]
     total_demand: float
     market_growth: float = 0.0
     innovation_level: float = 0.0
@@ -45,8 +46,8 @@ class StrategyBelief:
     """Belief about a rival firm's strategy."""
 
     firm_id: int
-    action_history: List[float] = field(default_factory=list)
-    belief_weights: List[float] = field(default_factory=list)
+    action_history: list[float] = field(default_factory=list)
+    belief_weights: list[float] = field(default_factory=list)
     confidence: float = 0.5
     last_update: int = 0
 
@@ -96,11 +97,11 @@ class AdvancedStrategy(Protocol):
         self,
         round_num: int,
         market_state: MarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        beliefs: Dict[int, StrategyBelief],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        beliefs: dict[int, StrategyBelief],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action with advanced market information."""
         ...
@@ -120,7 +121,7 @@ class FictitiousPlayStrategy:
     memory_length: int = 20
 
     # Strategy parameters
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         """Initialize strategy parameters."""
@@ -132,11 +133,11 @@ class FictitiousPlayStrategy:
             )
 
         self._rng = random.Random(self.seed)
-        self._beliefs: Dict[int, StrategyBelief] = {}
+        self._beliefs: dict[int, StrategyBelief] = {}
 
     def _update_beliefs(
         self,
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
         round_num: int,
     ) -> None:
         """Update beliefs about rival strategies."""
@@ -160,8 +161,8 @@ class FictitiousPlayStrategy:
     def _calculate_best_response(
         self,
         market_state: MarketState,
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
         model: str,
     ) -> float:
         """Calculate best response to beliefs about rivals."""
@@ -197,8 +198,8 @@ class FictitiousPlayStrategy:
 
     def _cournot_best_response(
         self,
-        rival_quantities: List[float],
-        market_params: Dict[str, Any],
+        rival_quantities: list[float],
+        market_params: dict[str, Any],
         min_bound: float,
         max_bound: float,
     ) -> float:
@@ -214,8 +215,8 @@ class FictitiousPlayStrategy:
 
     def _bertrand_best_response(
         self,
-        rival_prices: List[float],
-        market_params: Dict[str, Any],
+        rival_prices: list[float],
+        market_params: dict[str, Any],
         min_bound: float,
         max_bound: float,
     ) -> float:
@@ -241,11 +242,11 @@ class FictitiousPlayStrategy:
         self,
         round_num: int,
         market_state: MarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        beliefs: Dict[int, StrategyBelief],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        beliefs: dict[int, StrategyBelief],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using fictitious play."""
         # Update beliefs about rivals
@@ -289,7 +290,7 @@ class DeepQLearningStrategy:
     action_dim: int = 20
 
     # Strategy parameters
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         """Initialize DQN parameters."""
@@ -310,14 +311,14 @@ class DeepQLearningStrategy:
         self._bias = np.zeros(self.action_dim)
 
         # Experience replay buffer
-        self._replay_buffer: List[Tuple] = []
+        self._replay_buffer: list[tuple] = []
         self._buffer_size = 1000
 
     def _extract_features(
         self,
         market_state: MarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        bounds: Tuple[float, float],
+        my_history: Sequence[CournotResult | BertrandResult],
+        bounds: tuple[float, float],
     ) -> np.ndarray[Any, Any]:
         """Extract features from market state for Q-function."""
         features = np.zeros(self.feature_dim, dtype=np.float64)
@@ -363,7 +364,7 @@ class DeepQLearningStrategy:
         return np.dot(features, self._weights) + self._bias  # type: ignore
 
     def _select_action(
-        self, q_values: np.ndarray, bounds: Tuple[float, float]
+        self, q_values: np.ndarray, bounds: tuple[float, float]
     ) -> float:
         """Select action using epsilon-greedy policy."""
         min_bound, max_bound = bounds
@@ -401,7 +402,7 @@ class DeepQLearningStrategy:
         self._weights[:, action_index] += self.learning_rate * td_error * features
         self._bias[action_index] += self.learning_rate * td_error
 
-    def _action_to_index(self, action: float, bounds: Tuple[float, float]) -> int:
+    def _action_to_index(self, action: float, bounds: tuple[float, float]) -> int:
         """Convert action value to action index."""
         min_bound, max_bound = bounds
         normalized = (action - min_bound) / (max_bound - min_bound)
@@ -411,11 +412,11 @@ class DeepQLearningStrategy:
         self,
         round_num: int,
         market_state: MarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        beliefs: Dict[int, StrategyBelief],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        beliefs: dict[int, StrategyBelief],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using Deep Q-Learning."""
         # Extract features
@@ -481,7 +482,7 @@ class BehavioralStrategy:
     memory_decay: float = 0.9
 
     # Strategy parameters
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         """Initialize behavioral parameters."""
@@ -493,7 +494,7 @@ class BehavioralStrategy:
             raise ValueError(f"Loss aversion must be >= 1, got {self.loss_aversion}")
 
         self._rng = random.Random(self.seed)
-        self._profit_history: List[float] = []
+        self._profit_history: list[float] = []
         self._reference_profit = 0.0
 
     def _calculate_utility(self, profit: float) -> float:
@@ -504,7 +505,7 @@ class BehavioralStrategy:
             return self.loss_aversion * (profit - self.reference_point)
 
     def _calculate_fairness_utility(
-        self, my_profit: float, rival_profits: List[float]
+        self, my_profit: float, rival_profits: list[float]
     ) -> float:
         """Calculate utility from fairness concerns."""
         if not rival_profits:
@@ -533,11 +534,11 @@ class BehavioralStrategy:
         self,
         round_num: int,
         market_state: MarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        beliefs: Dict[int, StrategyBelief],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        beliefs: dict[int, StrategyBelief],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action incorporating behavioral elements."""
         min_bound, max_bound = bounds

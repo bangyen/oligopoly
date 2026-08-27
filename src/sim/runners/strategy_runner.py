@@ -5,7 +5,8 @@ allowing firms to use explicit strategies (Static, TitForTat, RandomWalk) instea
 the built-in profit-based adaptation.
 """
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -21,13 +22,13 @@ from ..strategies.strategies import Strategy
 def run_strategy_game(
     model: str,
     rounds: int,
-    strategies: List[Strategy],
-    costs: List[float],
-    params: Dict[str, Any],
-    bounds: Tuple[float, float],
+    strategies: list[Strategy],
+    costs: list[float],
+    params: dict[str, Any],
+    bounds: tuple[float, float],
     db: Session,
-    seed: Optional[int] = None,
-    events: Optional[List[PolicyEvent]] = None,
+    seed: int | None = None,
+    events: list[PolicyEvent] | None = None,
 ) -> str:
     """Run a multi-round oligopoly simulation using explicit strategies.
 
@@ -73,7 +74,7 @@ def run_strategy_game(
 
     try:
         # Initialize firm histories
-        firm_histories: List[List[Union[CournotResult, BertrandResult]]] = [
+        firm_histories: list[list[CournotResult | BertrandResult]] = [
             [] for _ in strategies
         ]
 
@@ -88,9 +89,9 @@ def run_strategy_game(
             actions = []
             for firm_idx, strategy in enumerate(strategies):
                 # Build rival histories (exclude current firm)
-                rival_histories: List[
-                    Sequence[Union[CournotResult, BertrandResult]]
-                ] = [firm_histories[i] for i in range(len(strategies)) if i != firm_idx]
+                rival_histories: list[Sequence[CournotResult | BertrandResult]] = [
+                    firm_histories[i] for i in range(len(strategies)) if i != firm_idx
+                ]
 
                 action = strategy.next_action(
                     round_num=round_num,
@@ -103,7 +104,7 @@ def run_strategy_game(
 
             # Run simulation round
             if model == "cournot":
-                result: Union[CournotResult, BertrandResult] = _run_cournot_round(
+                result: CournotResult | BertrandResult = _run_cournot_round(
                     params, costs, actions
                 )
             else:  # bertrand
@@ -175,7 +176,7 @@ def run_strategy_game(
 
 
 def _run_cournot_round(
-    params: Dict[str, Any], costs: List[float], quantities: List[float]
+    params: dict[str, Any], costs: list[float], quantities: list[float]
 ) -> CournotResult:
     """Run a single Cournot round."""
     a = params.get("a", 100.0)
@@ -184,7 +185,7 @@ def _run_cournot_round(
 
 
 def _run_bertrand_round(
-    params: Dict[str, Any], costs: List[float], prices: List[float]
+    params: dict[str, Any], costs: list[float], prices: list[float]
 ) -> BertrandResult:
     """Run a single Bertrand round."""
     alpha = params.get("alpha", 100.0)
@@ -192,7 +193,7 @@ def _run_bertrand_round(
     return bertrand_simulation(alpha, beta, costs, prices)
 
 
-def get_strategy_run_results(run_id: str, db: Session) -> Dict[str, Any]:
+def get_strategy_run_results(run_id: str, db: Session) -> dict[str, Any]:
     """Get results for a strategy-based simulation run.
 
     Args:
@@ -218,7 +219,7 @@ def get_strategy_run_results(run_id: str, db: Session) -> Dict[str, Any]:
     )
 
     # Organize results by round and firm
-    rounds_data: Dict[int, Dict[int, Dict[str, float]]] = {}
+    rounds_data: dict[int, dict[int, dict[str, float]]] = {}
     for result in results:
         round_idx = int(result.round_idx)
         firm_id = int(result.firm_id)

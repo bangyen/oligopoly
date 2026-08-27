@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from src.sim.experiments.runner import (
+from sim.experiments.runner import (
     ExperimentConfig,
     ExperimentRunner,
     run_experiment_batch_from_file,
@@ -270,9 +270,9 @@ class TestExperimentRunner:
 
             Mock(spec=Session)
 
-            with patch("src.sim.experiments.runner.run_game") as mock_run_game:
+            with patch("sim.experiments.runner.run_game") as mock_run_game:
                 with patch(
-                    "src.sim.experiments.runner.get_run_results"
+                    "sim.experiments.runner.get_run_results"
                 ) as mock_get_results:
                     # Mock run_game to return run IDs
                     mock_run_game.side_effect = ["run_1", "run_2", "run_3", "run_4"]
@@ -328,7 +328,7 @@ class TestExperimentRunner:
 
             Mock(spec=Session)
 
-            with patch("src.sim.experiments.runner.run_game") as mock_run_game:
+            with patch("sim.experiments.runner.run_game") as mock_run_game:
                 mock_run_game.side_effect = Exception("Simulation failed")
 
                 with pytest.raises(RuntimeError) as exc_info:
@@ -655,9 +655,9 @@ class TestRunExperimentBatchFromFile:
 
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
-                with patch("src.sim.experiments.runner.run_game") as mock_run_game:
+                with patch("sim.experiments.runner.run_game") as mock_run_game:
                     with patch(
-                        "src.sim.experiments.runner.get_run_results"
+                        "sim.experiments.runner.get_run_results"
                     ) as mock_get_results:
                         # Mock run_game to return run IDs
                         mock_run_game.return_value = "run_1"

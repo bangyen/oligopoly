@@ -8,11 +8,11 @@ import math
 
 import pytest
 
-from src.sim.games.bertrand import (
+from sim.games.bertrand import (
     allocate_segmented_demand,
     bertrand_segmented_simulation,
 )
-from src.sim.models.models import DemandSegment, SegmentedDemand
+from sim.models.models import DemandSegment, SegmentedDemand
 
 
 class TestSegmentAllocation:

@@ -4,7 +4,7 @@ This module provides comprehensive event logging capabilities that integrate
 with the database and enable detailed tracking of all simulation events.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -42,9 +42,9 @@ class EventLogger:
         self,
         event_type: EventType,
         round_idx: int,
-        firm_id: Optional[int] = None,
-        description: Optional[str] = None,
-        event_data: Optional[Dict[str, Any]] = None,
+        firm_id: int | None = None,
+        description: str | None = None,
+        event_data: dict[str, Any] | None = None,
     ) -> Event:
         """Log an event to the database.
 
@@ -81,8 +81,8 @@ class EventLogger:
         self,
         event_type: EventType,
         round_idx: int,
-        firm_id: Optional[int] = None,
-        cartel_data: Optional[Dict[str, Any]] = None,
+        firm_id: int | None = None,
+        cartel_data: dict[str, Any] | None = None,
     ) -> Event:
         """Log a collusion-related event.
 
@@ -110,7 +110,7 @@ class EventLogger:
         event_type: EventType,
         round_idx: int,
         policy_value: float,
-        policy_details: Optional[Dict[str, Any]] = None,
+        policy_details: dict[str, Any] | None = None,
     ) -> Event:
         """Log a policy intervention event.
 
@@ -138,8 +138,8 @@ class EventLogger:
         self,
         event_type: EventType,
         round_idx: int,
-        firm_id: Optional[int] = None,
-        market_data: Optional[Dict[str, Any]] = None,
+        firm_id: int | None = None,
+        market_data: dict[str, Any] | None = None,
     ) -> Event:
         """Log a market dynamics event.
 
@@ -167,7 +167,7 @@ class EventLogger:
         event_type: EventType,
         round_idx: int,
         firm_id: int,
-        strategy_data: Optional[Dict[str, Any]] = None,
+        strategy_data: dict[str, Any] | None = None,
     ) -> Event:
         """Log a strategy-related event.
 
@@ -190,7 +190,7 @@ class EventLogger:
 
         return self.log_event(event_type, round_idx, firm_id, event_data=event_data)
 
-    def get_events_for_round(self, round_idx: int) -> List[Event]:
+    def get_events_for_round(self, round_idx: int) -> list[Event]:
         """Get all events for a specific round.
 
         Args:
@@ -206,7 +206,7 @@ class EventLogger:
             .all()
         )
 
-    def get_all_events(self) -> List[Event]:
+    def get_all_events(self) -> list[Event]:
         """Get all events for this run.
 
         Returns:
@@ -219,7 +219,7 @@ class EventLogger:
             .all()
         )
 
-    def get_events_by_type(self, event_type: EventType) -> List[Event]:
+    def get_events_by_type(self, event_type: EventType) -> list[Event]:
         """Get all events of a specific type.
 
         Args:
@@ -235,7 +235,7 @@ class EventLogger:
             .all()
         )
 
-    def get_events_by_category(self, category: str) -> List[Event]:
+    def get_events_by_category(self, category: str) -> list[Event]:
         """Get all events in a specific category.
 
         Args:
@@ -252,7 +252,7 @@ class EventLogger:
             .all()
         )
 
-    def get_event_summary(self) -> Dict[str, Any]:
+    def get_event_summary(self) -> dict[str, Any]:
         """Get a summary of all events for this run.
 
         Returns:
@@ -260,7 +260,7 @@ class EventLogger:
         """
         events = self.get_all_events()
 
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "total_events": len(events),
             "events_by_type": {},
             "events_by_category": {},

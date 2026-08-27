@@ -9,8 +9,8 @@ import math
 
 import pytest
 
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import QLearning
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import QLearning
 
 
 def test_q_update_positive_reward():

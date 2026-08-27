@@ -5,7 +5,7 @@ to ensure economic consistency across all stages.
 """
 
 import math
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from .economic_validation import (
     EconomicValidationError,
@@ -13,7 +13,7 @@ from .economic_validation import (
 )
 
 
-def validate_simulation_config(config: Dict[str, Any]) -> None:
+def validate_simulation_config(config: dict[str, Any]) -> None:
     """Validate simulation configuration for economic consistency.
 
     Args:
@@ -58,7 +58,7 @@ def validate_simulation_config(config: Dict[str, Any]) -> None:
 
 
 def validate_round_results(
-    round_results: List[Dict[str, Any]], model: str, demand_params: Tuple[float, float]
+    round_results: list[dict[str, Any]], model: str, demand_params: tuple[float, float]
 ) -> None:
     """Validate results from a single simulation round.
 
@@ -119,7 +119,7 @@ def validate_round_results(
 
 
 def validate_run_results(
-    run_results: Dict[str, Any], model: str, demand_params: Tuple[float, float]
+    run_results: dict[str, Any], model: str, demand_params: tuple[float, float]
 ) -> None:
     """Validate results from an entire simulation run.
 
@@ -161,8 +161,8 @@ def validate_run_results(
 
 
 def sanitize_simulation_results(
-    results: Dict[str, Any], model: str, min_price: float = 0.01
-) -> Dict[str, Any]:
+    results: dict[str, Any], model: str, min_price: float = 0.01
+) -> dict[str, Any]:
     """Sanitize simulation results to ensure economic consistency.
 
     Args:
@@ -201,11 +201,11 @@ def sanitize_simulation_results(
 
 
 def check_economic_plausibility(
-    results: Dict[str, Any],
+    results: dict[str, Any],
     model: str,
-    demand_params: Tuple[float, float],
+    demand_params: tuple[float, float],
     tolerance: float = 1e-6,
-) -> List[str]:
+) -> list[str]:
     """Check economic plausibility of simulation results.
 
     Args:

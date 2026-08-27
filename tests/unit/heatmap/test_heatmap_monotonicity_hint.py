@@ -6,8 +6,8 @@ for different configurations.
 
 import numpy as np
 
-from src.sim.heatmap.bertrand_heatmap import compute_bertrand_heatmap, create_price_grid
-from src.sim.heatmap.cournot_heatmap import (
+from sim.heatmap.bertrand_heatmap import compute_bertrand_heatmap, create_price_grid
+from sim.heatmap.cournot_heatmap import (
     compute_cournot_heatmap,
     create_quantity_grid,
 )

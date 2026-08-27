@@ -4,50 +4,54 @@ This module implements the core functionality for running multi-round
 oligopoly simulations and persisting results to the database.
 """
 
+import logging
 import random
-from typing import Any, Dict, List, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy.orm import Session
 
-from src.sim.collusion import CollusionManager
-from src.sim.games.bertrand import (
+from sim.collusion import CollusionManager
+from sim.games.bertrand import (
     BertrandResult,
     bertrand_segmented_simulation,
     bertrand_simulation,
 )
-from src.sim.games.cournot import (
+from sim.games.cournot import (
     CournotResult,
     cournot_segmented_simulation,
     cournot_simulation,
 )
-from src.sim.models.metrics import (
+from sim.models.metrics import (
     calculate_market_shares_bertrand,
     calculate_market_shares_cournot,
 )
-from src.sim.models.models import (
+from sim.models.models import (
     DemandSegment,
     Result,
     Round,
     Run,
     SegmentedDemand,
 )
-from src.sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
-from src.sim.strategies.collusion_strategies import (
+from sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
+from sim.strategies.collusion_strategies import (
     CartelStrategy,
     CollusiveStrategy,
     OpportunisticStrategy,
     create_collusion_strategy,
 )
-from src.sim.strategies.nash_strategies import (
+from sim.strategies.nash_strategies import (
     adaptive_nash_strategy,
     cournot_nash_equilibrium,
     validate_economic_parameters,
     validate_market_clearing,
 )
-from src.sim.validation import validate_simulation_config
+from sim.validation import validate_simulation_config
+
+logger = logging.getLogger(__name__)
 
 
-def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> str:
+def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> str:
     """Run a multi-round oligopoly simulation with persistence.
 
     Executes the specified number of rounds of either Cournot or Bertrand
@@ -103,7 +107,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
     # Normalise params to a plain serializable dict for DB persistence.
     # The caller may pass a Pydantic model (CournotParams / BertrandParams),
     # a plain dict, or None.
-    params_dict: Optional[dict] = None
+    params_dict: dict | None = None
     if params is not None:
         if hasattr(params, "model_dump"):
             params_dict = params.model_dump()
@@ -123,10 +127,10 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
     # Setup strategies and collusion manager
     collusion_manager = CollusionManager()
-    firm_strategies: List[
-        Optional[Union[CartelStrategy, CollusiveStrategy, OpportunisticStrategy]]
+    firm_strategies: list[
+        CartelStrategy | CollusiveStrategy | OpportunisticStrategy | None
     ] = []
-    firm_histories: List[List[Union[CournotResult, BertrandResult]]] = [
+    firm_histories: list[list[CournotResult | BertrandResult]] = [
         [] for _ in range(num_firms)
     ]  # List of results for each firm
 
@@ -140,9 +144,9 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
             strategy_kwargs = firm_config.copy()
             if "strategy_type" in strategy_kwargs:
                 strategy_kwargs.pop("strategy_type")
-            strategy: Union[
-                CartelStrategy, CollusiveStrategy, OpportunisticStrategy
-            ] = create_collusion_strategy(strategy_type, seed=seed, **strategy_kwargs)
+            strategy: CartelStrategy | CollusiveStrategy | OpportunisticStrategy = (
+                create_collusion_strategy(strategy_type, seed=seed, **strategy_kwargs)
+            )
             firm_strategies.append(strategy)
 
     try:
@@ -169,7 +173,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
         else:  # bertrand
             alpha = params.get("alpha", 100.0)
             beta = params.get("beta", 1.0)
-            from src.sim.strategies.nash_strategies import bertrand_nash_equilibrium
+            from sim.strategies.nash_strategies import bertrand_nash_equilibrium
 
             nash_prices, _, _, _ = bertrand_nash_equilibrium(alpha, beta, costs)
             actions = [
@@ -279,7 +283,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                 db.add(result_record)
 
             # 6. Update actions for next round
-            new_actions: List[Optional[float]] = []
+            new_actions: list[float | None] = []
             for i, strat_opt in enumerate(firm_strategies):
                 if strat_opt is None:
                     # Adaptive Nash logic (handled below for simplicity or per-firm)
@@ -287,9 +291,9 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                     new_actions.append(None)
                 else:
                     # Build rival histories for this firm
-                    rival_histories: List[
-                        Sequence[Union[CournotResult, BertrandResult]]
-                    ] = [firm_histories[j] for j in range(num_firms) if j != i]
+                    rival_histories: list[Sequence[CournotResult | BertrandResult]] = [
+                        firm_histories[j] for j in range(num_firms) if j != i
+                    ]
 
                     # Determine bounds (could be expanded)
                     if model == "cournot":
@@ -312,8 +316,10 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
                         )
                         new_actions.append(action)
                     except Exception as e:
-                        print(
-                            f"Strategy error for firm {i}: {e}. Falling back to Nash."
+                        logger.warning(
+                            "Strategy error for firm %s: %s. Falling back to Nash.",
+                            i,
+                            e,
                         )
                         new_actions.append(None)
 
@@ -324,7 +330,7 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
             )
 
             # Use specific strategy action if available, else use Nash
-            final_actions: List[float] = []
+            final_actions: list[float] = []
             for i, action_val in enumerate(new_actions):
                 if action_val is not None:
                     final_actions.append(float(action_val))
@@ -342,10 +348,10 @@ def run_game(model: str, rounds: int, config: Dict[str, Any], db: Session) -> st
 
 
 def _run_cournot_round(
-    params: Dict[str, Any],
-    costs: List[float],
-    quantities: List[float],
-    fixed_costs: List[float],
+    params: dict[str, Any],
+    costs: list[float],
+    quantities: list[float],
+    fixed_costs: list[float],
 ) -> Any:
     """Run a single Cournot round."""
     # Check if segmented demand is configured
@@ -373,10 +379,10 @@ def _run_cournot_round(
 
 
 def _run_bertrand_round(
-    params: Dict[str, Any],
-    costs: List[float],
-    prices: List[float],
-    fixed_costs: List[float],
+    params: dict[str, Any],
+    costs: list[float],
+    prices: list[float],
+    fixed_costs: list[float],
 ) -> Any:
     """Run a single Bertrand round."""
     # Check if segmented demand is configured
@@ -405,7 +411,7 @@ def _run_bertrand_round(
         )
 
 
-def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:
+def get_run_results(run_id: str, db: Session) -> dict[str, Any]:
     """Retrieve time-series results for a simulation run.
 
     Returns results in the canonical nested-dict format:
@@ -435,7 +441,7 @@ def get_run_results(run_id: str, db: Session) -> Dict[str, Any]:
     )
 
     # Build canonical nested dict: results[round_idx][firm_id] = {...}
-    nested: Dict[str, Dict[str, Dict[str, float]]] = {}
+    nested: dict[str, dict[str, dict[str, float]]] = {}
     for r in db_results:
         ridx = str(r.round_idx)
         fid = f"firm_{r.firm_id}"

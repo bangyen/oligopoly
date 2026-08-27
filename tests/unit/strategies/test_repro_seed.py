@@ -4,12 +4,10 @@ This test verifies that when using a fixed seed, the Q-learning strategy
 produces identical sequences of actions across multiple runs.
 """
 
-from typing import List
-
 import pytest
 
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import QLearning
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import QLearning
 
 
 def test_repro_seed_identical_sequences() -> None:
@@ -41,8 +39,8 @@ def test_repro_seed_identical_sequences() -> None:
     market_params: dict[str, float] = {}
 
     # Generate sequences from both strategies
-    sequence1: List[float] = []
-    sequence2: List[float] = []
+    sequence1: list[float] = []
+    sequence2: list[float] = []
 
     # First action (round 0)
     action1_1 = q_learning1.next_action(
@@ -133,8 +131,8 @@ def test_repro_seed_different_seeds() -> None:
     market_params: dict[str, float] = {}
 
     # Generate sequences from both strategies
-    sequence1: List[float] = []
-    sequence2: List[float] = []
+    sequence1: list[float] = []
+    sequence2: list[float] = []
 
     # First action
     action1_1 = q_learning_seed1.next_action(
@@ -207,7 +205,7 @@ def test_repro_seed_multiple_runs() -> None:
     seed = 789
 
     # Run the same strategy multiple times
-    all_sequences: List[List[float]] = []
+    all_sequences: list[list[float]] = []
 
     for run in range(5):  # 5 independent runs
         q_learning = QLearning(
@@ -223,7 +221,7 @@ def test_repro_seed_multiple_runs() -> None:
         bounds = (0.0, 5.0)
         market_params: dict[str, float] = {}
 
-        sequence: List[float] = []
+        sequence: list[float] = []
 
         # First action
         action1 = q_learning.next_action(
@@ -353,8 +351,8 @@ def test_repro_seed_no_seed_vs_seed() -> None:
     market_params: dict[str, float] = {}
 
     # Generate sequences
-    sequence_no_seed: List[float] = []
-    sequence_seed: List[float] = []
+    sequence_no_seed: list[float] = []
+    sequence_seed: list[float] = []
 
     # First actions
     action1_no_seed = q_learning_no_seed.next_action(

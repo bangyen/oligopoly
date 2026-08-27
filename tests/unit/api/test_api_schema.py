@@ -4,8 +4,6 @@ This module tests the API schema stability and ensures that the GET /runs/{id}
 endpoint includes the required metrics keys as specified in the requirements.
 """
 
-from typing import Dict, Optional
-
 import pytest
 from pydantic import BaseModel, ValidationError
 
@@ -22,7 +20,7 @@ class FirmData(BaseModel):
 class RoundData(BaseModel):
     """Schema for round data containing firm results."""
 
-    firm_data: Dict[int, FirmData]
+    firm_data: dict[int, FirmData]
 
 
 class RunResponse(BaseModel):
@@ -32,7 +30,7 @@ class RunResponse(BaseModel):
     model: str
     rounds: int
     created_at: str
-    results: Dict[int, Dict[int, Dict[str, float]]]
+    results: dict[int, dict[int, dict[str, float]]]
 
 
 class MetricsResponse(BaseModel):
@@ -53,8 +51,8 @@ class ExtendedRunResponse(BaseModel):
     model: str
     rounds: int
     created_at: str
-    results: Dict[int, Dict[int, Dict[str, float]]]
-    metrics: Optional[Dict[int, MetricsResponse]] = None
+    results: dict[int, dict[int, dict[str, float]]]
+    metrics: dict[int, MetricsResponse] | None = None
 
 
 class TestAPISchema:

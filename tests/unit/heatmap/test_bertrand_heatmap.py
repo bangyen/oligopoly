@@ -6,12 +6,12 @@ from unittest.mock import Mock, patch
 import numpy as np
 import pytest
 
-from src.sim.heatmap.bertrand_heatmap import (
+from sim.heatmap.bertrand_heatmap import (
     compute_bertrand_heatmap,
     compute_bertrand_segmented_heatmap,
     create_price_grid,
 )
-from src.sim.models.models import DemandSegment, SegmentedDemand
+from sim.models.models import DemandSegment, SegmentedDemand
 
 
 class TestCreatePriceGrid:
@@ -80,7 +80,7 @@ class TestComputeBertrandHeatmap:
         p_j_grid = [13.0, 15.0, 17.0]
         other_prices: list[float] = [18.0]  # For firm 2
 
-        with patch("src.sim.heatmap.bertrand_heatmap.bertrand_simulation") as mock_sim:
+        with patch("sim.heatmap.bertrand_heatmap.bertrand_simulation") as mock_sim:
             # Mock simulation result
             mock_result = Mock()
             mock_result.profits = [5.0, 3.0, 1.0]
@@ -119,7 +119,7 @@ class TestComputeBertrandHeatmap:
         p_j_grid = [13.0]
         other_prices: list[float] = []
 
-        with patch("src.sim.heatmap.bertrand_heatmap.bertrand_simulation") as mock_sim:
+        with patch("sim.heatmap.bertrand_heatmap.bertrand_simulation") as mock_sim:
             # Mock simulation result with zero demand
             mock_result = Mock()
             mock_result.profits = [0.0, 0.0]
@@ -201,7 +201,7 @@ class TestComputeBertrandHeatmap:
         p_j_grid = [13.0]
         other_prices: list[float] = [18.0, 22.0]  # For firms 0 and 2
 
-        with patch("src.sim.heatmap.bertrand_heatmap.bertrand_simulation") as mock_sim:
+        with patch("sim.heatmap.bertrand_heatmap.bertrand_simulation") as mock_sim:
             mock_result = Mock()
             mock_result.profits = [0.0, 0.0, 0.0, 0.0]
             mock_result.quantities = [0.0, 0.0, 0.0, 0.0]
@@ -241,7 +241,7 @@ class TestComputeBertrandSegmentedHeatmap:
         other_prices = [18.0]
 
         with patch(
-            "src.sim.heatmap.bertrand_heatmap.bertrand_segmented_simulation"
+            "sim.heatmap.bertrand_heatmap.bertrand_segmented_simulation"
         ) as mock_sim:
             # Mock simulation result
             mock_result = Mock()
@@ -319,7 +319,7 @@ class TestComputeBertrandSegmentedHeatmap:
         other_prices: list[float] = []
 
         with patch(
-            "src.sim.heatmap.bertrand_heatmap.bertrand_segmented_simulation"
+            "sim.heatmap.bertrand_heatmap.bertrand_segmented_simulation"
         ) as mock_sim:
             # Mock simulation result with zero demand
             mock_result = Mock()

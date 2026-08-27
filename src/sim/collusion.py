@@ -7,7 +7,7 @@ event logging for tracking collusion, defection, and regulatory interventions.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class CollusionEventType(Enum):
@@ -30,9 +30,9 @@ class CollusionEvent:
 
     event_type: CollusionEventType
     round_idx: int
-    firm_id: Optional[int] = None  # None for market-wide events
+    firm_id: int | None = None  # None for market-wide events
     description: str = ""
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
 
     def __str__(self) -> str:
         """String representation for logging and debugging."""
@@ -52,7 +52,7 @@ class CartelAgreement:
 
     collusive_price: float
     collusive_quantity: float
-    participating_firms: List[int]
+    participating_firms: list[int]
     formed_round: int
 
     def __post_init__(self) -> None:
@@ -115,20 +115,20 @@ class CollusionManager:
     and event logging for the oligopoly simulation.
     """
 
-    def __init__(self, regulator_state: Optional[RegulatorState] = None):
+    def __init__(self, regulator_state: RegulatorState | None = None):
         """Initialize collusion manager.
 
         Args:
             regulator_state: Regulator configuration, uses defaults if None
         """
         self.regulator_state = regulator_state or RegulatorState()
-        self.current_cartel: Optional[CartelAgreement] = None
-        self.events: List[CollusionEvent] = []
-        self.firm_defection_history: Dict[int, List[int]] = (
+        self.current_cartel: CartelAgreement | None = None
+        self.events: list[CollusionEvent] = []
+        self.firm_defection_history: dict[int, list[int]] = (
             {}
         )  # firm_id -> list of rounds when defected
 
-    def calculate_hhi(self, market_shares: List[float]) -> float:
+    def calculate_hhi(self, market_shares: list[float]) -> float:
         """Calculate Herfindahl-Hirschman Index (HHI) for market concentration.
 
         Args:
@@ -149,7 +149,7 @@ class CollusionManager:
         return sum(share**2 for share in normalized_shares)
 
     def calculate_average_price(
-        self, prices: List[float], quantities: List[float]
+        self, prices: list[float], quantities: list[float]
     ) -> float:
         """Calculate quantity-weighted average price.
 
@@ -238,7 +238,7 @@ class CollusionManager:
         round_idx: int,
         collusive_price: float,
         collusive_quantity: float,
-        participating_firms: List[int],
+        participating_firms: list[int],
     ) -> None:
         """Form a new cartel agreement.
 
@@ -271,10 +271,10 @@ class CollusionManager:
     def check_regulator_intervention(
         self,
         round_idx: int,
-        market_shares: List[float],
-        prices: List[float],
-        quantities: List[float],
-    ) -> Tuple[bool, Optional[str], Optional[float]]:
+        market_shares: list[float],
+        prices: list[float],
+        quantities: list[float],
+    ) -> tuple[bool, str | None, float | None]:
         """Check if regulator should intervene based on HHI and price thresholds.
 
         Args:
@@ -342,8 +342,8 @@ class CollusionManager:
         round_idx: int,
         intervention_type: str,
         intervention_value: float,
-        firm_profits: List[float],
-    ) -> List[float]:
+        firm_profits: list[float],
+    ) -> list[float]:
         """Apply regulator intervention to firm profits.
 
         Args:
@@ -384,7 +384,7 @@ class CollusionManager:
 
         return modified_profits
 
-    def get_events_for_round(self, round_idx: int) -> List[CollusionEvent]:
+    def get_events_for_round(self, round_idx: int) -> list[CollusionEvent]:
         """Get all events that occurred in a specific round.
 
         Args:

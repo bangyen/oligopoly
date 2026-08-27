@@ -6,7 +6,7 @@ including output format and the specific example from the specification.
 
 import pytest
 
-from src.sim.games.bertrand import bertrand_simulation
+from sim.games.bertrand import bertrand_simulation
 from tests.utils import (
     assert_bertrand_cli_format,
     assert_bertrand_output_format,

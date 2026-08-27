@@ -7,7 +7,6 @@ Supports both single-segment and multi-segment demand models.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 from ..models.models import SegmentedDemand
 from ..validation.economic_validation import (
@@ -33,15 +32,15 @@ class CournotResult:
     """
 
     price: float
-    quantities: List[float]
-    profits: List[float]
+    quantities: list[float]
+    profits: list[float]
 
     def __repr__(self) -> str:
         """String representation for debugging and output."""
         return f"CournotResult(price={self.price}, quantities={self.quantities}, profits={self.profits})"
 
 
-def validate_quantities(quantities: List[float]) -> None:
+def validate_quantities(quantities: list[float]) -> None:
     """Validate that all quantities are non-negative.
 
     Args:
@@ -58,10 +57,10 @@ def validate_quantities(quantities: List[float]) -> None:
 def cournot_simulation(
     a: float,
     b: float,
-    costs: List[float],
-    quantities: List[float],
-    fixed_costs: Optional[List[float]] = None,
-    capacity_limits: Optional[List[float]] = None,
+    costs: list[float],
+    quantities: list[float],
+    fixed_costs: list[float] | None = None,
+    capacity_limits: list[float] | None = None,
 ) -> CournotResult:
     """Run a one-round Cournot oligopoly simulation.
 
@@ -203,9 +202,9 @@ def cournot_simulation(
 
 def cournot_segmented_simulation(
     segmented_demand: SegmentedDemand,
-    costs: List[float],
-    quantities: List[float],
-    fixed_costs: Optional[List[float]] = None,
+    costs: list[float],
+    quantities: list[float],
+    fixed_costs: list[float] | None = None,
 ) -> CournotResult:
     """Run a one-round Cournot oligopoly simulation with segmented demand.
 

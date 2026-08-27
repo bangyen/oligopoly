@@ -4,12 +4,12 @@ This module provides common assertion functions for consistent
 testing patterns across the codebase.
 """
 
-from typing import Any, List
+from typing import Any
 
 import pytest
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
 
 
 def assert_bertrand_output_format(result: BertrandResult, expected_firms: int) -> None:
@@ -46,8 +46,8 @@ def assert_cournot_output_format(result: CournotResult, expected_firms: int) -> 
 def assert_bertrand_cli_format(
     result: BertrandResult,
     expected_demand: float,
-    expected_quantities: List[float],
-    expected_profits: List[float],
+    expected_quantities: list[float],
+    expected_profits: list[float],
 ) -> None:
     """Verify Bertrand CLI output format matches specification.
 
@@ -72,8 +72,8 @@ def assert_bertrand_cli_format(
 def assert_cournot_cli_format(
     result: CournotResult,
     expected_price: float,
-    expected_quantities: List[float],
-    expected_profits: List[float],
+    expected_quantities: list[float],
+    expected_profits: list[float],
 ) -> None:
     """Verify Cournot CLI output format matches specification.
 
@@ -95,7 +95,7 @@ def assert_cournot_cli_format(
         assert result.profits[i] == pytest.approx(expected_profit, abs=1e-6)
 
 
-def assert_hhi_calculation(quantities: List[float], expected_hhi: float) -> None:
+def assert_hhi_calculation(quantities: list[float], expected_hhi: float) -> None:
     """Verify HHI calculation is correct.
 
     Args:
@@ -135,7 +135,7 @@ def assert_consumer_surplus_calculation(
 
 
 def assert_strategy_trajectory(
-    trajectory: List[float],
+    trajectory: list[float],
     expected_length: int,
     bounds: tuple[float, float],
 ) -> None:
@@ -173,7 +173,7 @@ def assert_run_data_structure(run_data: dict[str, Any]) -> None:
     assert len(firms_data) > 0
 
 
-def assert_event_log_structure(events: List[dict[str, Any]]) -> None:
+def assert_event_log_structure(events: list[dict[str, Any]]) -> None:
     """Verify event log has expected structure.
 
     Args:

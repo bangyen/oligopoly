@@ -6,24 +6,27 @@ with different seeds and exporting summary metrics to CSV files.
 
 import csv
 import json
+import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from os import cpu_count
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from tqdm import tqdm
 
-from src.sim.models.metrics import (
+from sim.models.metrics import (
     calculate_hhi,
     calculate_market_shares_bertrand,
     calculate_market_shares_cournot,
 )
-from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
-from src.sim.runners.runner import get_run_results, run_game
+from sim.policy.policy_shocks import PolicyEvent, PolicyType
+from sim.runners.runner import get_run_results, run_game
+
+logger = logging.getLogger(__name__)
 
 
-def _simulation_worker(args: tuple) -> Dict[str, Any]:
+def _simulation_worker(args: tuple) -> dict[str, Any]:
     """Top-level worker function for multiprocessing (must be picklable)."""
     exp_config, seed, db_url, metrics_calc_func = args
     from sqlalchemy import create_engine
@@ -60,10 +63,10 @@ class ExperimentConfig:
         config_id: str,
         model: str,
         rounds: int,
-        params: Dict[str, Any],
-        firms: List[Dict[str, Any]],
-        segments: Optional[List[Dict[str, Any]]] = None,
-        policies: Optional[List[Dict[str, Any]]] = None,
+        params: dict[str, Any],
+        firms: list[dict[str, Any]],
+        segments: list[dict[str, Any]] | None = None,
+        policies: list[dict[str, Any]] | None = None,
     ):
         """Initialize experiment configuration.
 
@@ -84,7 +87,7 @@ class ExperimentConfig:
         self.segments = segments or []
         self.policies = policies or []
 
-    def to_simulation_config(self, seed: int) -> Dict[str, Any]:
+    def to_simulation_config(self, seed: int) -> dict[str, Any]:
         """Convert to simulation configuration with seed.
 
         Args:
@@ -136,7 +139,7 @@ class ExperimentRunner:
         self.artifacts_dir = Path(artifacts_dir)
         self.artifacts_dir.mkdir(exist_ok=True)
 
-    def load_experiments(self, config_path: str) -> List[ExperimentConfig]:
+    def load_experiments(self, config_path: str) -> list[ExperimentConfig]:
         """Load experiment configurations from JSON file.
 
         Args:
@@ -182,7 +185,7 @@ class ExperimentRunner:
 
     def run_experiment_batch(
         self,
-        experiments: List[ExperimentConfig],
+        experiments: list[ExperimentConfig],
         seeds_per_config: int,
         db_url: str,
         parallel: bool = False,
@@ -239,7 +242,7 @@ class ExperimentRunner:
         total_tasks = len(tasks)
 
         if parallel:
-            print(f"Running {total_tasks} simulations in parallel...")
+            logger.info("Running %s simulations in parallel...", total_tasks)
             worker_args = [
                 (t[0], t[1], db_url, self._calculate_summary_metrics) for t in tasks
             ]
@@ -253,7 +256,7 @@ class ExperimentRunner:
                 ):
                     results.append(future.result())
         else:
-            print(f"Running {total_tasks} simulations sequentially...")
+            logger.info("Running %s simulations sequentially...", total_tasks)
             from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
@@ -291,12 +294,12 @@ class ExperimentRunner:
         # Write results to CSV
         self._write_csv(csv_path, headers, results)
 
-        print(f"Experiment batch completed. Results saved to: {csv_path}")
+        logger.info("Experiment batch completed. Results saved to: %s", csv_path)
         return str(csv_path)
 
     def _calculate_summary_metrics(
-        self, run_results: Dict[str, Any], exp_config: ExperimentConfig
-    ) -> Dict[str, Any]:
+        self, run_results: dict[str, Any], exp_config: ExperimentConfig
+    ) -> dict[str, Any]:
         """Calculate summary metrics for a simulation run.
 
         Args:
@@ -327,7 +330,7 @@ class ExperimentRunner:
         all_total_profits = []
 
         # Per-firm cumulative profits keyed by firm_id
-        firm_total_profits: Dict[int, float] = {}
+        firm_total_profits: dict[int, float] = {}
 
         for round_idx_key in sorted(results_nested.keys(), key=int):
             round_firms = results_nested[round_idx_key]
@@ -442,7 +445,7 @@ class ExperimentRunner:
         return 0.5 * (demand_alpha - market_price) * total_qty
 
     def _write_csv(
-        self, csv_path: Path, headers: List[str], results: List[Dict[str, Any]]
+        self, csv_path: Path, headers: list[str], results: list[dict[str, Any]]
     ) -> None:
         """Write results to CSV file.
 

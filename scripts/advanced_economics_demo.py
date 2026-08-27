@@ -9,12 +9,8 @@ This script demonstrates the new advanced features including:
 """
 
 import json
-import os
-import sys
 
 # Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
-
 from sim.models.enhanced_demand import (
     CESDemand,
     DynamicDemand,
