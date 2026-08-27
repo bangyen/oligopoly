@@ -5,8 +5,9 @@ and configure while maintaining economic realism.
 """
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any
 
 import numpy as np
 
@@ -18,9 +19,9 @@ from ..games.cournot import CournotResult
 class SimpleMarketState:
     """Simplified market state information."""
 
-    prices: List[float]
-    quantities: List[float]
-    market_shares: List[float]
+    prices: list[float]
+    quantities: list[float]
+    market_shares: list[float]
     total_demand: float
     round_num: int = 0
 
@@ -46,17 +47,17 @@ class SimpleFictitiousPlayStrategy:
         self,
         learning_rate: float = 0.1,
         memory_length: int = 10,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ):
         """Initialize simplified fictitious play strategy."""
         self.learning_rate = learning_rate
         self.memory_length = memory_length
         self.rng = random.Random(seed)
-        self.beliefs: Dict[int, SimpleStrategyBelief] = {}
+        self.beliefs: dict[int, SimpleStrategyBelief] = {}
 
     def _update_beliefs(
         self,
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
     ) -> None:
         """Update beliefs about rival strategies (simplified)."""
         for i, history in enumerate(rival_histories):
@@ -88,8 +89,8 @@ class SimpleFictitiousPlayStrategy:
     def _calculate_best_response(
         self,
         market_state: SimpleMarketState,
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
         model: str,
     ) -> float:
         """Calculate best response to predicted rival actions (simplified)."""
@@ -102,7 +103,7 @@ class SimpleFictitiousPlayStrategy:
 
     def _cournot_best_response(
         self,
-        market_params: Dict[str, Any],
+        market_params: dict[str, Any],
         min_bound: float,
         max_bound: float,
     ) -> float:
@@ -120,7 +121,7 @@ class SimpleFictitiousPlayStrategy:
 
     def _bertrand_best_response(
         self,
-        market_params: Dict[str, Any],
+        market_params: dict[str, Any],
         min_bound: float,
         max_bound: float,
     ) -> float:
@@ -147,10 +148,10 @@ class SimpleFictitiousPlayStrategy:
         self,
         round_num: int,
         market_state: SimpleMarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using simplified fictitious play."""
         # Update beliefs about rivals
@@ -180,18 +181,18 @@ class SimpleQLearningStrategy:
         self,
         learning_rate: float = 0.1,
         memory_length: int = 10,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ):
         """Initialize simplified Q-learning strategy."""
         self.learning_rate = learning_rate
         self.memory_length = memory_length
         self.rng = random.Random(seed)
-        self.q_table: Dict[Tuple, float] = {}
-        self.action_history: List[Tuple] = []
+        self.q_table: dict[tuple, float] = {}
+        self.action_history: list[tuple] = []
 
     def _discretize_state(
-        self, market_state: SimpleMarketState, bounds: Tuple[float, float]
-    ) -> Tuple:
+        self, market_state: SimpleMarketState, bounds: tuple[float, float]
+    ) -> tuple:
         """Discretize market state for Q-table lookup (simplified)."""
         # Simple state discretization
         price_bin = int(market_state.prices[0] / 10) if market_state.prices else 0
@@ -200,19 +201,19 @@ class SimpleQLearningStrategy:
 
         return (price_bin, demand_bin, round_bin)
 
-    def _discretize_action(self, action: float, bounds: Tuple[float, float]) -> int:
+    def _discretize_action(self, action: float, bounds: tuple[float, float]) -> int:
         """Discretize action for Q-table (simplified)."""
         min_bound, max_bound = bounds
         # 10 action bins
         normalized = (action - min_bound) / (max_bound - min_bound)
         return int(float(np.clip(normalized * 9, 0, 9)))
 
-    def _get_q_value(self, state: Tuple, action: int) -> float:
+    def _get_q_value(self, state: tuple, action: int) -> float:
         """Get Q-value for state-action pair."""
         return self.q_table.get((state, action), 0.0)
 
     def _update_q_value(
-        self, state: Tuple, action: int, reward: float, next_state: Tuple
+        self, state: tuple, action: int, reward: float, next_state: tuple
     ) -> None:
         """Update Q-value using simplified Q-learning."""
         current_q = self._get_q_value(state, action)
@@ -231,10 +232,10 @@ class SimpleQLearningStrategy:
         self,
         round_num: int,
         market_state: SimpleMarketState,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using simplified Q-learning."""
         # Discretize current state
@@ -281,8 +282,8 @@ def create_simple_strategy(
     strategy_type: str,
     learning_rate: float = 0.1,
     memory_length: int = 10,
-    seed: Optional[int] = None,
-) -> Union[SimpleFictitiousPlayStrategy, SimpleQLearningStrategy]:
+    seed: int | None = None,
+) -> SimpleFictitiousPlayStrategy | SimpleQLearningStrategy:
     """Create a simplified strategy instance."""
     if strategy_type == "fictitious_play":
         return SimpleFictitiousPlayStrategy(learning_rate, memory_length, seed)

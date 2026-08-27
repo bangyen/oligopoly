@@ -5,7 +5,6 @@ This script demonstrates how to use the three implemented strategies
 (Static, TitForTat, RandomWalk) in both Cournot and Bertrand models.
 """
 
-from typing import List
 
 from sim.games.bertrand import BertrandResult
 from sim.games.cournot import CournotResult
@@ -33,7 +32,7 @@ def demonstrate_strategies() -> None:
     print("Strategies: Static(5.0), TitForTat(), RandomWalk(step=1.0, seed=42)\n")
 
     # Simulate multiple rounds
-    trajectories: List[List[float]] = [[] for _ in strategies]
+    trajectories: list[list[float]] = [[] for _ in strategies]
 
     for round_num in range(rounds):
         print(f"Round {round_num + 1}:")

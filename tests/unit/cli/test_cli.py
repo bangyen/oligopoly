@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.sim.cli.cli import bertrand_main, cournot_main, main
+from sim.cli.cli import bertrand_main, cournot_main, main
 
 
 class TestCournotMain:
@@ -27,7 +27,7 @@ class TestCournotMain:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("src.sim.cli.cli.cournot_simulation") as mock_sim:
+            with patch("sim.cli.cli.cournot_simulation") as mock_sim:
                 # Mock simulation result
                 mock_result = Mock()
                 mock_result.price = 60.0
@@ -77,7 +77,7 @@ class TestCournotMain:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("src.sim.cli.cli.cournot_simulation") as mock_sim:
+            with patch("sim.cli.cli.cournot_simulation") as mock_sim:
                 mock_sim.side_effect = ValueError("Simulation error")
 
                 with patch("sys.stderr", new_callable=StringIO):
@@ -99,7 +99,7 @@ class TestCournotMain:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("src.sim.cli.cli.cournot_simulation") as mock_sim:
+            with patch("sim.cli.cli.cournot_simulation") as mock_sim:
                 mock_sim.side_effect = RuntimeError("Unexpected error")
 
                 with patch("sys.stderr", new_callable=StringIO):
@@ -134,7 +134,7 @@ class TestBertrandMain:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("src.sim.cli.cli.bertrand_simulation") as mock_sim:
+            with patch("sim.cli.cli.bertrand_simulation") as mock_sim:
                 # Mock simulation result
                 mock_result = Mock()
                 mock_result.total_demand = 50.0
@@ -185,7 +185,7 @@ class TestBertrandMain:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("src.sim.cli.cli.bertrand_simulation") as mock_sim:
+            with patch("sim.cli.cli.bertrand_simulation") as mock_sim:
                 mock_sim.side_effect = ValueError("Simulation error")
 
                 with patch("sys.stderr", new_callable=StringIO):
@@ -207,7 +207,7 @@ class TestBertrandMain:
         ]
 
         with patch.object(sys, "argv", test_args):
-            with patch("src.sim.cli.cli.bertrand_simulation") as mock_sim:
+            with patch("sim.cli.cli.bertrand_simulation") as mock_sim:
                 mock_sim.side_effect = RuntimeError("Unexpected error")
 
                 with patch("sys.stderr", new_callable=StringIO):
@@ -229,7 +229,7 @@ class TestMain:
 
     def test_main_calls_cournot_main(self) -> None:
         """Test that main calls cournot_main."""
-        with patch("src.sim.cli.cli.cournot_main") as mock_cournot_main:
+        with patch("sim.cli.cli.cournot_main") as mock_cournot_main:
             main()
             mock_cournot_main.assert_called_once()
 

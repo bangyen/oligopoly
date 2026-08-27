@@ -1,10 +1,8 @@
 """Test RandomWalk bounds behavior."""
 
-from typing import List, Union
-
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import RandomWalk
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import RandomWalk
 
 
 def test_randomwalk_bounds() -> None:
@@ -25,11 +23,11 @@ def test_randomwalk_bounds() -> None:
         # Run 100 steps and verify all actions are within bounds
         current_action = None
         for round_num in range(100):
-            my_history: List[Union[CournotResult, BertrandResult]] = []
+            my_history: list[CournotResult | BertrandResult] = []
             if current_action is not None:
                 # Create a mock result with the current action
                 if round_num % 2 == 0:
-                    result: Union[CournotResult, BertrandResult] = CournotResult(
+                    result: CournotResult | BertrandResult = CournotResult(
                         price=10.0, quantities=[current_action], profits=[50.0]
                     )
                 else:

@@ -10,9 +10,9 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.advanced_strategies import (
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.advanced_strategies import (
     BehavioralStrategy,
     DeepQLearningStrategy,
     FictitiousPlayStrategy,

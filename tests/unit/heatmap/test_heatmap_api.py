@@ -9,7 +9,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from src.main import app
+from sim.api import app
 
 
 class TestHeatmapAPI:

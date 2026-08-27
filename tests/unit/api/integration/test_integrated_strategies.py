@@ -6,9 +6,9 @@ with the existing Cournot and Bertrand simulation framework.
 
 import math
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import RandomWalk, Static, TitForTat, create_strategy
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import RandomWalk, Static, TitForTat, create_strategy
 
 
 class TestIntegratedStrategies:

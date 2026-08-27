@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.sim.games.cournot import (
+from sim.games.cournot import (
     CournotResult,
     cournot_segmented_simulation,
     cournot_simulation,
@@ -17,8 +17,8 @@ from src.sim.games.cournot import (
     parse_quantities,
     validate_quantities,
 )
-from src.sim.models.models import DemandSegment, SegmentedDemand
-from src.sim.validation.economic_validation import EconomicValidationError
+from sim.models.models import DemandSegment, SegmentedDemand
+from sim.validation.economic_validation import EconomicValidationError
 
 
 class TestValidateQuantities:
@@ -152,7 +152,7 @@ class TestCournotSimulationAdditional:
 
     def test_cournot_simulation_economic_validation_error(self):
         """Test cournot_simulation with economic validation error."""
-        with patch("src.sim.games.cournot.validate_demand_parameters") as mock_validate:
+        with patch("sim.games.cournot.validate_demand_parameters") as mock_validate:
             mock_validate.side_effect = EconomicValidationError(
                 "Invalid demand parameters"
             )
@@ -165,7 +165,7 @@ class TestCournotSimulationAdditional:
 
     def test_cournot_simulation_cost_validation_error(self):
         """Test cournot_simulation with cost validation error."""
-        with patch("src.sim.games.cournot.validate_cost_structure") as mock_validate:
+        with patch("sim.games.cournot.validate_cost_structure") as mock_validate:
             mock_validate.side_effect = EconomicValidationError(
                 "Invalid cost structure"
             )
@@ -178,7 +178,7 @@ class TestCournotSimulationAdditional:
 
     def test_cournot_simulation_validation_warnings(self):
         """Test cournot_simulation with validation warnings."""
-        with patch("src.sim.games.cournot.validate_simulation_result") as mock_validate:
+        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
             # Mock validation result with warnings
             mock_result = Mock()
             mock_result.warnings = ["Warning: High market concentration"]
@@ -200,11 +200,11 @@ class TestCournotSimulationAdditional:
 
     def test_cournot_simulation_validation_failure_with_enforcement(self):
         """Test cournot_simulation with validation failure and constraint enforcement."""
-        with patch("src.sim.games.cournot.validate_simulation_result") as mock_validate:
+        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
             mock_validate.side_effect = EconomicValidationError("Validation failed")
 
             with patch(
-                "src.sim.games.cournot.enforce_economic_constraints"
+                "sim.games.cournot.enforce_economic_constraints"
             ) as mock_enforce:
                 mock_enforce.return_value = [18.0, 12.0]  # Enforced quantities
 
@@ -274,7 +274,7 @@ class TestCournotSegmentedSimulationAdditional:
         ]
         segmented_demand = SegmentedDemand(segments=segments)
 
-        with patch("src.sim.games.cournot.validate_cost_structure") as mock_validate:
+        with patch("sim.games.cournot.validate_cost_structure") as mock_validate:
             mock_validate.side_effect = EconomicValidationError(
                 "Invalid cost structure"
             )
@@ -344,7 +344,7 @@ class TestCournotSegmentedSimulationAdditional:
         ]
         segmented_demand = SegmentedDemand(segments=segments)
 
-        with patch("src.sim.games.cournot.validate_simulation_result") as mock_validate:
+        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
             # Mock validation result with warnings
             mock_result = Mock()
             mock_result.warnings = ["Warning: High market concentration"]
@@ -374,7 +374,7 @@ class TestCournotSegmentedSimulationAdditional:
         ]
         segmented_demand = SegmentedDemand(segments=segments)
 
-        with patch("src.sim.games.cournot.validate_simulation_result") as mock_validate:
+        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
             mock_validate.side_effect = EconomicValidationError("Validation failed")
 
             with patch("logging.getLogger") as mock_get_logger:

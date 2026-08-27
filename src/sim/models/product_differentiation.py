@@ -7,7 +7,6 @@ and differentiated Bertrand competition.
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -61,8 +60,8 @@ class HotellingDemand:
             )
 
     def calculate_demand(
-        self, prices: List[float], locations: List[float]
-    ) -> List[float]:
+        self, prices: list[float], locations: list[float]
+    ) -> list[float]:
         """Calculate demand for each firm in Hotelling model.
 
         Args:
@@ -101,8 +100,8 @@ class HotellingDemand:
         return demands
 
     def _calculate_boundaries(
-        self, prices: List[float], locations: List[float]
-    ) -> List[float]:
+        self, prices: list[float], locations: list[float]
+    ) -> list[float]:
         """Calculate market boundaries between firms."""
         n = len(prices)
         boundaries = []
@@ -156,8 +155,8 @@ class LogitDemand:
             )
 
     def calculate_market_shares(
-        self, prices: List[float], products: List[ProductCharacteristics]
-    ) -> List[float]:
+        self, prices: list[float], products: list[ProductCharacteristics]
+    ) -> list[float]:
         """Calculate market shares using logit model.
 
         Args:
@@ -194,10 +193,10 @@ class LogitDemand:
 
     def calculate_demand(
         self,
-        prices: List[float],
-        products: List[ProductCharacteristics],
+        prices: list[float],
+        products: list[ProductCharacteristics],
         total_market_size: float = 100.0,
-    ) -> List[float]:
+    ) -> list[float]:
         """Calculate demand quantities using logit model.
 
         Args:
@@ -232,10 +231,10 @@ class VerticalDifferentiation:
 
     def calculate_demand(
         self,
-        prices: List[float],
-        qualities: List[float],
+        prices: list[float],
+        qualities: list[float],
         total_market_size: float = 100.0,
-    ) -> List[float]:
+    ) -> list[float]:
         """Calculate demand with vertical differentiation.
 
         Args:
@@ -283,10 +282,10 @@ class VerticalDifferentiation:
 class DifferentiatedBertrandResult:
     """Result from differentiated Bertrand competition."""
 
-    prices: List[float]
-    quantities: List[float]
-    market_shares: List[float]
-    profits: List[float]
+    prices: list[float]
+    quantities: list[float]
+    market_shares: list[float]
+    profits: list[float]
     total_demand: float
     consumer_surplus: float
 
@@ -302,11 +301,11 @@ class DifferentiatedBertrandResult:
 
 
 def differentiated_bertrand_simulation(
-    prices: List[float],
-    products: List[ProductCharacteristics],
-    costs: List[float],
+    prices: list[float],
+    products: list[ProductCharacteristics],
+    costs: list[float],
     demand_model: str = "logit",
-    demand_params: Optional[dict] = None,
+    demand_params: dict | None = None,
     total_market_size: float = 100.0,
 ) -> DifferentiatedBertrandResult:
     """Run differentiated Bertrand competition simulation.
@@ -402,14 +401,14 @@ def differentiated_bertrand_simulation(
 
 
 def calculate_differentiated_nash_equilibrium(
-    products: List[ProductCharacteristics],
-    costs: List[float],
+    products: list[ProductCharacteristics],
+    costs: list[float],
     demand_model: str = "logit",
-    demand_params: Optional[dict] = None,
+    demand_params: dict | None = None,
     total_market_size: float = 100.0,
     max_iterations: int = 100,
     tolerance: float = 1e-6,
-) -> Tuple[List[float], DifferentiatedBertrandResult]:
+) -> tuple[list[float], DifferentiatedBertrandResult]:
     """Calculate Nash equilibrium for differentiated Bertrand competition.
 
     Args:
@@ -463,11 +462,11 @@ def calculate_differentiated_nash_equilibrium(
 
 def _calculate_best_response_price(
     firm_index: int,
-    current_prices: List[float],
-    products: List[ProductCharacteristics],
-    costs: List[float],
+    current_prices: list[float],
+    products: list[ProductCharacteristics],
+    costs: list[float],
     demand_model: str,
-    demand_params: Optional[dict],
+    demand_params: dict | None,
     total_market_size: float,
 ) -> float:
     """Calculate best response price for a single firm."""

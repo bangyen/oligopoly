@@ -4,9 +4,10 @@ This module provides comprehensive replay functionality that enables
 frame-by-frame playback of simulation runs with event highlighting.
 """
 
+from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -33,11 +34,11 @@ class ReplayFrame:
     hhi: float
     consumer_surplus: float
     num_firms: int
-    firm_data: Dict[int, Dict[str, float]]  # firm_id -> {action, price, qty, profit}
-    events: List[Dict[str, Any]]  # Events that occurred in this round
-    annotations: List[str]  # Human-readable annotations for events
+    firm_data: dict[int, dict[str, float]]  # firm_id -> {action, price, qty, profit}
+    events: list[dict[str, Any]]  # Events that occurred in this round
+    annotations: list[str]  # Human-readable annotations for events
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert frame to dictionary for API serialization."""
         return {
             "round_idx": self.round_idx,
@@ -99,7 +100,7 @@ class ReplaySystem:
         )
 
         # Organize results by round and firm
-        self.results_by_round: Dict[int, Dict[int, Result]] = {}
+        self.results_by_round: dict[int, dict[int, Result]] = {}
         for result in results:
             round_idx = int(result.round_idx)
             firm_id = int(result.firm_id)
@@ -110,7 +111,7 @@ class ReplaySystem:
             self.results_by_round[round_idx][firm_id] = result
 
         # Organize events by round
-        self.events_by_round: Dict[int, List[Event]] = {}
+        self.events_by_round: dict[int, list[Event]] = {}
         for event in events:
             round_idx = int(event.round_idx)
 
@@ -119,7 +120,7 @@ class ReplaySystem:
 
             self.events_by_round[round_idx].append(event)
 
-    def get_frame(self, round_idx: int) -> Optional[ReplayFrame]:
+    def get_frame(self, round_idx: int) -> ReplayFrame | None:
         """Get a single replay frame for a specific round.
 
         Args:
@@ -207,7 +208,7 @@ class ReplaySystem:
             annotations=annotations,
         )
 
-    def get_all_frames(self) -> List[ReplayFrame]:
+    def get_all_frames(self) -> list[ReplayFrame]:
         """Get all replay frames for the simulation.
 
         Returns:
@@ -220,7 +221,7 @@ class ReplaySystem:
                 frames.append(frame)
         return frames
 
-    def get_frames_with_events(self) -> List[ReplayFrame]:
+    def get_frames_with_events(self) -> list[ReplayFrame]:
         """Get replay frames that contain events.
 
         Returns:
@@ -233,7 +234,7 @@ class ReplaySystem:
                 frames.append(frame)
         return frames
 
-    def get_event_rounds(self) -> List[int]:
+    def get_event_rounds(self) -> list[int]:
         """Get list of round indices that contain events.
 
         Returns:
@@ -259,7 +260,7 @@ class ReplaySystem:
             yield frame
             time.sleep(delay_ms / 1000.0)
 
-    def get_replay_summary(self) -> Dict[str, Any]:
+    def get_replay_summary(self) -> dict[str, Any]:
         """Get summary information about the replay.
 
         Returns:
@@ -288,7 +289,7 @@ class ReplaySystem:
         summary["total_events"] = total_events
 
         if total_events > 0:
-            event_types: Dict[str, int] = {}
+            event_types: dict[str, int] = {}
             for frame in frames:
                 for event in frame.events:
                     event_type = event["type"]

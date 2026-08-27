@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.sim.events.event_types import EventType
-from src.sim.events.replay import ReplaySystem
-from src.sim.models.models import Base, Event, Result, Run
+from sim.events.event_types import EventType
+from sim.events.replay import ReplaySystem
+from sim.models.models import Base, Event, Result, Run
 
 
 @pytest.fixture(scope="function")

@@ -4,8 +4,6 @@ This module computes 2D profit and market share surfaces by sweeping over price 
 for two firms while holding other firms' prices fixed at specified values.
 """
 
-from typing import List, Tuple
-
 import numpy as np
 
 from ..games.bertrand import bertrand_segmented_simulation, bertrand_simulation
@@ -15,13 +13,13 @@ from ..models.models import SegmentedDemand
 def compute_bertrand_heatmap(
     alpha: float,
     beta: float,
-    costs: List[float],
+    costs: list[float],
     firm_i: int,
     firm_j: int,
-    p_i_grid: List[float],
-    p_j_grid: List[float],
-    other_prices: List[float],
-) -> Tuple[np.ndarray, np.ndarray, List[float], List[float]]:
+    p_i_grid: list[float],
+    p_j_grid: list[float],
+    other_prices: list[float],
+) -> tuple[np.ndarray, np.ndarray, list[float], list[float]]:
     """Compute profit and market share heatmaps for Bertrand competition between two firms.
 
     Sweeps over price grids for firms i and j while holding other firms' prices
@@ -103,13 +101,13 @@ def compute_bertrand_heatmap(
 
 def compute_bertrand_segmented_heatmap(
     segmented_demand: SegmentedDemand,
-    costs: List[float],
+    costs: list[float],
     firm_i: int,
     firm_j: int,
-    p_i_grid: List[float],
-    p_j_grid: List[float],
-    other_prices: List[float],
-) -> Tuple[np.ndarray, np.ndarray, List[float], List[float]]:
+    p_i_grid: list[float],
+    p_j_grid: list[float],
+    other_prices: list[float],
+) -> tuple[np.ndarray, np.ndarray, list[float], list[float]]:
     """Compute profit and market share heatmaps for Bertrand competition with segmented demand.
 
     Sweeps over price grids for firms i and j while holding other firms' prices
@@ -188,7 +186,7 @@ def compute_bertrand_segmented_heatmap(
     return profit_matrix, market_share_matrix, p_i_grid, p_j_grid
 
 
-def create_price_grid(min_p: float, max_p: float, num_points: int) -> List[float]:
+def create_price_grid(min_p: float, max_p: float, num_points: int) -> list[float]:
     """Create a linear grid of price values.
 
     Args:

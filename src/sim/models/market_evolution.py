@@ -6,7 +6,6 @@ market growth, and technological change.
 
 import random
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -39,8 +38,8 @@ class FirmEvolution:
     age: int = 0  # Number of rounds in market
     innovation_level: float = 0.0  # Cumulative innovation
     experience: float = 0.0  # Learning-by-doing experience
-    market_share_history: List[float] = field(default_factory=list)
-    profit_history: List[float] = field(default_factory=list)
+    market_share_history: list[float] = field(default_factory=list)
+    profit_history: list[float] = field(default_factory=list)
 
     def update_round(self, market_share: float, profit: float) -> None:
         """Update firm state after a round."""
@@ -66,9 +65,9 @@ class MarketEvolutionState:
     total_market_size: float = 100.0
     technology_level: float = 1.0  # Overall technology level
     num_firms: int = 0
-    firm_evolutions: Dict[int, FirmEvolution] = field(default_factory=dict)
-    entry_history: List[int] = field(default_factory=list)
-    exit_history: List[int] = field(default_factory=list)
+    firm_evolutions: dict[int, FirmEvolution] = field(default_factory=dict)
+    entry_history: list[int] = field(default_factory=list)
+    exit_history: list[int] = field(default_factory=list)
 
     def add_firm(self, firm_id: int) -> None:
         """Add a new firm to the market."""
@@ -87,7 +86,7 @@ class MarketEvolutionState:
 class MarketEvolutionEngine:
     """Engine for managing market evolution dynamics."""
 
-    def __init__(self, config: MarketEvolutionConfig, seed: Optional[int] = None):
+    def __init__(self, config: MarketEvolutionConfig, seed: int | None = None):
         """Initialize market evolution engine."""
         self.config = config
         self.rng = random.Random(seed)
@@ -95,13 +94,13 @@ class MarketEvolutionEngine:
 
     def evolve_market(
         self,
-        current_firms: List[int],
-        current_profits: List[float],
-        current_market_shares: List[float],
-        current_costs: List[float],
-        current_qualities: List[float],
-        demand_params: Dict[str, float],
-    ) -> Tuple[List[int], List[float], List[float], Dict[str, float]]:
+        current_firms: list[int],
+        current_profits: list[float],
+        current_market_shares: list[float],
+        current_costs: list[float],
+        current_qualities: list[float],
+        demand_params: dict[str, float],
+    ) -> tuple[list[int], list[float], list[float], dict[str, float]]:
         """Evolve the market for one round.
 
         Args:
@@ -144,7 +143,7 @@ class MarketEvolutionEngine:
 
         return new_firms, new_costs, new_qualities, demand_params
 
-    def _evolve_market_growth(self, demand_params: Dict[str, float]) -> None:
+    def _evolve_market_growth(self, demand_params: dict[str, float]) -> None:
         """Evolve market size through growth (simplified)."""
         # Simple growth without volatility
         growth_factor = 1.0 + self.config.growth_rate
@@ -156,7 +155,7 @@ class MarketEvolutionEngine:
         if "alpha" in demand_params:  # Linear demand (alternative)
             demand_params["alpha"] *= growth_factor
 
-    def _evolve_technology(self, costs: List[float], qualities: List[float]) -> None:
+    def _evolve_technology(self, costs: list[float], qualities: list[float]) -> None:
         """Evolve overall technology level with realistic spillovers."""
         # Technology improvement probability depends on market concentration
         # More concentrated markets have higher innovation incentives
@@ -199,11 +198,11 @@ class MarketEvolutionEngine:
 
     def _evolve_entry_exit(
         self,
-        current_firms: List[int],
-        current_profits: List[float],
-        current_costs: List[float],
-        current_qualities: List[float],
-    ) -> List[int]:
+        current_firms: list[int],
+        current_profits: list[float],
+        current_costs: list[float],
+        current_qualities: list[float],
+    ) -> list[int]:
         """Handle entry and exit of firms with economic constraints."""
         new_firms = current_firms.copy()
 
@@ -275,9 +274,9 @@ class MarketEvolutionEngine:
 
     def _should_enter(
         self,
-        current_firms: List[int],
-        current_profits: List[float],
-        current_costs: List[float],
+        current_firms: list[int],
+        current_profits: list[float],
+        current_costs: list[float],
     ) -> bool:
         """Determine if a new firm should enter the market (simplified)."""
         if not current_firms:
@@ -287,7 +286,7 @@ class MarketEvolutionEngine:
         avg_profit = float(np.mean(current_profits))
         return avg_profit > self.config.entry_cost
 
-    def _generate_entrant_cost(self, current_costs: List[float]) -> float:
+    def _generate_entrant_cost(self, current_costs: list[float]) -> float:
         """Generate cost for new entrant."""
         if not current_costs:
             return 10.0  # Default cost
@@ -300,7 +299,7 @@ class MarketEvolutionEngine:
         new_cost = float(self.rng.gauss(avg_cost, std_cost * 0.5))
         return max(1.0, new_cost)  # Ensure positive cost
 
-    def _generate_entrant_quality(self, current_qualities: List[float]) -> float:
+    def _generate_entrant_quality(self, current_qualities: list[float]) -> float:
         """Generate quality for new entrant."""
         if not current_qualities:
             return 1.0  # Default quality
@@ -315,10 +314,10 @@ class MarketEvolutionEngine:
 
     def _evolve_innovation(
         self,
-        firms: List[int],
-        current_costs: List[float],
-        current_qualities: List[float],
-    ) -> Tuple[List[float], List[float]]:
+        firms: list[int],
+        current_costs: list[float],
+        current_qualities: list[float],
+    ) -> tuple[list[float], list[float]]:
         """Handle innovation by firms."""
         new_costs = current_costs.copy()
         new_qualities = current_qualities.copy()
@@ -353,8 +352,8 @@ class MarketEvolutionEngine:
     def _apply_innovation(
         self,
         firm_evolution: FirmEvolution,
-        costs: List[float],
-        qualities: List[float],
+        costs: list[float],
+        qualities: list[float],
         firm_index: int,
     ) -> None:
         """Apply successful innovation to a firm (simplified)."""
@@ -367,7 +366,7 @@ class MarketEvolutionEngine:
         # Increase quality by 5%
         qualities[firm_index] *= 1.05
 
-    def get_evolution_metrics(self) -> Dict[str, float]:
+    def get_evolution_metrics(self) -> dict[str, float]:
         """Get metrics about market evolution."""
         return {
             "round_num": self.state.round_num,
@@ -379,7 +378,7 @@ class MarketEvolutionEngine:
             "net_entries": len(self.state.entry_history) - len(self.state.exit_history),
         }
 
-    def get_firm_evolution_metrics(self, firm_id: int) -> Optional[Dict[str, float]]:
+    def get_firm_evolution_metrics(self, firm_id: int) -> dict[str, float] | None:
         """Get evolution metrics for a specific firm."""
         if firm_id not in self.state.firm_evolutions:
             return None
@@ -405,7 +404,7 @@ class MarketEvolutionEngine:
 
 
 def create_market_evolution_engine(
-    config: Optional[MarketEvolutionConfig] = None, seed: Optional[int] = None
+    config: MarketEvolutionConfig | None = None, seed: int | None = None
 ) -> MarketEvolutionEngine:
     """Create a market evolution engine with default or custom configuration."""
     if config is None:

@@ -9,7 +9,7 @@ This module provides enhanced simulation functions that support:
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..models.models import CostStructure, IsoelasticDemand
 from .bertrand import BertrandResult, bertrand_simulation
@@ -21,18 +21,18 @@ class EnhancedSimulationConfig:
     """Configuration for enhanced simulation with advanced economic features."""
 
     demand_type: str = "linear"  # "linear" or "isoelastic"
-    demand_params: Dict[str, Any] = field(
+    demand_params: dict[str, Any] = field(
         default_factory=dict
     )  # Parameters for demand function
-    cost_structures: List[CostStructure] = field(
+    cost_structures: list[CostStructure] = field(
         default_factory=list
     )  # Enhanced cost structures
-    capacity_limits: Optional[List[float]] = None
-    fixed_costs: Optional[List[float]] = None
+    capacity_limits: list[float] | None = None
+    fixed_costs: list[float] | None = None
 
 
 def enhanced_cournot_simulation(
-    config: EnhancedSimulationConfig, quantities: List[float]
+    config: EnhancedSimulationConfig, quantities: list[float]
 ) -> CournotResult:
     """Enhanced Cournot simulation with advanced economic features.
 
@@ -53,7 +53,7 @@ def enhanced_cournot_simulation(
         capacity_limits = [cs.capacity_limit for cs in config.cost_structures]
 
         # Filter out None values for capacity limits
-        capacity_limits_filtered: Optional[List[float]] = [
+        capacity_limits_filtered: list[float] | None = [
             cap for cap in capacity_limits if cap is not None
         ]
         if capacity_limits_filtered is not None and len(
@@ -107,7 +107,7 @@ def enhanced_cournot_simulation(
 
 def enhanced_bertrand_simulation(
     config: EnhancedSimulationConfig,
-    prices: List[float],
+    prices: list[float],
     use_capacity_constraints: bool = True,
 ) -> BertrandResult:
     """Enhanced Bertrand simulation with advanced economic features.
@@ -129,7 +129,7 @@ def enhanced_bertrand_simulation(
         capacity_limits = [cs.capacity_limit for cs in config.cost_structures]
 
         # Filter out None values for capacity limits
-        capacity_limits_filtered: Optional[List[float]] = [
+        capacity_limits_filtered: list[float] | None = [
             cap for cap in capacity_limits if cap is not None
         ]
         if capacity_limits_filtered is not None and len(

@@ -11,7 +11,7 @@ The script shows how ε-greedy agents learn to optimize their actions
 based on immediate rewards (profits) while balancing exploration and exploitation.
 """
 
-from typing import List, TypedDict, cast
+from typing import TypedDict, cast
 
 from sim.runners.strategy_runner import get_strategy_run_results, run_strategy_game
 from sim.strategies.strategies import EpsilonGreedy, Static, TitForTat
@@ -30,9 +30,9 @@ class RoundData(TypedDict):
     """Type definition for round data structure."""
 
     round: int
-    quantities: List[float]
+    quantities: list[float]
     price: float
-    profits: List[float]
+    profits: list[float]
     hhi: float
     cs: float
 

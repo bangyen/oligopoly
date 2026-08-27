@@ -12,9 +12,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.main import app, get_db
-from src.sim.events.event_types import EventType
-from src.sim.models.models import Base, Event, Run
+from sim.api import app, get_db
+from sim.events.event_types import EventType
+from sim.models.models import Base, Event, Run
 
 
 @pytest.fixture(scope="function")
@@ -271,7 +271,7 @@ class TestFeedApiSchema:
     def test_replay_api_schema(self, test_client, test_db, test_run):
         """Test that replay API returns correct schema."""
         # Add mock results
-        from src.sim.models.models import Result
+        from sim.models.models import Result
 
         for round_idx in range(2):
             for firm_id in range(2):

@@ -4,8 +4,6 @@ This module computes 2D profit surfaces by sweeping over quantity grids for two 
 while holding other firms' quantities fixed at specified values.
 """
 
-from typing import List, Tuple
-
 import numpy as np
 
 from ..games.cournot import cournot_segmented_simulation, cournot_simulation
@@ -15,13 +13,13 @@ from ..models.models import SegmentedDemand
 def compute_cournot_heatmap(
     a: float,
     b: float,
-    costs: List[float],
+    costs: list[float],
     firm_i: int,
     firm_j: int,
-    q_i_grid: List[float],
-    q_j_grid: List[float],
-    other_quantities: List[float],
-) -> Tuple[np.ndarray, List[float], List[float]]:
+    q_i_grid: list[float],
+    q_j_grid: list[float],
+    other_quantities: list[float],
+) -> tuple[np.ndarray, list[float], list[float]]:
     """Compute profit heatmap for Cournot competition between two firms.
 
     Sweeps over quantity grids for firms i and j while holding other firms' quantities
@@ -93,13 +91,13 @@ def compute_cournot_heatmap(
 
 def compute_cournot_segmented_heatmap(
     segmented_demand: SegmentedDemand,
-    costs: List[float],
+    costs: list[float],
     firm_i: int,
     firm_j: int,
-    q_i_grid: List[float],
-    q_j_grid: List[float],
-    other_quantities: List[float],
-) -> Tuple[np.ndarray, List[float], List[float]]:
+    q_i_grid: list[float],
+    q_j_grid: list[float],
+    other_quantities: list[float],
+) -> tuple[np.ndarray, list[float], list[float]]:
     """Compute profit heatmap for Cournot competition with segmented demand.
 
     Sweeps over quantity grids for firms i and j while holding other firms' quantities
@@ -168,7 +166,7 @@ def compute_cournot_segmented_heatmap(
     return profit_matrix, q_i_grid, q_j_grid
 
 
-def create_quantity_grid(min_q: float, max_q: float, num_points: int) -> List[float]:
+def create_quantity_grid(min_q: float, max_q: float, num_points: int) -> list[float]:
     """Create a linear grid of quantity values.
 
     Args:

@@ -6,15 +6,15 @@ calculating metrics, and managing database connections across demo and experimen
 """
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 try:
-    from src.sim.models.metrics import calculate_consumer_surplus as calc_cs
-    from src.sim.models.metrics import calculate_hhi as calc_hhi
-    from src.sim.models.models import Base
+    from sim.models.metrics import calculate_consumer_surplus as calc_cs
+    from sim.models.metrics import calculate_hhi as calc_hhi
+    from sim.models.models import Base
 except ImportError:
     # Fallback to local import if src is not available
     from sim.models.metrics import calculate_consumer_surplus as calc_cs  # type: ignore
@@ -27,7 +27,7 @@ def print_header(title: str) -> None:
     print(f"\n=== {title} ===")
 
 
-def print_summary(title: str, items: List[str]) -> None:
+def print_summary(title: str, items: list[str]) -> None:
     """Print a summary section with checkmarks."""
     print(f"\n{title}:")
     for item in items:
@@ -39,28 +39,29 @@ def format_currency(value: float) -> str:
     return f"${value:.1f}"
 
 
-def format_list(values: List[float], formatter: str = "currency") -> str:
+def format_list(values: list[float], formatter: str = "currency") -> str:
     """Format a list of values."""
     if formatter == "currency":
         return f"[{', '.join(format_currency(v) for v in values)}]"
     return f"[{', '.join(f'{v:.1f}' for v in values)}]"
 
 
-def calculate_hhi(quantities: List[float]) -> float:
+def calculate_hhi(quantities: list[float]) -> float:
     """Calculate Herfindahl-Hirschman Index (HHI) for market concentration."""
     total_quantity = sum(quantities)
     if total_quantity == 0:
         return 0.0
     # Convert quantities to shares as expected by the core metric function
     shares = [q / total_quantity for q in quantities]
-    return calc_hhi(shares) * 10000  # Scale to match original script's 10k base
+    # Scale to match original script's 10k base
+    return float(calc_hhi(shares)) * 10000
 
 
 def calculate_consumer_surplus(
     price: float, total_quantity: float, a: float, b: float
 ) -> float:
     """Calculate consumer surplus for linear demand curve."""
-    return calc_cs(a, price, total_quantity)
+    return float(calc_cs(a, price, total_quantity))
 
 
 def create_demo_database(database_url: str = "sqlite:///:memory:") -> Any:
@@ -111,7 +112,7 @@ def create_experiment_database(db_path: str) -> Session:
     return session_local()
 
 
-def print_experiment_summary(results: List[Dict[str, Any]]) -> None:
+def print_experiment_summary(results: list[dict[str, Any]]) -> None:
     """Print a formatted experiment summary.
 
     Args:
@@ -121,7 +122,7 @@ def print_experiment_summary(results: List[Dict[str, Any]]) -> None:
     print(f"  Total runs: {len(results)}")
 
     # Group results by configuration
-    config_results: Dict[str, List[Dict[str, Any]]] = {}
+    config_results: dict[str, list[dict[str, Any]]] = {}
     for result in results:
         config_id = result["config_id"]
         if config_id not in config_results:
@@ -149,7 +150,7 @@ def print_experiment_summary(results: List[Dict[str, Any]]) -> None:
         )
 
 
-def print_verbose_summary(results: List[Dict[str, Any]]) -> None:
+def print_verbose_summary(results: list[dict[str, Any]]) -> None:
     """Print a detailed experiment summary for verbose mode.
 
     Args:
@@ -159,7 +160,7 @@ def print_verbose_summary(results: List[Dict[str, Any]]) -> None:
     print(f"  Total runs: {len(results)}")
 
     # Count by configuration
-    config_counts: Dict[str, int] = {}
+    config_counts: dict[str, int] = {}
     for result in results:
         config_id = result["config_id"]
         config_counts[config_id] = config_counts.get(config_id, 0) + 1

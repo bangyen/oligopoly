@@ -7,7 +7,7 @@ and differentiated Bertrand competition.
 
 import pytest
 
-from src.sim.models.product_differentiation import (
+from sim.models.product_differentiation import (
     DifferentiatedBertrandResult,
     HotellingDemand,
     LogitDemand,

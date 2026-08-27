@@ -7,7 +7,8 @@ for health checks and simulation management.
 import math
 import os
 import time
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from collections.abc import Generator
+from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
@@ -15,27 +16,27 @@ from pydantic import BaseModel, Field
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from src.sim.events.replay import ReplaySystem
-from src.sim.heatmap.bertrand_heatmap import (
+from sim.events.replay import ReplaySystem
+from sim.heatmap.bertrand_heatmap import (
     compute_bertrand_heatmap,
     compute_bertrand_segmented_heatmap,
     create_price_grid,
 )
-from src.sim.heatmap.cournot_heatmap import (
+from sim.heatmap.cournot_heatmap import (
     compute_cournot_heatmap,
     compute_cournot_segmented_heatmap,
     create_quantity_grid,
 )
-from src.sim.models.market_evolution import (
+from sim.models.market_evolution import (
     MarketEvolutionConfig,
 )
-from src.sim.models.metrics import (
+from sim.models.metrics import (
     calculate_round_metrics_bertrand,
     calculate_round_metrics_cournot,
 )
-from src.sim.models.models import Base, DemandSegment, Event, Run, SegmentedDemand
-from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
-from src.sim.runners.runner import get_run_results, run_game
+from sim.models.models import Base, DemandSegment, Event, Run, SegmentedDemand
+from sim.policy.policy_shocks import PolicyEvent, PolicyType
+from sim.runners.runner import get_run_results, run_game
 
 # Database configuration
 DATABASE_URL = os.getenv(
@@ -151,15 +152,15 @@ class SimulationRequest(BaseModel):
         description="Competition model type",
     )
     rounds: int = Field(..., gt=0, le=1000, description="Number of simulation rounds")
-    params: Union[CournotParams, BertrandParams, None] = Field(
+    params: CournotParams | BertrandParams | None = Field(
         default=None,
         description="Typed market demand parameters. Use CournotParams (a, b) for "
         "cournot and BertrandParams (alpha, beta) for bertrand.",
     )
-    firms: List[FirmConfig] = Field(
+    firms: list[FirmConfig] = Field(
         ..., min_length=1, max_length=10, description="Firm configurations"
     )
-    segments: Optional[List[DemandSegmentConfig]] = Field(
+    segments: list[DemandSegmentConfig] | None = Field(
         None,
         description="Segmented demand configuration (overrides single-segment params)",
     )
@@ -168,17 +169,17 @@ class SimulationRequest(BaseModel):
         pattern="^(linear|isoelastic)$",
         description="Type of demand function",
     )
-    seed: Optional[int] = Field(None, description="Random seed for reproducibility")
-    events: Optional[List[PolicyEventRequest]] = Field(
+    seed: int | None = Field(None, description="Random seed for reproducibility")
+    events: list[PolicyEventRequest] | None = Field(
         default_factory=list, description="Policy events to apply during simulation"
     )
-    advanced_strategies: Optional[List[AdvancedStrategyConfig]] = Field(
+    advanced_strategies: list[AdvancedStrategyConfig] | None = Field(
         default=None, description="Simplified learning strategies for firms"
     )
-    market_evolution: Optional[MarketEvolutionConfig] = Field(
+    market_evolution: MarketEvolutionConfig | None = Field(
         default=None, description="Market evolution configuration"
     )
-    enhanced_demand: Optional[EnhancedDemandConfig] = Field(
+    enhanced_demand: EnhancedDemandConfig | None = Field(
         default=None, description="Enhanced demand function configuration"
     )
 
@@ -217,13 +218,13 @@ class ComparisonResults(BaseModel):
     left_run_id: str = Field(..., description="Left scenario run ID")
     right_run_id: str = Field(..., description="Right scenario run ID")
     rounds: int = Field(..., description="Number of rounds (should be same for both)")
-    left_metrics: Dict[str, List[float]] = Field(
+    left_metrics: dict[str, list[float]] = Field(
         ..., description="Left scenario metrics arrays"
     )
-    right_metrics: Dict[str, List[float]] = Field(
+    right_metrics: dict[str, list[float]] = Field(
         ..., description="Right scenario metrics arrays"
     )
-    deltas: Dict[str, List[float]] = Field(
+    deltas: dict[str, list[float]] = Field(
         ..., description="Delta arrays (right - left)"
     )
 
@@ -234,11 +235,9 @@ class EventItem(BaseModel):
     id: int = Field(..., description="Unique event identifier")
     round_idx: int = Field(..., description="Round index when event occurred")
     event_type: str = Field(..., description="Type of event")
-    firm_id: Optional[int] = Field(None, description="Firm involved (if applicable)")
+    firm_id: int | None = Field(None, description="Firm involved (if applicable)")
     description: str = Field(..., description="Human-readable event description")
-    event_data: Optional[Dict[str, Any]] = Field(
-        None, description="Additional event data"
-    )
+    event_data: dict[str, Any] | None = Field(None, description="Additional event data")
     created_at: str = Field(..., description="Event timestamp")
 
 
@@ -247,7 +246,7 @@ class EventsResponse(BaseModel):
 
     run_id: str = Field(..., description="Simulation run ID")
     total_events: int = Field(..., description="Total number of events")
-    events: List[EventItem] = Field(..., description="Ordered list of events")
+    events: list[EventItem] = Field(..., description="Ordered list of events")
 
 
 class ReplayFrame(BaseModel):
@@ -261,11 +260,11 @@ class ReplayFrame(BaseModel):
     hhi: float = Field(..., description="Herfindahl-Hirschman Index")
     consumer_surplus: float = Field(..., description="Consumer surplus")
     num_firms: int = Field(..., description="Number of firms")
-    firm_data: Dict[int, Dict[str, float]] = Field(
+    firm_data: dict[int, dict[str, float]] = Field(
         ..., description="Firm-specific data"
     )
-    events: List[Dict[str, Any]] = Field(..., description="Events in this round")
-    annotations: List[str] = Field(..., description="Human-readable annotations")
+    events: list[dict[str, Any]] = Field(..., description="Events in this round")
+    annotations: list[str] = Field(..., description="Human-readable annotations")
 
 
 class ReplayResponse(BaseModel):
@@ -274,8 +273,8 @@ class ReplayResponse(BaseModel):
     run_id: str = Field(..., description="Simulation run ID")
     total_frames: int = Field(..., description="Total number of frames")
     frames_with_events: int = Field(..., description="Number of frames with events")
-    event_rounds: List[int] = Field(..., description="Rounds containing events")
-    frames: List[ReplayFrame] = Field(..., description="All replay frames")
+    event_rounds: list[int] = Field(..., description="Rounds containing events")
+    frames: list[ReplayFrame] = Field(..., description="All replay frames")
 
 
 class RunSummary(BaseModel):
@@ -296,7 +295,7 @@ class RunDetail(BaseModel):
     rounds: int
     created_at: str
     updated_at: str
-    results: Optional[Dict[str, Any]] = None
+    results: dict[str, Any] | None = None
 
 
 class HeatmapRequest(BaseModel):
@@ -310,20 +309,20 @@ class HeatmapRequest(BaseModel):
     grid_size: int = Field(
         ..., ge=5, le=50, description="Number of grid points per dimension"
     )
-    action_range: Tuple[float, float] = Field(
+    action_range: tuple[float, float] = Field(
         ..., description="Min and max values for action grid (quantity or price)"
     )
-    other_actions: List[float] = Field(
+    other_actions: list[float] = Field(
         ..., description="Fixed actions for all other firms"
     )
-    params: Union[CournotParams, BertrandParams, None] = Field(
+    params: CournotParams | BertrandParams | None = Field(
         default=None,
         description="Typed demand parameters. Use CournotParams for cournot, BertrandParams for bertrand.",
     )
-    firms: List[FirmConfig] = Field(
+    firms: list[FirmConfig] = Field(
         ..., min_length=2, max_length=10, description="Firm configurations"
     )
-    segments: Optional[List[DemandSegmentConfig]] = Field(
+    segments: list[DemandSegmentConfig] | None = Field(
         None,
         description="Segmented demand configuration (overrides single-segment params)",
     )
@@ -335,16 +334,16 @@ class HeatmapResponse(BaseModel):
     model: str = Field(..., description="Competition model type")
     firm_i: int = Field(..., description="Index of firm surface computed for")
     firm_j: int = Field(..., description="Index of second firm in heatmap")
-    profit_surface: List[List[float]] = Field(
+    profit_surface: list[list[float]] = Field(
         ..., description="2D array of profits for firm_i"
     )
-    market_share_surface: Optional[List[List[float]]] = Field(
+    market_share_surface: list[list[float]] | None = Field(
         None, description="2D array of market shares for firm_i (Bertrand only)"
     )
-    action_i_grid: List[float] = Field(
+    action_i_grid: list[float] = Field(
         ..., description="Grid values for firm_i actions (quantities or prices)"
     )
-    action_j_grid: List[float] = Field(
+    action_j_grid: list[float] = Field(
         ..., description="Grid values for firm_j actions (quantities or prices)"
     )
     computation_time_ms: float = Field(
@@ -381,7 +380,7 @@ async def health_check() -> JSONResponse:
 
 
 @app.get("/")
-async def root() -> Dict[str, str]:
+async def root() -> dict[str, str]:
     """Root endpoint with basic API information."""
     return {"message": "Oligopoly Simulation API", "version": "0.1.0", "docs": "/docs"}
 
@@ -406,21 +405,10 @@ async def simulate(
         HTTPException: If simulation fails or configuration is invalid
     """
     try:
-        # Validate firm costs are economically reasonable
+        # Firm cost bounds are enforced by FirmConfig (cost > 0, fixed_cost >= 0),
+        # which rejects invalid input with a 422 before this handler runs.
+        # Costs are still needed below to cross-validate against demand params.
         costs = [firm.cost for firm in request.firms]
-        fixed_costs = [firm.fixed_cost for firm in request.firms]
-
-        if any(cost <= 0 for cost in costs):
-            raise HTTPException(
-                status_code=400,
-                detail="All firm costs must be positive",
-            )
-
-        if any(fc < 0 for fc in fixed_costs):
-            raise HTTPException(
-                status_code=400,
-                detail="All fixed costs must be non-negative",
-            )
 
         # Build typed params dict from the request
         raw_params = request.params
@@ -500,7 +488,7 @@ async def simulate(
 
         # Convert Pydantic models to dict format expected by run_game
         # Use standardized params dict for simulation config
-        config: Dict[str, Any] = {
+        config: dict[str, Any] = {
             "params": params,
             "firms": [
                 {"cost": f.cost, "fixed_cost": f.fixed_cost} for f in request.firms
@@ -569,6 +557,9 @@ async def simulate(
 
         return SimulationResponse(run_id=run_id)
 
+    except HTTPException:
+        # Client errors raised above already carry the right status code.
+        raise
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -586,7 +577,7 @@ async def simulate(
 
 
 @app.get("/runs/{run_id}")
-async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_run(run_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     """Retrieve time-series results for a simulation run.
 
     Returns detailed results including market prices, quantities, profits,
@@ -649,7 +640,7 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
             }
 
         results["metrics"] = metrics
-        return results
+        return dict(results)
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -657,8 +648,8 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-@app.get("/runs", response_model=List[RunSummary])
-async def list_runs(db: Session = Depends(get_db)) -> List[RunSummary]:
+@app.get("/runs", response_model=list[RunSummary])
+async def list_runs(db: Session = Depends(get_db)) -> list[RunSummary]:
     """List simulation runs."""
     try:
         runs = db.query(Run).order_by(Run.created_at.desc()).all()
@@ -730,7 +721,7 @@ async def compare_scenarios(
 
         # Normalise params to plain dicts (may come in as CournotParams/BertrandParams objects)
         def _params_to_dict(
-            params: Optional[Union[CournotParams, BertrandParams]],
+            params: CournotParams | BertrandParams | None,
         ) -> dict:
             if params is None:
                 return {}
@@ -739,7 +730,7 @@ async def compare_scenarios(
             )
 
         # Run left scenario
-        left_config: Dict[str, Any] = {
+        left_config: dict[str, Any] = {
             "params": _params_to_dict(request.left_config.params),
             "firms": [{"cost": firm.cost} for firm in request.left_config.firms],
             "seed": request.left_config.seed,
@@ -773,7 +764,7 @@ async def compare_scenarios(
             ]
 
         # Run right scenario
-        right_config: Dict[str, Any] = {
+        right_config: dict[str, Any] = {
             "params": _params_to_dict(request.right_config.params),
             "firms": [{"cost": firm.cost} for firm in request.right_config.firms],
             "seed": request.right_config.seed,
@@ -906,7 +897,7 @@ async def get_comparison_results(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-def _calculate_comparison_metrics(run_data: Dict[str, Any]) -> Dict[str, List[float]]:
+def _calculate_comparison_metrics(run_data: dict[str, Any]) -> dict[str, list[float]]:
     """Calculate metrics arrays for comparison from run data.
 
     Expects the canonical nested-dict format from get_run_results:
@@ -922,7 +913,7 @@ def _calculate_comparison_metrics(run_data: Dict[str, Any]) -> Dict[str, List[fl
     model = run_data.get("model", "cournot")
     stored_params = run_data.get("params") or {}
 
-    metrics: Dict[str, List[float]] = {
+    metrics: dict[str, list[float]] = {
         "market_price": [],
         "total_quantity": [],
         "total_profit": [],
@@ -1276,3 +1267,14 @@ async def compute_heatmap(request: HeatmapRequest) -> HeatmapResponse:
             raise HTTPException(status_code=400, detail=error_msg)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+
+def serve() -> None:
+    """Run the API server. Entry point for the ``oligopoly`` console script."""
+    import uvicorn
+
+    uvicorn.run(
+        "sim.api:app",
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", "8000")),
+    )

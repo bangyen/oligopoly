@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from src.main import (
+from sim.api import (
     RunDetail,
     RunSummary,
     get_run_detail,

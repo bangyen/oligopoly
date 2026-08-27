@@ -6,15 +6,15 @@ regulator interventions, and event logging functionality.
 
 import math
 
-from src.sim.collusion import (
+from sim.collusion import (
     CollusionEventType,
     CollusionManager,
     RegulatorState,
 )
-from src.sim.runners.collusion_runner import (
+from sim.runners.collusion_runner import (
     create_collusion_simulation_config,
 )
-from src.sim.strategies.collusion_strategies import (
+from sim.strategies.collusion_strategies import (
     CartelStrategy,
     CollusiveStrategy,
     OpportunisticStrategy,

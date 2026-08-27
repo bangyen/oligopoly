@@ -6,7 +6,7 @@ returns zero due to high prices.
 
 import pytest
 
-from src.sim.games.bertrand import bertrand_simulation, calculate_demand
+from sim.games.bertrand import bertrand_simulation, calculate_demand
 
 
 class TestDemandNonNegativity:

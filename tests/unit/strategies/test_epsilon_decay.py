@@ -5,12 +5,11 @@ according to the decay rate, but never goes below the minimum bound ε_min.
 """
 
 import math
-from typing import List
 
 import pytest
 
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import QLearning
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import QLearning
 
 
 def test_epsilon_decay_basic() -> None:
@@ -32,7 +31,7 @@ def test_epsilon_decay_basic() -> None:
     market_params: dict[str, float] = {}
 
     # Track epsilon over multiple rounds
-    epsilon_values: List[float] = []
+    epsilon_values: list[float] = []
 
     # First round
     action1 = q_learning.next_action(
@@ -99,7 +98,7 @@ def test_epsilon_decay_rate() -> None:
     market_params: dict[str, float] = {}
 
     # Track epsilon over rounds
-    epsilon_values: List[float] = []
+    epsilon_values: list[float] = []
 
     # First round
     action1 = q_learning.next_action(
@@ -151,7 +150,7 @@ def test_epsilon_min_bound() -> None:
     market_params: dict[str, float] = {}
 
     # Run many rounds to ensure epsilon reaches minimum
-    epsilon_values: List[float] = []
+    epsilon_values: list[float] = []
 
     # First round
     action1 = q_learning.next_action(

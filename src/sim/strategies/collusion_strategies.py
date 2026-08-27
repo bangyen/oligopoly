@@ -6,8 +6,9 @@ defect from collusion, or respond to regulatory interventions.
 
 import random
 import warnings
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any
 
 from ..collusion import CollusionEventType, CollusionManager
 from ..games.bertrand import BertrandResult
@@ -28,10 +29,10 @@ class CollusiveStrategy:
     regulatory_sensitivity: float = (
         0.5  # How much regulatory pressure affects defection
     )
-    seed: Optional[int] = None
+    seed: int | None = None
     # Collusion manager injected at construction; can also be supplied per-call.
     # If neither is provided, the strategy degrades to midpoint and emits a warning.
-    collusion_manager: Optional[CollusionManager] = field(default=None, repr=False)
+    collusion_manager: CollusionManager | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize random state."""
@@ -53,8 +54,8 @@ class CollusiveStrategy:
     def calculate_defection_probability(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
         collusion_manager: CollusionManager,
     ) -> float:
         """Calculate dynamic defection probability based on market conditions.
@@ -96,8 +97,8 @@ class CollusiveStrategy:
     def should_defect(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
         collusion_manager: CollusionManager,
     ) -> bool:
         """Determine if this firm should defect from the cartel.
@@ -124,7 +125,7 @@ class CollusiveStrategy:
         self,
         cartel_price: float,
         cartel_quantity: float,
-        bounds: Tuple[float, float],
+        bounds: tuple[float, float],
         model_type: str,
     ) -> float:
         """Calculate the action to take when defecting.
@@ -155,12 +156,12 @@ class CollusiveStrategy:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
-        collusion_manager: Optional[CollusionManager] = None,
-        my_cost: Optional[float] = None,
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
+        collusion_manager: CollusionManager | None = None,
+        my_cost: float | None = None,
     ) -> float:
         """Calculate next action based on collusion state and defection probability.
 
@@ -230,17 +231,17 @@ class CartelStrategy:
     """
 
     # Collusion manager injected at construction; can also be supplied per-call.
-    collusion_manager: Optional[CollusionManager] = field(default=None, repr=False)
+    collusion_manager: CollusionManager | None = field(default=None, repr=False)
 
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
-        collusion_manager: Optional[CollusionManager] = None,
-        my_cost: Optional[float] = None,
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
+        collusion_manager: CollusionManager | None = None,
+        my_cost: float | None = None,
     ) -> float:
         """Always follow cartel agreement if active, otherwise use midpoint of bounds.
 
@@ -298,9 +299,9 @@ class OpportunisticStrategy:
 
     profit_threshold_multiplier: float = 1.3  # Minimum profit advantage to defect
     risk_tolerance: float = 0.5  # Risk tolerance for defection
-    seed: Optional[int] = None
+    seed: int | None = None
     # Collusion manager injected at construction; can also be supplied per-call.
-    collusion_manager: Optional[CollusionManager] = field(default=None, repr=False)
+    collusion_manager: CollusionManager | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize random state."""
@@ -318,7 +319,7 @@ class OpportunisticStrategy:
         cartel_price: float,
         cartel_quantity: float,
         my_cost: float,
-        market_params: Dict[str, Any],
+        market_params: dict[str, Any],
         model_type: str,
     ) -> float:
         """Estimate profit from defection.
@@ -385,11 +386,11 @@ class OpportunisticStrategy:
     def should_defect(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
         collusion_manager: CollusionManager,
         my_cost: float,
-        market_params: Dict[str, Any],
+        market_params: dict[str, Any],
     ) -> bool:
         """Determine if defection would be profitable.
 
@@ -437,12 +438,12 @@ class OpportunisticStrategy:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
-        collusion_manager: Optional[CollusionManager] = None,
-        my_cost: Optional[float] = None,
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
+        collusion_manager: CollusionManager | None = None,
+        my_cost: float | None = None,
     ) -> float:
         """Calculate action based on opportunistic defection logic.
 
@@ -516,7 +517,7 @@ class OpportunisticStrategy:
 
 def create_collusion_strategy(
     strategy_type: str, **kwargs: Any
-) -> Union[CartelStrategy, CollusiveStrategy, OpportunisticStrategy]:
+) -> CartelStrategy | CollusiveStrategy | OpportunisticStrategy:
     """Factory function to create collusion-aware strategy instances.
 
     Args:

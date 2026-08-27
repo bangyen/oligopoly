@@ -8,8 +8,9 @@ CournotResult and BertrandResult objects from the cournot and bertrand modules.
 """
 
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Protocol, Sequence, Tuple, Union
+from typing import Any, Protocol
 
 from ..games.bertrand import BertrandResult
 from ..games.cournot import CournotResult
@@ -25,10 +26,10 @@ class Strategy(Protocol):
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate the next action based on market history.
 
@@ -63,10 +64,10 @@ class Static:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Return the static value, clamped to bounds.
 
@@ -95,10 +96,10 @@ class TitForTat:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate action based on tit-for-tat logic.
 
@@ -160,7 +161,7 @@ class RandomWalk:
     step: float
     min_bound: float
     max_bound: float
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize random state."""
@@ -177,10 +178,10 @@ class RandomWalk:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using random walk.
 
@@ -326,7 +327,7 @@ class QLearning:
     epsilon_decay: float = 0.995  # ε decay rate per round
 
     # Optional parameters
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize Q-table and action grid."""
@@ -357,7 +358,7 @@ class QLearning:
 
         # Initialize Q-table: Q[state][action] = value
         # State is represented as a tuple (price_bin, quantity_bin, action_bin)
-        self.q_table: Dict[Tuple[int, int, int], List[float]] = {}
+        self.q_table: dict[tuple[int, int, int], list[float]] = {}
 
         # Initialize random number generator
         self._rng = random.Random(self.seed)
@@ -366,14 +367,14 @@ class QLearning:
         self._current_epsilon = self.epsilon_0
 
         # Track previous state and action for Q-learning updates
-        self._previous_state: Optional[Tuple[int, int, int]] = None
-        self._previous_action_index: Optional[int] = None
+        self._previous_state: tuple[int, int, int] | None = None
+        self._previous_action_index: int | None = None
 
         # Track state bounds for binning
         self._price_range = (0.0, 100.0)  # Will be updated based on market
         self._quantity_range = (0.0, 100.0)  # Will be updated based on market
 
-    def _create_action_grid(self) -> List[float]:
+    def _create_action_grid(self) -> list[float]:
         """Create discrete action grid from min to max with given step size."""
         actions = []
         current = self.min_action
@@ -399,7 +400,7 @@ class QLearning:
 
     def _get_state(
         self, price: float, quantity: float, my_action: float
-    ) -> Tuple[int, int, int]:
+    ) -> tuple[int, int, int]:
         """Convert continuous state variables to discrete state tuple."""
         price_bin = self._bin_value(
             price, self._price_range[0], self._price_range[1], self.price_bins
@@ -415,7 +416,7 @@ class QLearning:
         )
         return (price_bin, quantity_bin, action_bin)
 
-    def _get_q_values_for_state(self, state: Tuple[int, int, int]) -> List[float]:
+    def _get_q_values_for_state(self, state: tuple[int, int, int]) -> list[float]:
         """Get Q-values for a given state, initializing if needed."""
         if state not in self.q_table:
             self.q_table[state] = [0.0] * self.num_actions
@@ -423,10 +424,10 @@ class QLearning:
 
     def _update_q_value(
         self,
-        state: Tuple[int, int, int],
+        state: tuple[int, int, int],
         action_index: int,
         reward: float,
-        next_state: Tuple[int, int, int],
+        next_state: tuple[int, int, int],
     ) -> None:
         """Update Q-value using Q-learning rule: Q[s,a] ← (1-α)Q[s,a] + α(r + γ·max Q[s',·])."""
         q_values = self._get_q_values_for_state(state)
@@ -450,7 +451,7 @@ class QLearning:
             self.epsilon_min, self._current_epsilon * self.epsilon_decay
         )
 
-    def _choose_action(self, state: Tuple[int, int, int]) -> float:
+    def _choose_action(self, state: tuple[int, int, int]) -> float:
         """Choose action using ε-greedy policy."""
         q_values = self._get_q_values_for_state(state)
 
@@ -473,10 +474,10 @@ class QLearning:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using Q-learning with ε-greedy policy.
 
@@ -569,7 +570,7 @@ class QLearning:
         min_bound, max_bound = bounds
         return max(min_bound, min(max_bound, action))
 
-    def get_q_table(self) -> Dict[Tuple[int, int, int], List[float]]:
+    def get_q_table(self) -> dict[tuple[int, int, int], list[float]]:
         """Get current Q-table."""
         return {state: values.copy() for state, values in self.q_table.items()}
 
@@ -577,7 +578,7 @@ class QLearning:
         """Get current exploration rate."""
         return self._current_epsilon
 
-    def get_action_grid(self) -> List[float]:
+    def get_action_grid(self) -> list[float]:
         """Get the discrete action grid."""
         return self.action_grid.copy()
 
@@ -603,7 +604,7 @@ class EpsilonGreedy:
     decay_rate: float = 0.95  # ε decay rate per round
 
     # Optional parameters
-    seed: Optional[int] = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         """Validate parameters and initialize Q-values and action grid."""
@@ -638,9 +639,9 @@ class EpsilonGreedy:
         self._current_epsilon = self.epsilon_0
 
         # Track previous action for Q-value updates
-        self._previous_action_index: Optional[int] = None
+        self._previous_action_index: int | None = None
 
-    def _create_action_grid(self) -> List[float]:
+    def _create_action_grid(self) -> list[float]:
         """Create discrete action grid from min to max with given step size."""
         actions = []
         current = self.min_action
@@ -683,10 +684,10 @@ class EpsilonGreedy:
     def next_action(
         self,
         round_num: int,
-        my_history: Sequence[Union[CournotResult, BertrandResult]],
-        rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]],
-        bounds: Tuple[float, float],
-        market_params: Dict[str, Any],
+        my_history: Sequence[CournotResult | BertrandResult],
+        rival_histories: list[Sequence[CournotResult | BertrandResult]],
+        bounds: tuple[float, float],
+        market_params: dict[str, Any],
     ) -> float:
         """Calculate next action using ε-greedy policy.
 
@@ -728,7 +729,7 @@ class EpsilonGreedy:
         min_bound, max_bound = bounds
         return max(min_bound, min(max_bound, action))
 
-    def get_q_values(self) -> List[float]:
+    def get_q_values(self) -> list[float]:
         """Get current Q-values for all actions."""
         return self.q_values.copy()
 
@@ -736,6 +737,6 @@ class EpsilonGreedy:
         """Get current exploration rate."""
         return self._current_epsilon
 
-    def get_action_grid(self) -> List[float]:
+    def get_action_grid(self) -> list[float]:
         """Get the discrete action grid."""
         return self.action_grid.copy()

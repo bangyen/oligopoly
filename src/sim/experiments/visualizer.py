@@ -5,7 +5,6 @@ focusing on profits, HHI, and collusion dynamics.
 """
 
 from pathlib import Path
-from typing import List, Optional
 
 import pandas as pd
 import plotly.express as px
@@ -18,7 +17,7 @@ class ExperimentVisualizer:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def generate_all_plots(self, csv_path: str) -> List[str]:
+    def generate_all_plots(self, csv_path: str) -> list[str]:
         """Generate a standard suite of plots from a result CSV."""
         df = pd.read_csv(csv_path)
         plot_paths = []
@@ -35,7 +34,7 @@ class ExperimentVisualizer:
 
         return [p for p in plot_paths if p is not None]
 
-    def plot_profit_by_strategy(self, df: pd.DataFrame) -> Optional[str]:
+    def plot_profit_by_strategy(self, df: pd.DataFrame) -> str | None:
         """Plot mean profits grouped by strategy types across experiments."""
         # Reshape data to long format for strategies if multiple firms
         # This is complex because we have firm_n_strategy and firm_n_profit
@@ -56,7 +55,7 @@ class ExperimentVisualizer:
         fig.write_html(str(output_path))
         return str(output_path)
 
-    def plot_market_power(self, df: pd.DataFrame) -> Optional[str]:
+    def plot_market_power(self, df: pd.DataFrame) -> str | None:
         """Scatter plot of HHI vs Average Price."""
         fig = px.scatter(
             df,
@@ -76,7 +75,7 @@ class ExperimentVisualizer:
         fig.write_html(str(output_path))
         return str(output_path)
 
-    def plot_cartel_dynamics(self, df: pd.DataFrame) -> Optional[str]:
+    def plot_cartel_dynamics(self, df: pd.DataFrame) -> str | None:
         """Plot defection rates and cartel duration."""
         if "total_defections" not in df.columns:
             return None

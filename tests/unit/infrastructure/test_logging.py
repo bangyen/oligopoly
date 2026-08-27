@@ -2,7 +2,7 @@
 
 import logging
 
-from src.sim.logging import get_logger
+from sim.logging import get_logger
 
 
 class TestGetLogger:

@@ -7,7 +7,6 @@ behavior and market outcomes according to economic policy interventions.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Union
 
 from ..games.bertrand import BertrandResult
 from ..games.cournot import CournotResult
@@ -45,7 +44,7 @@ class PolicyEvent:
             raise ValueError(f"Tax rate must be less than 1.0, got {self.value}")
 
 
-def apply_tax_shock(profits: List[float], tax_rate: float) -> List[float]:
+def apply_tax_shock(profits: list[float], tax_rate: float) -> list[float]:
     """Apply a profit tax to all firms.
 
     Reduces each firm's profit by the tax rate: profit_t = profit_base * (1 - τ)
@@ -67,8 +66,8 @@ def apply_tax_shock(profits: List[float], tax_rate: float) -> List[float]:
 
 
 def apply_subsidy_shock(
-    profits: List[float], quantities: List[float], subsidy_per_unit: float
-) -> List[float]:
+    profits: list[float], quantities: list[float], subsidy_per_unit: float
+) -> list[float]:
     """Apply a per-unit subsidy to all firms.
 
     Increases each firm's profit by the subsidy amount: profit_t = profit_base + σ * qty
@@ -98,10 +97,10 @@ def apply_subsidy_shock(
 
 
 def apply_price_cap_shock(
-    result: Union[CournotResult, BertrandResult],
+    result: CournotResult | BertrandResult,
     price_cap: float,
-    costs: List[float],
-) -> Union[CournotResult, BertrandResult]:
+    costs: list[float],
+) -> CournotResult | BertrandResult:
     """Apply a price cap to market prices.
 
     If the unconstrained market price exceeds the cap, sets price to cap
@@ -157,10 +156,10 @@ def apply_price_cap_shock(
 
 
 def apply_policy_shock(
-    result: Union[CournotResult, BertrandResult],
+    result: CournotResult | BertrandResult,
     event: PolicyEvent,
-    costs: List[float],
-) -> Union[CournotResult, BertrandResult]:
+    costs: list[float],
+) -> CournotResult | BertrandResult:
     """Apply a policy shock to simulation results.
 
     Applies the specified policy intervention to modify firm profits or market prices
@@ -218,7 +217,7 @@ def apply_policy_shock(
         raise ValueError(f"Unsupported policy type: {event.policy_type}")
 
 
-def validate_policy_events(events: List[PolicyEvent], total_rounds: int) -> None:
+def validate_policy_events(events: list[PolicyEvent], total_rounds: int) -> None:
     """Validate a list of policy events.
 
     Ensures all events have valid round indices and policy parameters.

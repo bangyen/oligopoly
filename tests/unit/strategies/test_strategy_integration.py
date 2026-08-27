@@ -1,15 +1,15 @@
 """Test strategy integration with simulation framework."""
 
-from typing import List, Sequence, Union
+from collections.abc import Sequence
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import RandomWalk, Static, Strategy, TitForTat
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import RandomWalk, Static, Strategy, TitForTat
 
 
 def test_strategy_integration() -> None:
     """Test that different strategies produce different behaviors in multi-round simulation."""
-    strategies: List[Strategy] = [
+    strategies: list[Strategy] = [
         Static(value=5.0),
         TitForTat(),
         RandomWalk(step=1.0, min_bound=0.0, max_bound=10.0, seed=42),
@@ -19,7 +19,7 @@ def test_strategy_integration() -> None:
     rounds = 5
 
     # Simulate multiple rounds manually
-    trajectories: List[List[float]] = [[] for _ in strategies]
+    trajectories: list[list[float]] = [[] for _ in strategies]
 
     for round_num in range(rounds):
         round_actions = []
@@ -27,7 +27,7 @@ def test_strategy_integration() -> None:
         for firm_idx, strategy in enumerate(strategies):
             # Build histories for this firm
             my_history = []
-            rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]] = []
+            rival_histories: list[Sequence[CournotResult | BertrandResult]] = []
 
             if round_num > 0:
                 # Add previous results to histories
@@ -96,13 +96,13 @@ def test_strategy_integration() -> None:
 
 def test_strategy_integration_different_seeds() -> None:
     """Test that different seeds produce different RandomWalk trajectories."""
-    strategies1: List[Strategy] = [
+    strategies1: list[Strategy] = [
         Static(value=5.0),
         TitForTat(),
         RandomWalk(step=1.0, min_bound=0.0, max_bound=10.0, seed=123),
     ]
 
-    strategies2: List[Strategy] = [
+    strategies2: list[Strategy] = [
         Static(value=5.0),
         TitForTat(),
         RandomWalk(step=1.0, min_bound=0.0, max_bound=10.0, seed=456),
@@ -112,8 +112,8 @@ def test_strategy_integration_different_seeds() -> None:
     rounds = 5
 
     # Simulate both sets of strategies
-    trajectories1: List[List[float]] = [[] for _ in strategies1]
-    trajectories2: List[List[float]] = [[] for _ in strategies2]
+    trajectories1: list[list[float]] = [[] for _ in strategies1]
+    trajectories2: list[list[float]] = [[] for _ in strategies2]
 
     for round_num in range(rounds):
         for strategies, trajectories in [
@@ -122,9 +122,7 @@ def test_strategy_integration_different_seeds() -> None:
         ]:
             for firm_idx, strategy in enumerate(strategies):
                 my_history = []
-                rival_histories: List[
-                    Sequence[Union[CournotResult, BertrandResult]]
-                ] = []
+                rival_histories: list[Sequence[CournotResult | BertrandResult]] = []
 
                 if round_num > 0:
                     # Add previous results to histories
@@ -172,7 +170,7 @@ def test_strategy_integration_different_seeds() -> None:
 
 def test_strategy_integration_mixed_bounds() -> None:
     """Test integration with different bound ranges."""
-    strategies: List[Strategy] = [
+    strategies: list[Strategy] = [
         Static(value=7.5),
         TitForTat(),
         RandomWalk(step=0.5, min_bound=0.0, max_bound=15.0, seed=789),
@@ -182,12 +180,12 @@ def test_strategy_integration_mixed_bounds() -> None:
     rounds = 8
 
     # Simulate multiple rounds
-    trajectories: List[List[float]] = [[] for _ in strategies]
+    trajectories: list[list[float]] = [[] for _ in strategies]
 
     for round_num in range(rounds):
         for firm_idx, strategy in enumerate(strategies):
             my_history = []
-            rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]] = []
+            rival_histories: list[Sequence[CournotResult | BertrandResult]] = []
 
             if round_num > 0:
                 # Add previous results to histories

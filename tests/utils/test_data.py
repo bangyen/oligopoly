@@ -4,10 +4,10 @@ This module provides common test data configurations and fixtures
 for consistent testing across the codebase.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
-def create_sample_bertrand_config() -> Dict[str, Any]:
+def create_sample_bertrand_config() -> dict[str, Any]:
     """Create a standard Bertrand test configuration.
 
     Returns:
@@ -21,7 +21,7 @@ def create_sample_bertrand_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_cournot_config() -> Dict[str, Any]:
+def create_sample_cournot_config() -> dict[str, Any]:
     """Create a standard Cournot test configuration.
 
     Returns:
@@ -35,7 +35,7 @@ def create_sample_cournot_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_bertrand_cli_config() -> Dict[str, Any]:
+def create_sample_bertrand_cli_config() -> dict[str, Any]:
     """Create a standard Bertrand CLI test configuration.
 
     Returns:
@@ -52,7 +52,7 @@ def create_sample_bertrand_cli_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_cournot_cli_config() -> Dict[str, Any]:
+def create_sample_cournot_cli_config() -> dict[str, Any]:
     """Create a standard Cournot CLI test configuration.
 
     Returns:
@@ -67,7 +67,7 @@ def create_sample_cournot_cli_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_strategy_config() -> Dict[str, Any]:
+def create_sample_strategy_config() -> dict[str, Any]:
     """Create a standard strategy test configuration.
 
     Returns:
@@ -82,7 +82,7 @@ def create_sample_strategy_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_experiment_config() -> Dict[str, Any]:
+def create_sample_experiment_config() -> dict[str, Any]:
     """Create a standard experiment test configuration.
 
     Returns:
@@ -102,7 +102,7 @@ def create_sample_experiment_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_policy_config() -> Dict[str, Any]:
+def create_sample_policy_config() -> dict[str, Any]:
     """Create a standard policy test configuration.
 
     Returns:
@@ -127,7 +127,7 @@ def create_sample_policy_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_segmented_demand_config() -> Dict[str, Any]:
+def create_sample_segmented_demand_config() -> dict[str, Any]:
     """Create a standard segmented demand test configuration.
 
     Returns:
@@ -144,7 +144,7 @@ def create_sample_segmented_demand_config() -> Dict[str, Any]:
     }
 
 
-def create_sample_collusion_config() -> Dict[str, Any]:
+def create_sample_collusion_config() -> dict[str, Any]:
     """Create a standard collusion test configuration.
 
     Returns:

@@ -1,6 +1,6 @@
 """Test TitForTat first round behavior."""
 
-from src.sim.strategies.strategies import TitForTat
+from sim.strategies.strategies import TitForTat
 
 
 def test_titfortat_first_round() -> None:

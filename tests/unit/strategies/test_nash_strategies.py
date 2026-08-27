@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from src.sim.strategies.nash_strategies import (
+from sim.strategies.nash_strategies import (
     adaptive_nash_strategy,
     bertrand_best_response,
     bertrand_nash_equilibrium,

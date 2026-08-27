@@ -6,8 +6,8 @@ that ensure economic consistency across all stages.
 
 import pytest
 
-from src.sim.validation.economic_validation import EconomicValidationError
-from src.sim.validation.simulation_validation import (
+from sim.validation.economic_validation import EconomicValidationError
+from sim.validation.simulation_validation import (
     check_economic_plausibility,
     sanitize_simulation_results,
     validate_round_results,

@@ -8,10 +8,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.sim.models.models import Base, Event, Run
-from src.sim.policy.policy_shocks import PolicyEvent, PolicyType
-from src.sim.runners.strategy_runner import run_strategy_game
-from src.sim.strategies.strategies import RandomWalk, Static, TitForTat
+from sim.models.models import Base, Event, Run
+from sim.policy.policy_shocks import PolicyEvent, PolicyType
+from sim.runners.strategy_runner import run_strategy_game
+from sim.strategies.strategies import RandomWalk, Static, TitForTat
 
 
 class TestStrategyRunnerWorkflow:
@@ -58,7 +58,7 @@ class TestStrategyRunnerWorkflow:
         assert run.rounds == 10
 
         # Verify that static strategies maintain consistent actions
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
 
@@ -142,7 +142,7 @@ class TestStrategyRunnerWorkflow:
         assert run is not None
 
         # Check that RandomWalk strategies explore different actions
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
 
@@ -182,7 +182,7 @@ class TestStrategyRunnerWorkflow:
         assert run.model == "bertrand"
 
         # Check that strategies work in Bertrand context
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
 
@@ -258,7 +258,7 @@ class TestStrategyRunnerWorkflow:
         assert run is not None
 
         # Check that all strategies participated
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
         assert len(results["results"]) == 25
@@ -298,7 +298,7 @@ class TestStrategyRunnerWorkflow:
         assert run is not None
 
         # Check that all actions are within bounds
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
 
@@ -343,7 +343,7 @@ class TestStrategyRunnerWorkflow:
         )
 
         # Results should be identical (within reasonable tolerance for RandomWalk)
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results_1 = get_run_results(run_id_1, db_session)
         results_2 = get_run_results(run_id_2, db_session)
@@ -384,7 +384,7 @@ class TestStrategyRunnerWorkflow:
         assert run is not None
 
         # Check performance metrics
-        from src.sim.runners.runner import get_run_results
+        from sim.runners.runner import get_run_results
 
         results = get_run_results(run_id, db_session)
 

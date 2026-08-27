@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.sim.models.market_evolution import (
+from sim.models.market_evolution import (
     FirmEvolution,
     MarketEvolutionConfig,
     MarketEvolutionEngine,

@@ -6,7 +6,7 @@ and must split the market demand equally.
 
 import pytest
 
-from src.sim.games.bertrand import bertrand_simulation
+from sim.games.bertrand import bertrand_simulation
 
 
 class TestBertrandTie:

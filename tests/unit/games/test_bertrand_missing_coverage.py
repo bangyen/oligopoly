@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.sim.games.bertrand import (
+from sim.games.bertrand import (
     BertrandResult,
     allocate_demand,
     calculate_demand,

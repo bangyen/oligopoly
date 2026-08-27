@@ -8,7 +8,6 @@ Supports both single-segment and multi-segment demand models.
 
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 from ..models.models import SegmentedDemand
 from ..validation.economic_validation import (
@@ -34,16 +33,16 @@ class BertrandResult:
     """
 
     total_demand: float
-    prices: List[float]
-    quantities: List[float]
-    profits: List[float]
+    prices: list[float]
+    quantities: list[float]
+    profits: list[float]
 
     def __repr__(self) -> str:
         """String representation for debugging and output."""
         return f"BertrandResult(demand={self.total_demand}, prices={self.prices}, quantities={self.quantities}, profits={self.profits})"
 
 
-def validate_prices(prices: List[float]) -> None:
+def validate_prices(prices: list[float]) -> None:
     """Validate that all prices are non-negative.
 
     Args:
@@ -72,12 +71,12 @@ def calculate_demand(alpha: float, beta: float, price: float) -> float:
 
 
 def allocate_demand(
-    prices: List[float],
-    costs: List[float],
+    prices: list[float],
+    costs: list[float],
     alpha: float,
     beta: float,
     use_capacity_constraints: bool = True,
-) -> Tuple[List[float], float]:
+) -> tuple[list[float], float]:
     """Allocate market demand among firms based on Bertrand competition.
 
     Uses a more realistic allocation that considers capacity constraints and
@@ -185,8 +184,8 @@ def allocate_demand(
 
 
 def allocate_segmented_demand(
-    prices: List[float], costs: List[float], segmented_demand: SegmentedDemand
-) -> Tuple[List[float], float]:
+    prices: list[float], costs: list[float], segmented_demand: SegmentedDemand
+) -> tuple[list[float], float]:
     """Allocate segmented market demand among firms based on Bertrand competition.
 
     Each segment chooses the firm with the lowest price (ties split equally).
@@ -236,10 +235,10 @@ def allocate_segmented_demand(
 def bertrand_simulation(
     alpha: float,
     beta: float,
-    costs: List[float],
-    prices: List[float],
-    fixed_costs: Optional[List[float]] = None,
-    capacity_limits: Optional[List[float]] = None,
+    costs: list[float],
+    prices: list[float],
+    fixed_costs: list[float] | None = None,
+    capacity_limits: list[float] | None = None,
     use_capacity_constraints: bool = True,
 ) -> BertrandResult:
     """Run a one-round Bertrand oligopoly simulation.
@@ -394,9 +393,9 @@ def bertrand_simulation(
 
 def bertrand_segmented_simulation(
     segmented_demand: SegmentedDemand,
-    costs: List[float],
-    prices: List[float],
-    fixed_costs: Optional[List[float]] = None,
+    costs: list[float],
+    prices: list[float],
+    fixed_costs: list[float] | None = None,
 ) -> BertrandResult:
     """Run a one-round Bertrand oligopoly simulation with segmented demand.
 

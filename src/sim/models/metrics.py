@@ -6,10 +6,9 @@ surplus for welfare analysis in oligopoly simulations.
 """
 
 import math
-from typing import List, Tuple
 
 
-def calculate_hhi(market_shares: List[float]) -> float:
+def calculate_hhi(market_shares: list[float]) -> float:
     """Calculate Herfindahl-Hirschman Index (HHI) for market concentration.
 
     HHI measures market concentration by summing the squares of market shares.
@@ -43,7 +42,7 @@ def calculate_hhi(market_shares: List[float]) -> float:
     return hhi
 
 
-def calculate_market_shares_cournot(quantities: List[float]) -> List[float]:
+def calculate_market_shares_cournot(quantities: list[float]) -> list[float]:
     """Calculate market shares from quantities in Cournot competition.
 
     In Cournot competition, market share is quantity share: q_i / sum(q_j).
@@ -77,8 +76,8 @@ def calculate_market_shares_cournot(quantities: List[float]) -> List[float]:
 
 
 def calculate_market_shares_bertrand(
-    prices: List[float], quantities: List[float]
-) -> List[float]:
+    prices: list[float], quantities: list[float]
+) -> list[float]:
     """Calculate market shares from revenue in Bertrand competition.
 
     In Bertrand competition, market share is revenue share: (p_i * q_i) / sum(p_j * q_j).
@@ -161,8 +160,8 @@ def calculate_consumer_surplus(
 
 
 def calculate_round_metrics_cournot(
-    quantities: List[float], market_price: float, demand_a: float
-) -> Tuple[float, float]:
+    quantities: list[float], market_price: float, demand_a: float
+) -> tuple[float, float]:
     """Calculate HHI and consumer surplus for a Cournot round.
 
     Args:
@@ -187,11 +186,11 @@ def calculate_round_metrics_cournot(
 
 
 def calculate_round_metrics_bertrand(
-    prices: List[float],
-    quantities: List[float],
+    prices: list[float],
+    quantities: list[float],
     total_demand: float,
     demand_alpha: float,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Calculate HHI and consumer surplus for a Bertrand round.
 
     Args:

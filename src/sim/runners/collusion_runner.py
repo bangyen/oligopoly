@@ -5,7 +5,8 @@ defection mechanisms, and regulatory interventions. It integrates with the
 collusion manager to track cartel behavior and regulatory responses.
 """
 
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -26,13 +27,13 @@ from ..strategies.strategies import Strategy
 def run_collusion_game(
     model: str,
     rounds: int,
-    strategies: List[Strategy],
-    costs: List[float],
-    params: Dict[str, Any],
-    bounds: Tuple[float, float],
+    strategies: list[Strategy],
+    costs: list[float],
+    params: dict[str, Any],
+    bounds: tuple[float, float],
     db: Session,
-    collusion_config: Optional[Dict[str, Any]] = None,
-    seed: Optional[int] = None,
+    collusion_config: dict[str, Any] | None = None,
+    seed: int | None = None,
 ) -> str:
     """Run a multi-round oligopoly simulation with collusion dynamics.
 
@@ -104,7 +105,7 @@ def run_collusion_game(
 
     try:
         # Initialize firm histories
-        firm_histories: List[List[Union[CournotResult, BertrandResult]]] = [
+        firm_histories: list[list[CournotResult | BertrandResult]] = [
             [] for _ in strategies
         ]
 
@@ -123,9 +124,9 @@ def run_collusion_game(
             actions = []
             for firm_idx, strategy in enumerate(strategies):
                 # Build rival histories (exclude current firm)
-                rival_histories: List[
-                    Sequence[Union[CournotResult, BertrandResult]]
-                ] = [firm_histories[i] for i in range(len(strategies)) if i != firm_idx]
+                rival_histories: list[Sequence[CournotResult | BertrandResult]] = [
+                    firm_histories[i] for i in range(len(strategies)) if i != firm_idx
+                ]
 
                 # Handle collusion-aware strategies
                 if isinstance(
@@ -157,7 +158,7 @@ def run_collusion_game(
 
             # Run simulation round
             if model == "cournot":
-                result: Union[CournotResult, BertrandResult] = _run_cournot_round(
+                result: CournotResult | BertrandResult = _run_cournot_round(
                     params, costs, actions
                 )
             else:  # bertrand
@@ -325,7 +326,7 @@ def run_collusion_game(
 
 
 def _run_cournot_round(
-    params: Dict[str, Any], costs: List[float], quantities: List[float]
+    params: dict[str, Any], costs: list[float], quantities: list[float]
 ) -> CournotResult:
     """Run a single Cournot round."""
     a = params.get("a", 100.0)
@@ -334,7 +335,7 @@ def _run_cournot_round(
 
 
 def _run_bertrand_round(
-    params: Dict[str, Any], costs: List[float], prices: List[float]
+    params: dict[str, Any], costs: list[float], prices: list[float]
 ) -> BertrandResult:
     """Run a single Bertrand round."""
     alpha = params.get("alpha", 100.0)
@@ -342,7 +343,7 @@ def _run_bertrand_round(
     return bertrand_simulation(alpha, beta, costs, prices)
 
 
-def get_collusion_run_results(run_id: str, db: Session) -> Dict[str, Any]:
+def get_collusion_run_results(run_id: str, db: Session) -> dict[str, Any]:
     """Get results for a collusion simulation run including events.
 
     Args:
@@ -376,7 +377,7 @@ def get_collusion_run_results(run_id: str, db: Session) -> Dict[str, Any]:
     )
 
     # Organize results by round and firm
-    rounds_data: Dict[int, Dict[int, Dict[str, float]]] = {}
+    rounds_data: dict[int, dict[int, dict[str, float]]] = {}
     for result in results:
         round_idx = int(result.round_idx)
         firm_id = int(result.firm_id)
@@ -392,7 +393,7 @@ def get_collusion_run_results(run_id: str, db: Session) -> Dict[str, Any]:
         }
 
     # Organize events by round
-    events_data: Dict[int, List[Dict[str, Any]]] = {}
+    events_data: dict[int, list[dict[str, Any]]] = {}
     for event in events:
         round_idx = int(event.round_idx)
         if round_idx not in events_data:
@@ -428,7 +429,7 @@ def create_collusion_simulation_config(
     penalty_amount: float = 100.0,
     price_cap_multiplier: float = 0.9,
     auto_form_cartel: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a configuration dictionary for collusion simulation.
 
     Args:

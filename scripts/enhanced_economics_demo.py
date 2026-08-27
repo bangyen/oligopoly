@@ -9,10 +9,6 @@ This script demonstrates the new economic features including:
 - Enhanced profit calculations
 """
 
-import os
-import sys
-
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from sim.games.enhanced_simulation import (
     EnhancedSimulationConfig,

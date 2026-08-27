@@ -10,14 +10,14 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session
 
-from src.sim.runners.collusion_runner import (
+from sim.runners.collusion_runner import (
     _run_bertrand_round,
     _run_cournot_round,
     create_collusion_simulation_config,
     get_collusion_run_results,
     run_collusion_game,
 )
-from src.sim.strategies.strategies import Strategy
+from sim.strategies.strategies import Strategy
 
 
 class TestRunCournotRound:
@@ -381,19 +381,19 @@ class TestRunCollusionGame:
         params = {"a": 100.0, "b": 1.0}
         bounds = (0.0, 100.0)
 
-        with patch("src.sim.runners.collusion_runner.Run") as mock_run_class:
+        with patch("sim.runners.collusion_runner.Run") as mock_run_class:
             mock_run_class.return_value = mock_run
             with patch(
-                "src.sim.runners.collusion_runner.CollusionManager"
+                "sim.runners.collusion_runner.CollusionManager"
             ) as mock_collusion_manager:
                 with patch(
-                    "src.sim.runners.collusion_runner.EventLogger"
+                    "sim.runners.collusion_runner.EventLogger"
                 ) as mock_event_logger:
                     with patch(
-                        "src.sim.runners.collusion_runner.cournot_simulation"
+                        "sim.runners.collusion_runner.cournot_simulation"
                     ) as mock_cournot_sim:
                         # Mock cournot simulation result
-                        from src.sim.games.cournot import CournotResult
+                        from sim.games.cournot import CournotResult
 
                         mock_result = Mock(spec=CournotResult)
                         mock_result.price = 50.0
@@ -450,19 +450,19 @@ class TestRunCollusionGame:
         params = {"alpha": 200.0, "beta": 2.0}
         bounds = (0.0, 200.0)
 
-        with patch("src.sim.runners.collusion_runner.Run") as mock_run_class:
+        with patch("sim.runners.collusion_runner.Run") as mock_run_class:
             mock_run_class.return_value = mock_run
             with patch(
-                "src.sim.runners.collusion_runner.CollusionManager"
+                "sim.runners.collusion_runner.CollusionManager"
             ) as mock_collusion_manager:
                 with patch(
-                    "src.sim.runners.collusion_runner.EventLogger"
+                    "sim.runners.collusion_runner.EventLogger"
                 ) as mock_event_logger:
                     with patch(
-                        "src.sim.runners.collusion_runner.bertrand_simulation"
+                        "sim.runners.collusion_runner.bertrand_simulation"
                     ) as mock_bertrand_sim:
                         # Mock bertrand simulation result
-                        from src.sim.games.bertrand import BertrandResult
+                        from sim.games.bertrand import BertrandResult
 
                         mock_result = Mock(spec=BertrandResult)
                         mock_result.prices = [50.0, 45.0]
@@ -528,19 +528,19 @@ class TestRunCollusionGame:
             "auto_form_cartel": True,
         }
 
-        with patch("src.sim.runners.collusion_runner.Run") as mock_run_class:
+        with patch("sim.runners.collusion_runner.Run") as mock_run_class:
             mock_run_class.return_value = mock_run
             with patch(
-                "src.sim.runners.collusion_runner.CollusionManager"
+                "sim.runners.collusion_runner.CollusionManager"
             ) as mock_collusion_manager:
                 with patch(
-                    "src.sim.runners.collusion_runner.EventLogger"
+                    "sim.runners.collusion_runner.EventLogger"
                 ) as mock_event_logger:
                     with patch(
-                        "src.sim.runners.collusion_runner.cournot_simulation"
+                        "sim.runners.collusion_runner.cournot_simulation"
                     ) as mock_cournot_sim:
                         # Mock cournot simulation result
-                        from src.sim.games.cournot import CournotResult
+                        from sim.games.cournot import CournotResult
 
                         mock_result = Mock(spec=CournotResult)
                         mock_result.price = 50.0
@@ -594,7 +594,7 @@ class TestRunCollusionGame:
         mock_db.commit.return_value = None
 
         # Mock collusion-aware strategy
-        from src.sim.strategies.collusion_strategies import CollusiveStrategy
+        from sim.strategies.collusion_strategies import CollusiveStrategy
 
         mock_collusive_strategy = Mock(spec=CollusiveStrategy)
         mock_collusive_strategy.next_action.return_value = 20.0
@@ -604,19 +604,19 @@ class TestRunCollusionGame:
         params = {"a": 100.0, "b": 1.0}
         bounds = (0.0, 100.0)
 
-        with patch("src.sim.runners.collusion_runner.Run") as mock_run_class:
+        with patch("sim.runners.collusion_runner.Run") as mock_run_class:
             mock_run_class.return_value = mock_run
             with patch(
-                "src.sim.runners.collusion_runner.CollusionManager"
+                "sim.runners.collusion_runner.CollusionManager"
             ) as mock_collusion_manager:
                 with patch(
-                    "src.sim.runners.collusion_runner.EventLogger"
+                    "sim.runners.collusion_runner.EventLogger"
                 ) as mock_event_logger:
                     with patch(
-                        "src.sim.runners.collusion_runner.cournot_simulation"
+                        "sim.runners.collusion_runner.cournot_simulation"
                     ) as mock_cournot_sim:
                         # Mock cournot simulation result
-                        from src.sim.games.cournot import CournotResult
+                        from sim.games.cournot import CournotResult
 
                         mock_result = Mock(spec=CournotResult)
                         mock_result.price = 50.0
@@ -667,7 +667,7 @@ class TestRunCollusionGame:
         mock_db.commit.return_value = None
 
         # Mock opportunistic strategy
-        from src.sim.strategies.collusion_strategies import OpportunisticStrategy
+        from sim.strategies.collusion_strategies import OpportunisticStrategy
 
         mock_opportunistic_strategy = Mock(spec=OpportunisticStrategy)
         mock_opportunistic_strategy.next_action.return_value = 20.0
@@ -677,19 +677,19 @@ class TestRunCollusionGame:
         params = {"a": 100.0, "b": 1.0}
         bounds = (0.0, 100.0)
 
-        with patch("src.sim.runners.collusion_runner.Run") as mock_run_class:
+        with patch("sim.runners.collusion_runner.Run") as mock_run_class:
             mock_run_class.return_value = mock_run
             with patch(
-                "src.sim.runners.collusion_runner.CollusionManager"
+                "sim.runners.collusion_runner.CollusionManager"
             ) as mock_collusion_manager:
                 with patch(
-                    "src.sim.runners.collusion_runner.EventLogger"
+                    "sim.runners.collusion_runner.EventLogger"
                 ) as mock_event_logger:
                     with patch(
-                        "src.sim.runners.collusion_runner.cournot_simulation"
+                        "sim.runners.collusion_runner.cournot_simulation"
                     ) as mock_cournot_sim:
                         # Mock cournot simulation result
-                        from src.sim.games.cournot import CournotResult
+                        from sim.games.cournot import CournotResult
 
                         mock_result = Mock(spec=CournotResult)
                         mock_result.price = 50.0
@@ -753,19 +753,19 @@ class TestRunCollusionGame:
         bounds = (0.0, 100.0)
         collusion_config = {"auto_form_cartel": True}
 
-        with patch("src.sim.runners.collusion_runner.Run") as mock_run_class:
+        with patch("sim.runners.collusion_runner.Run") as mock_run_class:
             mock_run_class.return_value = mock_run
             with patch(
-                "src.sim.runners.collusion_runner.CollusionManager"
+                "sim.runners.collusion_runner.CollusionManager"
             ) as mock_collusion_manager:
                 with patch(
-                    "src.sim.runners.collusion_runner.EventLogger"
+                    "sim.runners.collusion_runner.EventLogger"
                 ) as mock_event_logger:
                     with patch(
-                        "src.sim.runners.collusion_runner.cournot_simulation"
+                        "sim.runners.collusion_runner.cournot_simulation"
                     ) as mock_cournot_sim:
                         # Mock cournot simulation result
-                        from src.sim.games.cournot import CournotResult
+                        from sim.games.cournot import CournotResult
 
                         mock_result = Mock(spec=CournotResult)
                         mock_result.price = 50.0
@@ -824,11 +824,9 @@ class TestRunCollusionGame:
         bounds = (0.0, 100.0)
 
         with patch(
-            "src.sim.runners.collusion_runner.CollusionManager"
+            "sim.runners.collusion_runner.CollusionManager"
         ) as mock_collusion_manager:
-            with patch(
-                "src.sim.runners.collusion_runner.EventLogger"
-            ) as mock_event_logger:
+            with patch("sim.runners.collusion_runner.EventLogger") as mock_event_logger:
                 # Mock collusion manager
                 mock_collusion_mgr = Mock()
                 mock_collusion_mgr.is_cartel_active.return_value = False

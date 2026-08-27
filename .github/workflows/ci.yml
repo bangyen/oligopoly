@@ -55,8 +55,6 @@ jobs:
       - name: Wait for services to be ready
         run: |
           echo "Waiting for services to start..."
-          sleep 30
-          
           # Check database health
           echo "Checking database health..."
           timeout 60 bash -c 'until docker compose -f deployment/docker-compose.yml exec -T db pg_isready -U user -d oligopoly; do sleep 2; done'
@@ -125,88 +123,56 @@ jobs:
           
           echo "All e2e tests passed!"
 
-      - name: Generate dashboard screenshot
+      - name: Smoke-test dashboard
         run: |
-          echo "Generating dashboard screenshot..."
-          
-          # Install dependencies for screenshot generation
-          pip install selenium webdriver-manager pillow
-          
-          # Install Flask and dependencies
+          echo "Starting FastAPI dashboard..."
           pip install -e .
-          
-          # Start Flask dashboard in background
-          cd dashboard
-          python main.py &
+          python dashboard/main.py &
           DASHBOARD_PID=$!
-          cd ..
-          
-          # Wait for dashboard to start
-          sleep 10
-          
-          # Create screenshot script
-          cat > /tmp/screenshot.py << 'EOF'
-          from selenium import webdriver
-          from selenium.webdriver.chrome.options import Options
-          from selenium.webdriver.common.by import By
-          from selenium.webdriver.support.ui import WebDriverWait
-          from selenium.webdriver.support import expected_conditions as EC
-          import time
-          import os
-          
-          # Set up Chrome options
-          chrome_options = Options()
-          chrome_options.add_argument("--headless")
-          chrome_options.add_argument("--no-sandbox")
-          chrome_options.add_argument("--disable-dev-shm-usage")
-          chrome_options.add_argument("--window-size=1920,1080")
-          
-          # Create driver
-          driver = webdriver.Chrome(options=chrome_options)
-          
-          try:
-              # Navigate to Flask dashboard
-              driver.get("http://localhost:5050")
-              
-              # Wait for page to load
-              WebDriverWait(driver, 30).until(
-                  EC.presence_of_element_located((By.TAG_NAME, "body"))
-              )
-              
-              # Wait a bit more for charts to render
-              time.sleep(5)
-              
-              # Take screenshot
-              screenshot_path = "/tmp/dashboard_screenshot.png"
-              driver.save_screenshot(screenshot_path)
-              
-              # Check if screenshot was created
-              if os.path.exists(screenshot_path):
-                  print(f"Screenshot saved to {screenshot_path}")
-              else:
-                  print("ERROR: Screenshot was not created")
-                  
-          finally:
-              driver.quit()
-          EOF
-          
-          # Run screenshot script
-          python /tmp/screenshot.py
-          
-          # Stop dashboard
-          kill $DASHBOARD_PID 2>/dev/null || true
 
-      - name: Upload snapshot artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: e2e-snapshot-${{ github.run_number }}
-          path: |
-            /tmp/dashboard_screenshot.png
-          retention-days: 30
+          # Poll until the dashboard answers instead of sleeping a fixed time
+          timeout 60 bash -c 'until curl -sf http://localhost:5050 >/dev/null; do sleep 2; done'
+
+          # Assert the page actually rendered, so this step can fail
+          BODY=$(curl -sf http://localhost:5050)
+          echo "$BODY" | head -c 400
+          if ! echo "$BODY" | grep -qi "<html"; then
+            echo "ERROR: dashboard did not return an HTML page"
+            kill $DASHBOARD_PID 2>/dev/null || true
+            exit 1
+          fi
+          echo "Dashboard smoke test passed!"
+
+          kill $DASHBOARD_PID 2>/dev/null || true
 
       - name: Cleanup
         if: always()
         run: |
           cd deployment
           docker compose down -v
+
+  packaging:
+    runs-on: ubuntu-latest
+    needs: quality
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build wheel and verify it installs standalone
+        run: |
+          # Guards against imports that only resolve via an editable install
+          # (e.g. "from src.sim..."), missing __init__.py in shipped
+          # subpackages, and console scripts pointing at names that do not exist.
+          uv build --wheel -o dist
+          uv venv /tmp/wheelcheck
+          uv pip install --python /tmp/wheelcheck/bin/python dist/*.whl
+          /tmp/wheelcheck/bin/python scripts/ci/check_wheel.py

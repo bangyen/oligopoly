@@ -7,15 +7,15 @@ proper storage and retrieval of simulation data.
 import atexit
 import os
 import tempfile
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.sim.models.models import Base, Result, Round, Run
-from src.sim.runners.runner import get_run_results, run_game
+from sim.models.models import Base, Result, Round, Run
+from sim.runners.runner import get_run_results, run_game
 
 # Create temporary database file
 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".db")

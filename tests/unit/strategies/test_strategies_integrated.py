@@ -6,13 +6,13 @@ existing Cournot and Bertrand simulation framework.
 """
 
 import math
-from typing import List, Sequence, Union
+from collections.abc import Sequence
 
 import pytest
 
-from src.sim.games.bertrand import BertrandResult
-from src.sim.games.cournot import CournotResult
-from src.sim.strategies.strategies import (
+from sim.games.bertrand import BertrandResult
+from sim.games.cournot import CournotResult
+from sim.strategies.strategies import (
     RandomWalk,
     Static,
     Strategy,
@@ -162,10 +162,10 @@ class TestRandomWalkStrategy:
         # Run 100 steps and verify all actions are within bounds
         current_action = None
         for round_num in range(100):
-            my_history: List[Union[CournotResult, BertrandResult]] = []
+            my_history: list[CournotResult | BertrandResult] = []
             if current_action is not None:
                 # Create a mock result with the current action
-                result: Union[CournotResult, BertrandResult]
+                result: CournotResult | BertrandResult
                 if round_num % 2 == 0:
                     result = CournotResult(
                         price=10.0, quantities=[current_action], profits=[50.0]
@@ -210,8 +210,8 @@ class TestRandomWalkStrategy:
         strategy2 = RandomWalk(step=1.0, min_bound=0.0, max_bound=10.0, seed=123)
 
         # Run both strategies and compare results
-        actions1: List[float] = []
-        actions2: List[float] = []
+        actions1: list[float] = []
+        actions2: list[float] = []
 
         for round_num in range(10):
             my_history1 = []
@@ -307,7 +307,7 @@ class TestStrategyIntegration:
 
     def test_strategy_integration_basic(self) -> None:
         """Test that different strategies produce different actions."""
-        strategies: List[Strategy] = [
+        strategies: list[Strategy] = [
             Static(value=5.0),
             TitForTat(),
             RandomWalk(step=1.0, min_bound=0.0, max_bound=10.0, seed=42),
@@ -337,8 +337,8 @@ class TestStrategyIntegration:
 
         actions_round2 = []
         for i, strategy in enumerate(strategies):
-            my_history: List[Union[CournotResult, BertrandResult]] = []
-            rival_histories: List[Sequence[Union[CournotResult, BertrandResult]]] = []
+            my_history: list[CournotResult | BertrandResult] = []
+            rival_histories: list[Sequence[CournotResult | BertrandResult]] = []
 
             if i == 0:  # Static - no history needed
                 pass

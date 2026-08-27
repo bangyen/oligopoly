@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from sqlalchemy import create_engine
 
-from src.sim.experiments.runner import ExperimentConfig, ExperimentRunner
-from src.sim.models.models import Base
+from sim.experiments.runner import ExperimentConfig, ExperimentRunner
+from sim.models.models import Base
 
 
 @pytest.fixture

@@ -24,6 +24,14 @@ python -m scripts.strategy_demo
 
 Or open in Colab: [Colab Notebook](https://colab.research.google.com/github/bangyen/oligopoly/blob/main/oligopoly_demo.ipynb).
 
+Once installed, the package provides three console scripts:
+
+```bash
+oligopoly     # serve the REST API (http://localhost:8000)
+cournot       # run a one-off Cournot simulation
+bertrand      # run a one-off Bertrand simulation
+```
+
 ## Results
 
 | Capability | Description |
@@ -52,8 +60,9 @@ oligopoly/
 │   ├── sim/             # Simulation engine
 │   │   ├── games/       # Cournot & Bertrand models
 │   │   ├── strategies/  # Learning algorithms
-│   │   └── policy/      # Tax/subsidy interventions
-│   └── main.py          # Main FastAPI application
+│   │   ├── policy/      # Tax/subsidy interventions
+│   │   └── api.py       # FastAPI application
+│   └── ...
 ├── tests/               # Unit/integration tests (>80% coverage)
 └── oligopoly_demo.ipynb # Colab notebook demo
 ```
@@ -69,7 +78,7 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 | `src/sim/policy/` | `tests/unit/policy/` |
 | `src/sim/collusion.py` | `tests/unit/runners/` |
 | `src/sim/runners/` | `tests/unit/runners/` |
-| `src/main.py` | `tests/unit/api/` + `tests/integration/` |
+| `src/sim/api.py` | `tests/unit/api/` + `tests/integration/` |
 | `dashboard/main.py` | `tests/unit/heatmap/` + `tests/unit/infrastructure/` |
 
 ## Validation
