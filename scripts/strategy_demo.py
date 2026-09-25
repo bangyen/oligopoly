@@ -5,7 +5,6 @@ This script demonstrates how to use the three implemented strategies
 (Static, TitForTat, RandomWalk) in both Cournot and Bertrand models.
 """
 
-
 from sim.games.bertrand import BertrandResult
 from sim.games.cournot import CournotResult
 from sim.strategies.strategies import RandomWalk, Static, TitForTat, create_strategy
