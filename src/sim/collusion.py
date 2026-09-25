@@ -124,9 +124,9 @@ class CollusionManager:
         self.regulator_state = regulator_state or RegulatorState()
         self.current_cartel: CartelAgreement | None = None
         self.events: list[CollusionEvent] = []
-        self.firm_defection_history: dict[int, list[int]] = (
-            {}
-        )  # firm_id -> list of rounds when defected
+        self.firm_defection_history: dict[
+            int, list[int]
+        ] = {}  # firm_id -> list of rounds when defected
 
     def calculate_hhi(self, market_shares: list[float]) -> float:
         """Calculate Herfindahl-Hirschman Index (HHI) for market concentration.

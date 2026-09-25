@@ -12,7 +12,9 @@ class TestDatabaseConfiguration:
 
     def test_engine_creation(self) -> None:
         """Test that engine is created and configured."""
-        from sim.database import engine
+        from sim.database import get_engine
+
+        engine = get_engine()
 
         assert engine is not None
         assert hasattr(engine, "url")
@@ -20,7 +22,9 @@ class TestDatabaseConfiguration:
 
     def test_engine_configuration(self) -> None:
         """Test that engine has proper configuration."""
-        from sim.database import engine
+        from sim.database import get_engine
+
+        engine = get_engine()
 
         # Test that engine has expected attributes
         assert engine is not None
@@ -118,7 +122,9 @@ class TestDatabaseIntegration:
 
     def test_database_url_configuration(self) -> None:
         """Test that database URL is properly configured."""
-        from sim.database import engine
+        from sim.database import get_engine
+
+        engine = get_engine()
 
         # Test that engine has a valid URL
         assert str(engine.url) is not None

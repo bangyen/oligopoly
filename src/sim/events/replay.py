@@ -11,10 +11,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ..models.metrics import (
-    calculate_round_metrics_bertrand,
-    calculate_round_metrics_cournot,
-)
+from ..markets import market_metrics
 from ..models.models import Event, Result, Run
 
 
@@ -32,7 +29,7 @@ class ReplayFrame:
     total_quantity: float
     total_profit: float
     hhi: float
-    consumer_surplus: float
+    consumer_surplus: float | None
     num_firms: int
     firm_data: dict[int, dict[str, float]]  # firm_id -> {action, price, qty, profit}
     events: list[dict[str, Any]]  # Events that occurred in this round
@@ -153,25 +150,16 @@ class ReplaySystem:
             prices.append(float(result.price))
             profits.append(float(result.profit))
 
-        # Calculate market metrics
-        market_price = (
-            prices[0] if prices else 0.0
-        )  # All firms have same price in Cournot
+        # Calculate market metrics from the run's stored demand parameters
         total_quantity = sum(quantities)
         total_profit = sum(profits)
-
-        # Calculate HHI and consumer surplus
-        if self.run.model == "cournot":
-            demand_a = 100.0  # Default - should be stored in run config
-            hhi, cs = calculate_round_metrics_cournot(
-                quantities, market_price, demand_a
-            )
-        else:  # bertrand
-            demand_alpha = 100.0  # Default - should be stored in run config
-            hhi, cs = calculate_round_metrics_bertrand(
-                prices, quantities, total_quantity, demand_alpha
-            )
-            market_price = min(prices) if prices else 0.0
+        market_price, hhi, cs = market_metrics(
+            str(self.run.model),
+            dict(self.run.params or {}),
+            prices,
+            quantities,
+            round_idx,
+        )
 
         # Get events for this round
         events = self.events_by_round.get(round_idx, [])

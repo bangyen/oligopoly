@@ -414,18 +414,28 @@ class OpportunisticStrategy:
 
         model_type = market_params.get("model_type", "cournot")
 
-        # Estimate profits
-        cartel_profit = self.estimate_cartel_profit(
-            cartel.collusive_price, cartel.collusive_quantity, my_cost, model_type
-        )
-
-        defection_profit = self.estimate_defection_profit(
-            cartel.collusive_price,
-            cartel.collusive_quantity,
-            my_cost,
-            market_params,
-            model_type,
-        )
+        evaluate = market_params.get("evaluate")
+        if evaluate is not None:
+            # The market prices both options exactly (any demand system)
+            if model_type == "bertrand":
+                follow, deviate = cartel.collusive_price, cartel.collusive_price * 0.9
+            else:
+                follow = cartel.collusive_quantity
+                deviate = cartel.collusive_quantity * 1.2
+            cartel_profit = evaluate(follow)
+            defection_profit = evaluate(deviate)
+        else:
+            # Estimate profits with linear-demand approximations
+            cartel_profit = self.estimate_cartel_profit(
+                cartel.collusive_price, cartel.collusive_quantity, my_cost, model_type
+            )
+            defection_profit = self.estimate_defection_profit(
+                cartel.collusive_price,
+                cartel.collusive_quantity,
+                my_cost,
+                market_params,
+                model_type,
+            )
 
         # Check if defection profit exceeds threshold
         profit_advantage = defection_profit / cartel_profit if cartel_profit > 0 else 0

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oligopoly Analytics</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -59,6 +59,14 @@
                         <path d="M10 6V10L13 13" stroke="currentColor" stroke-width="2"/>
                     </svg>
                     <span>Metrics</span>
+                </button>
+
+                <button class="nav-item" data-view="scenario">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M7 2V8L3 16C2.5 17 3.2 18 4.3 18H15.7C16.8 18 17.5 17 17 16L13 8V2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M6 2H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <span>Scenario Lab</span>
                 </button>
 
                 <div class="nav-divider"></div>
@@ -230,10 +238,112 @@
                     </table>
                 </div>
             </div>
+            <div class="view-container hidden" id="scenario-view">
+                <form class="scenario-form" id="scenario-form" novalidate>
+                    <div class="scenario-grid">
+                        <fieldset class="scenario-panel">
+                            <legend>Market</legend>
+                            <label class="config-label" for="sc-model">Competition</label>
+                            <select id="sc-model" class="config-input">
+                                <option value="cournot">Cournot (quantities)</option>
+                                <option value="bertrand">Bertrand (prices)</option>
+                            </select>
+                            <label class="config-label" for="sc-demand">Demand</label>
+                            <select id="sc-demand" class="config-input">
+                                <option value="linear">Linear</option>
+                                <option value="isoelastic">Isoelastic</option>
+                                <option value="ces">CES (differentiated, Bertrand)</option>
+                            </select>
+                            <div class="sc-params" data-demand="linear">
+                                <label class="config-label" for="sc-intercept">Intercept (a / α)</label>
+                                <input id="sc-intercept" class="config-input" type="number" value="100" min="1" step="any">
+                                <label class="config-label" for="sc-slope">Slope (b / β)</label>
+                                <input id="sc-slope" class="config-input" type="number" value="1" min="0.1" step="any">
+                                <label class="config-check" data-model="bertrand">
+                                    <input id="sc-capacity" type="checkbox" checked> Capacity limit (40% per firm)
+                                </label>
+                            </div>
+                            <div class="sc-params hidden" data-demand="isoelastic">
+                                <label class="config-label" for="sc-iso-a">Scale (A)</label>
+                                <input id="sc-iso-a" class="config-input" type="number" value="100" min="1" step="any">
+                                <label class="config-label" for="sc-iso-e">Elasticity (&gt; 1)</label>
+                                <input id="sc-iso-e" class="config-input" type="number" value="2" min="1.05" step="any">
+                            </div>
+                            <div class="sc-params hidden" data-demand="ces">
+                                <label class="config-label" for="sc-ces-sigma">Substitution σ (&gt; 1)</label>
+                                <input id="sc-ces-sigma" class="config-input" type="number" value="3" min="1.05" step="any">
+                                <label class="config-label" for="sc-ces-eta">Market elasticity η (&gt; 1)</label>
+                                <input id="sc-ces-eta" class="config-input" type="number" value="2" min="1.05" step="any">
+                                <label class="config-label" for="sc-ces-size">Market size</label>
+                                <input id="sc-ces-size" class="config-input" type="number" value="5000" min="1" step="any">
+                                <label class="config-label" for="sc-ces-quality">Qualities (csv, optional)</label>
+                                <input id="sc-ces-quality" class="config-input" type="text" placeholder="e.g. 1, 1.2, 0.9">
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="scenario-panel">
+                            <legend>Firms</legend>
+                            <label class="config-label" for="sc-costs">Marginal costs (csv)</label>
+                            <input id="sc-costs" class="config-input" type="text" value="10, 12, 14">
+                            <div id="sc-strategies" class="sc-strategies"></div>
+                            <label class="config-label" for="sc-rounds">Rounds</label>
+                            <input id="sc-rounds" class="config-input" type="number" value="50" min="1" max="1000">
+                            <label class="config-label" for="sc-seed">Seed</label>
+                            <input id="sc-seed" class="config-input" type="number" value="42">
+                        </fieldset>
+
+                        <fieldset class="scenario-panel">
+                            <legend>Market evolution</legend>
+                            <label class="config-check">
+                                <input id="sc-evolution" type="checkbox"> Growth, innovation, entry &amp; exit
+                            </label>
+                            <div id="sc-evolution-params" class="hidden">
+                                <label class="config-label" for="sc-growth">Growth per round</label>
+                                <input id="sc-growth" class="config-input" type="number" value="0.02" step="any">
+                                <label class="config-label" for="sc-entry">Entry cost</label>
+                                <input id="sc-entry" class="config-input" type="number" value="100" min="0.01" step="any">
+                                <label class="config-label" for="sc-innovation">Innovation rate</label>
+                                <input id="sc-innovation" class="config-input" type="number" value="0.1" min="0" max="1" step="any">
+                            </div>
+                            <button type="submit" class="btn-primary sc-run" id="sc-run">Run scenario</button>
+                            <p class="sc-error hidden" id="sc-error" role="alert"></p>
+                        </fieldset>
+                    </div>
+                </form>
+
+                <div class="metrics-grid" id="sc-summary">
+                    <div class="metric-card"><div class="metric-label">Final Price</div><div class="metric-value" id="sc-price">—</div></div>
+                    <div class="metric-card"><div class="metric-label">Final HHI</div><div class="metric-value" id="sc-hhi">—</div></div>
+                    <div class="metric-card"><div class="metric-label">Consumer Surplus</div><div class="metric-value" id="sc-cs">—</div></div>
+                    <div class="metric-card"><div class="metric-label">Firms (start → end)</div><div class="metric-value" id="sc-firms">—</div></div>
+                </div>
+
+                <div class="chart-full">
+                    <div class="chart-controls">
+                        <h3 class="chart-title">Scenario Dynamics</h3>
+                        <div class="toggle-group" id="sc-series">
+                            <button class="toggle-btn active" data-series="actions">Actions</button>
+                            <button class="toggle-btn" data-series="profits">Profits</button>
+                            <button class="toggle-btn" data-series="market_price">Price</button>
+                            <button class="toggle-btn" data-series="hhi">HHI</button>
+                            <button class="toggle-btn" data-series="consumer_surplus">Surplus</button>
+                        </div>
+                    </div>
+                    <canvas id="scenario-chart"></canvas>
+                </div>
+
+                <div class="data-table" style="margin-top: 32px;">
+                    <table>
+                        <thead><tr><th>Round</th><th>Event</th><th>Description</th></tr></thead>
+                        <tbody id="sc-events"><tr><td colspan="3" class="loading">Run a scenario to see cartel, entry, exit and innovation events.</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+
         </main>
     </div>
     
-    <script src="/static/js/dashboard.js?v=7"></script>
+    <script src="/static/js/dashboard.js?v=8"></script>
 </body>
 </html>
 

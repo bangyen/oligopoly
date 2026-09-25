@@ -9,23 +9,53 @@ from unittest.mock import MagicMock, patch
 
 
 def test_database_url_env_var() -> None:
-    """Test that DATABASE_URL environment variable is read correctly."""
-    # Test with default value
-    with patch.dict(os.environ, {}, clear=True):
-        from sim.api import DATABASE_URL
+    """Test that DATABASE_URL environment variable drives the app engine."""
+    from sim.config import reload_settings
+    from sim.database import get_engine
 
-        assert DATABASE_URL == "postgresql://user:password@localhost/oligopoly"
-
-    # Test with custom value
     custom_url = "postgresql://test:test@testhost:5432/testdb"
-    with patch.dict(os.environ, {"DATABASE_URL": custom_url}):
-        # Need to reload the module to pick up the new env var
-        import importlib
+    try:
+        with patch.dict(os.environ, {"DATABASE_URL": custom_url}):
+            reload_settings()
+            get_engine.cache_clear()
+            url = get_engine().url
+            assert url.host == "testhost"
+            assert url.database == "testdb"
+            # Bare postgresql:// is pinned to the shipped psycopg2 driver
+            assert url.drivername == "postgresql+psycopg2"
+    finally:
+        reload_settings()
+        get_engine.cache_clear()
 
-        import sim.api
 
-        importlib.reload(sim.api)
-        assert sim.api.DATABASE_URL == custom_url
+def test_normalize_database_url() -> None:
+    """Bare PostgreSQL URLs get an explicit driver; others are untouched."""
+    from sim.database import normalize_database_url
+
+    assert (
+        normalize_database_url("postgresql://u:p@h/db")
+        == "postgresql+psycopg2://u:p@h/db"
+    )
+    assert normalize_database_url("postgres://u:p@h/db") == (
+        "postgresql+psycopg2://u:p@h/db"
+    )
+    assert (
+        normalize_database_url("postgresql+psycopg://u:p@h/db")
+        == "postgresql+psycopg://u:p@h/db"
+    )
+    assert normalize_database_url("sqlite:///x.db") == "sqlite:///x.db"
+
+
+def test_importing_api_does_not_create_engine() -> None:
+    """Importing the API must not connect to (or configure) a database."""
+    import importlib
+
+    import sim.api
+    from sim.database import get_engine
+
+    get_engine.cache_clear()
+    importlib.reload(sim.api)
+    assert get_engine.cache_info().currsize == 0
 
 
 def test_alembic_migration_smoke() -> None:

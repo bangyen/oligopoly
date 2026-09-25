@@ -1,10 +1,10 @@
 # Oligopoly Simulation
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bangyen/oligopoly/blob/main/oligopoly_demo.ipynb)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](tests/)
+[![CI](https://github.com/bangyen/oligopoly/actions/workflows/ci.yml/badge.svg)](https://github.com/bangyen/oligopoly/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/bangyen/oligopoly)](LICENSE)
 
-**Advanced Oligopoly Market Simulation: Validated collusion detection, research-grade calculation precision, and adaptive learning strategies**  
+**Oligopoly market simulation: Cournot and Bertrand competition with learning strategies, collusion detection, and policy shocks**  
 
 <p align="center">
   <img src="docs/cournot_heatmap.png" alt="Oligopoly Dashboard" width="600">
@@ -36,18 +36,25 @@ bertrand      # run a one-off Bertrand simulation
 
 | Capability | Description |
 |------------|-------------|
-| Collusion Detection | Identifies cartel behavior with configurable tolerance |
-| Calculation Precision | Research-grade mathematical accuracy (1e-6) |
-| Strategy Adaptation | Firms learn and evolve using Q-learning and Fictitious Play |
+| Collusion Detection | Flags cartel behavior and defections with a configurable tolerance |
+| Equilibria | Linear, isoelastic and CES equilibria match closed forms to 1e-6 ([benchmarks](tests/benchmarks/)) |
+| Strategy Adaptation | Fictitious play converges to Nash in every smooth market ([learning benchmarks](docs/learning_benchmarks.md)) |
+
+Multi-round linear Bertrand runs use a capacity-constrained allocation by
+default (each firm can serve at most 40% of the market), so they deliberately
+depart from the winner-take-all textbook model that the equilibrium helper and
+benchmarks use. Set `capacity_constraints: false` for the textbook game.
 
 ## Features
 
-- **Collusion Detection** — Accurate identification of cartel behavior and defections.  
-- **Policy Analysis** — Quantifies tax/subsidy effects with high mathematical precision.  
-- **Learning Strategies** — Supports Q-learning, Fictitious Play, and Tit-for-Tat algorithms.  
-- **Interactive Dashboard** — Real-time visualization using FastAPI and Jinja2 templates.  
+- **Collusion Detection** — Tolerance-based detection of cartel behavior and defections.  
+- **Policy Analysis** — Applies taxes, subsidies and price caps mid-simulation.  
+- **Demand Systems** — Linear (optionally segmented), isoelastic, and CES differentiated-products demand.  
+- **Learning Strategies** — Fictitious play, tabular and deep Q-learning, behavioral, and Tit-for-Tat firms.  
+- **Market Evolution** — Demand growth, innovation, and firm entry/exit between rounds.  
+- **Interactive Dashboard** — Visualization using FastAPI and Jinja2 templates.  
 - **REST API** — Comprehensive FastAPI endpoints for simulation management and analysis.  
-- **Batch Experiments** — Statistical analysis with reproducible seed management and CSV export.  
+- **Batch Experiments** — Reproducible seeded runs with CSV export (plots need `pip install -e ".[viz]"`).  
 
 ## Repo Structure
 
@@ -61,9 +68,10 @@ oligopoly/
 │   │   ├── games/       # Cournot & Bertrand models
 │   │   ├── strategies/  # Learning algorithms
 │   │   ├── policy/      # Tax/subsidy interventions
-│   │   └── api.py       # FastAPI application
+│   │   ├── markets.py   # Demand systems: round engine, Nash, best response
+│   │   └── api/         # FastAPI app: schemas + simulate/runs/heatmap routers
 │   └── ...
-├── tests/               # Unit/integration tests (>80% coverage)
+├── tests/               # Unit, integration and analytic benchmark tests
 └── oligopoly_demo.ipynb # Colab notebook demo
 ```
 
@@ -78,12 +86,15 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 | `src/sim/policy/` | `tests/unit/policy/` |
 | `src/sim/collusion.py` | `tests/unit/runners/` |
 | `src/sim/runners/` | `tests/unit/runners/` |
-| `src/sim/api.py` | `tests/unit/api/` + `tests/integration/` |
+| `src/sim/api/` | `tests/unit/api/` + `tests/integration/` |
+| Analytic equilibria | `tests/benchmarks/` |
 | `dashboard/main.py` | `tests/unit/heatmap/` + `tests/unit/infrastructure/` |
 
 ## Validation
 
-- ✅ Overall test coverage of >80% (`pytest`)
+- ✅ Test coverage ≥85%, enforced in CI (`just cov`)
+- ✅ Equilibria for every demand system checked against closed forms and brute-force deviations (`tests/benchmarks/`)
+- ✅ CI on Python 3.10, 3.11 and 3.12
 - ✅ Reproducible seeds for experiments
 - ✅ `justfile` for common development tasks
 
@@ -100,6 +111,54 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 - `GET /compare/{left_run_id}/{right_run_id}` - Get aligned comparison results
 - `POST /heatmap` - Generate profit surface heatmaps
 - `GET /healthz` - Health check endpoint
+
+## Simulation Options
+
+`POST /simulate` (and each side of `POST /compare`) accepts, besides
+`model`, `rounds`, `firms`, `params`, `segments`, `events` and `seed`:
+
+| Field | Values | Notes |
+|-------|--------|-------|
+| `demand_type` | `"linear"` (default), `"isoelastic"` | Isoelastic uses `params: {"A", "elasticity"}` with Q(P) = (A/P)^e |
+| `enhanced_demand` | `{"demand_type": "ces", "elasticity", "market_elasticity", "market_size", "qualities"}` | Differentiated Bertrand with nested CES demand: varieties substitute with `elasticity`; group demand is `market_size · P^-market_elasticity` |
+| `advanced_strategies` | `[{"firm_id", "strategy_type", ...}]` | Learners: `fictitious_play`, `q_learning`, `deep_q_learning`, `behavioral` (optional `learning_rate`, `memory_length`, `exploration_rate`). Collusion: two or more `cartel`/`collusive`/`opportunistic` firms form a cartel at their joint-profit optimum; a defection breaks it for 5 rounds |
+| `capacity_constraints` | `true` (default), `false` | Linear Bertrand only: `false` drops the 40%-of-market cap for textbook winner-take-all |
+| `market_evolution` | `{"growth_rate", "entry_cost", "exit_threshold", "innovation_rate"}` | Entries, exits and innovations show up in `/runs/{id}/events` |
+
+```json
+{
+  "model": "bertrand",
+  "rounds": 50,
+  "firms": [{"cost": 10}, {"cost": 12}, {"cost": 11}],
+  "enhanced_demand": {"demand_type": "ces", "elasticity": 3, "market_size": 300},
+  "advanced_strategies": [{"firm_id": 0, "strategy_type": "fictitious_play"}],
+  "market_evolution": {"growth_rate": 0.02, "entry_cost": 50},
+  "seed": 42
+}
+```
+
+Firms without an advanced strategy adapt towards the market's Nash
+equilibrium each round. Unknown fields are rejected with a 422.
+
+## Roadmap
+
+Known gaps and next steps, roughly in priority order:
+
+- [x] **Collusion everywhere** — cartels form at the members' joint-profit
+      optimum in every demand system and survive market evolution.
+- [x] **Bertrand capacity toggle** — `capacity_constraints: false` gives the
+      textbook winner-take-all game for linear Bertrand runs.
+- [x] **CES consumer surplus** — nested CES demand with a finite
+      `market_elasticity` gives a closed-form consumer surplus.
+- [x] **Dashboard support** — the dashboard's Scenario Lab configures every
+      demand type, strategy and market evolution option.
+- [x] **Learning benchmarks** — [convergence of each learner under each
+      demand system](docs/learning_benchmarks.md); only fictitious play reliably
+      reaches Nash within 200 rounds.
+- [ ] **Longer-horizon learning** — run Q-learning long enough (and with a
+      deviation-response test) to tell learned collusion from exploration noise.
+- [x] **Docker e2e in CI** — the compose-based end-to-end job is green again
+      (the image was missing numpy).
 
 ## References
 

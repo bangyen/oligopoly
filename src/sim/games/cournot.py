@@ -6,12 +6,12 @@ market price based on total quantity supplied and calculates individual firm pro
 Supports both single-segment and multi-segment demand models.
 """
 
+import logging
 from dataclasses import dataclass
 
 from ..models.models import SegmentedDemand
 from ..validation.economic_validation import (
     EconomicValidationError,
-    enforce_economic_constraints,
     validate_cost_structure,
     validate_demand_parameters,
     validate_simulation_result,
@@ -21,6 +21,8 @@ from ..validation.economic_validation import (
 # Implementation lives in _parsing.py; importing here preserves backward compatibility.
 from ._parsing import parse_costs as parse_costs  # noqa: F401
 from ._parsing import parse_quantities as parse_quantities  # noqa: F401
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -109,95 +111,52 @@ def cournot_simulation(
             for qty, cap in zip(quantities, capacity_limits)
         ]
 
-    # Calculate market price: P = max(0, a - b * sum(q_i))
-    total_quantity = sum(quantities)
-    price = max(0.0, a - b * total_quantity)
+    # Calculate market price: P = max(0, a - b * sum(q_i)).
+    # Every submitted quantity is sold at this price. Firms are not removed
+    # after the fact: doing so would let one firm flood the market, push a
+    # rival out, and then enjoy the higher recomputed price. Exit decisions
+    # belong to the firms' strategies, before quantities are submitted.
+    price = max(0.0, a - b * sum(quantities))
+    profits = _profits(price, costs, quantities, fixed_costs)
+    _log_validation_warnings(price, quantities, profits, costs, {"a": a, "b": b})
+    return CournotResult(price=price, quantities=list(quantities), profits=profits)
 
-    # Ensure firms don't produce at losses - exit unprofitable firms
-    from ..strategies.nash_strategies import validate_profitable_production
 
-    adjusted_quantities = validate_profitable_production(quantities, costs, price)
+def _profits(
+    price: float,
+    costs: list[float],
+    quantities: list[float],
+    fixed_costs: list[float] | None,
+) -> list[float]:
+    """Compute π_i = (P - c_i) * q_i - FC_i."""
+    if fixed_costs is None:
+        fixed_costs = [0.0] * len(costs)
+    elif len(fixed_costs) != len(quantities):
+        raise ValueError(
+            f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(quantities)})"
+        )
+    return [
+        (price - cost) * q - fc for cost, q, fc in zip(costs, quantities, fixed_costs)
+    ]
 
-    # Recalculate price with adjusted quantities
-    adjusted_total_quantity = sum(adjusted_quantities)
-    adjusted_price = max(0.0, a - b * adjusted_total_quantity)
 
-    # Calculate profits: π_i = (P - c_i) * q_i - FC_i
-    if fixed_costs:
-        if len(fixed_costs) != len(adjusted_quantities):
-            raise ValueError(
-                f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(adjusted_quantities)})"
-            )
-        profits = [
-            (adjusted_price - cost) * q - fc
-            for cost, q, fc in zip(costs, adjusted_quantities, fixed_costs)
-        ]
-    else:
-        profits = [
-            (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
-        ]
-
-    # Create result
-    result = CournotResult(
-        price=adjusted_price, quantities=adjusted_quantities, profits=profits
-    )
-
-    # Validate economic consistency
+def _log_validation_warnings(
+    price: float,
+    quantities: list[float],
+    profits: list[float],
+    costs: list[float],
+    params: dict[str, float],
+) -> None:
+    """Log (but never act on) economic-consistency warnings for a round."""
     try:
         validation_result = validate_simulation_result(
-            "cournot",
-            [adjusted_price],
-            adjusted_quantities,
-            profits,
-            costs,
-            {"a": a, "b": b},
+            "cournot", [price], quantities, profits, costs, params
         )
-
-        # Log warnings if any
-        if validation_result.warnings:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            for warning in validation_result.warnings:
-                logger.warning(f"Economic validation warning: {warning}")
-
+        warnings = validation_result.warnings
     except EconomicValidationError as e:
-        # Log warning but don't fail the simulation
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Economic validation warning: {e}")
-
-        # If validation fails, enforce constraints
-        enforced_quantities = enforce_economic_constraints(
-            adjusted_quantities,
-            costs,
-            adjusted_price,
-        )
-
-        # Recalculate market price with enforced quantities
-        enforced_total_quantity = sum(enforced_quantities)
-        enforced_price = max(0.0, a - b * enforced_total_quantity)
-
-        # Recalculate profits with enforced quantities
-        if fixed_costs:
-            enforced_profits = [
-                (enforced_price - cost) * q - fc
-                for cost, q, fc in zip(costs, enforced_quantities, fixed_costs)
-            ]
-        else:
-            enforced_profits = [
-                (enforced_price - cost) * q
-                for cost, q in zip(costs, enforced_quantities)
-            ]
-
-        result = CournotResult(
-            price=enforced_price,
-            quantities=enforced_quantities,
-            profits=enforced_profits,
-        )
-
-    return result
+        warnings = [str(e)]
+    for warning in warnings:
+        logger.warning("Economic validation warning: %s", warning)
 
 
 def cournot_segmented_simulation(
@@ -254,69 +213,14 @@ def cournot_segmented_simulation(
     if weighted_beta <= 0:
         raise ValueError("Weighted beta parameter must be positive")
 
-    # Calculate market price using effective parameters
+    # Calculate market price using effective parameters. As in
+    # cournot_simulation, all submitted quantities clear at this price.
     price = max(0.0, (weighted_alpha - total_quantity) / weighted_beta)
-
-    # Ensure firms don't produce at losses - exit unprofitable firms
-    from ..strategies.nash_strategies import validate_profitable_production
-
-    adjusted_quantities = validate_profitable_production(quantities, costs, price)
-
-    # Recalculate price with adjusted quantities
-    adjusted_total_quantity = sum(adjusted_quantities)
-    adjusted_price = max(
-        0.0, (weighted_alpha - adjusted_total_quantity) / weighted_beta
+    profits = _profits(price, costs, quantities, fixed_costs)
+    _log_validation_warnings(
+        price, quantities, profits, costs, {"a": weighted_alpha, "b": weighted_beta}
     )
-
-    # Ensure minimum viable price to prevent zero prices
-    min_viable_price = min(costs) + 0.1 if costs else 0.1
-    adjusted_price = max(adjusted_price, min_viable_price)
-
-    # Calculate profits: π_i = (P - c_i) * q_i - FC_i
-    if fixed_costs:
-        if len(fixed_costs) != len(adjusted_quantities):
-            raise ValueError(
-                f"Fixed costs length ({len(fixed_costs)}) must match quantities length ({len(adjusted_quantities)})"
-            )
-        profits = [
-            (adjusted_price - cost) * q - fc
-            for cost, q, fc in zip(costs, adjusted_quantities, fixed_costs)
-        ]
-    else:
-        profits = [
-            (adjusted_price - cost) * q for cost, q in zip(costs, adjusted_quantities)
-        ]
-
-    result = CournotResult(
-        price=adjusted_price, quantities=adjusted_quantities, profits=profits
-    )
-
-    # Validate segmented demand result
-    try:
-        validation_result = validate_simulation_result(
-            "cournot",
-            [adjusted_price],
-            adjusted_quantities,
-            profits,
-            costs,
-            {"a": weighted_alpha, "b": weighted_beta},
-        )
-
-        # Log warnings if any
-        if validation_result.warnings:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            for warning in validation_result.warnings:
-                logger.warning(f"Segmented demand validation warning: {warning}")
-
-    except EconomicValidationError as e:
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Segmented demand validation warning: {e}")
-
-    return result
+    return CournotResult(price=price, quantities=list(quantities), profits=profits)
 
 
 # End of Cournot implementation

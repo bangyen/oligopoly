@@ -29,10 +29,11 @@ logger = logging.getLogger(__name__)
 def _simulation_worker(args: tuple) -> dict[str, Any]:
     """Top-level worker function for multiprocessing (must be picklable)."""
     exp_config, seed, db_url, metrics_calc_func = args
-    from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    engine = create_engine(db_url)
+    from sim.database import make_engine
+
+    engine = make_engine(db_url)
     session_local = sessionmaker(bind=engine)
     db = session_local()
     try:
@@ -257,10 +258,11 @@ class ExperimentRunner:
                     results.append(future.result())
         else:
             logger.info("Running %s simulations sequentially...", total_tasks)
-            from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
 
-            engine = create_engine(db_url)
+            from sim.database import make_engine
+
+            engine = make_engine(db_url)
             session_local = sessionmaker(bind=engine)
             db = session_local()
             try:

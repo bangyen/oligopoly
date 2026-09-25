@@ -5,6 +5,7 @@ models, providing economically sound firm behavior that converges to theoretical
 equilibrium outcomes.
 """
 
+import math
 import random
 from typing import TYPE_CHECKING, Any
 
@@ -149,11 +150,18 @@ def cournot_nash_equilibrium(
 def bertrand_nash_equilibrium(
     alpha: float, beta: float, costs: list[float]
 ) -> tuple[list[float], list[float], list[float], float]:
-    """Calculate Bertrand Nash equilibrium prices, quantities, and profits.
+    """Calculate the homogeneous-good Bertrand–Nash equilibrium.
 
-    Implements a more realistic Bertrand model that allows for differentiated competition
-    and prevents unrealistic monopoly outcomes. Uses capacity constraints and product
-    differentiation to create more competitive equilibria.
+    Demand is Q(p) = max(0, alpha - beta * p) and the lowest price wins the
+    whole market. With c_1 <= c_2 <= ... the textbook outcome is:
+
+    - Lowest cost shared by several firms: price = c_1, demand split evenly
+      among them, zero profit (the Bertrand paradox).
+    - Unique lowest-cost firm: it limit-prices at the second-lowest cost, or
+      at its monopoly price (alpha + beta * c_1) / (2 * beta) if that is
+      lower, and serves the whole market. This is the standard limit of the
+      undercutting argument with ties resolved in favour of the efficient firm.
+    - Every other firm prices at its own marginal cost and sells nothing.
 
     Args:
         alpha: Demand intercept parameter
@@ -161,107 +169,32 @@ def bertrand_nash_equilibrium(
         costs: List of marginal costs for each firm
 
     Returns:
-        Tuple of (equilibrium_prices, equilibrium_quantities, equilibrium_profits, market_price)
+        Tuple of (equilibrium_prices, equilibrium_quantities, equilibrium_profits,
+        market_price)
     """
     n = len(costs)
     if n == 0:
         return [], [], [], 0.0
 
-    # For realistic Bertrand competition, we need to consider:
-    # 1. Capacity constraints that prevent winner-take-all
-    # 2. Product differentiation that allows multiple firms to coexist
-    # 3. Search costs or switching costs that create market frictions
+    min_cost = min(costs)
+    leaders = [i for i, c in enumerate(costs) if math.isclose(c, min_cost)]
+    monopoly_price = (alpha + beta * min_cost) / (2 * beta)
 
-    # Calculate capacity-constrained equilibrium
-    # Assume each firm has a maximum capacity proportional to market size
-    max_capacity_per_firm = (
-        alpha / beta
-    ) * 0.4  # Each firm can serve up to 40% of market
-
-    # Sort firms by cost efficiency
-    firm_data = [(i, cost) for i, cost in enumerate(costs)]
-    firm_data.sort(key=lambda x: x[1])  # Sort by cost
-
-    # Calculate equilibrium prices using a more realistic approach
-    prices = []
-    quantities = []
-    profits = []
-
-    # Start with the most efficient firm
-    min_cost = firm_data[0][1]
-
-    # Calculate a competitive price that allows multiple firms to survive
-    # Use a markup that depends on cost dispersion and number of firms
-    if n == 1:
-        # Monopoly case
-        equilibrium_price = (alpha + beta * min_cost) / (2 * beta)
+    if len(leaders) > 1:
+        market_price = min_cost
     else:
-        # Oligopoly case - use a markup that allows multiple firms
-        cost_dispersion = max(costs) - min(costs)
-        avg_cost = sum(costs) / n
+        rival_costs = [c for i, c in enumerate(costs) if i != leaders[0]]
+        market_price = min(monopoly_price, min(rival_costs, default=monopoly_price))
 
-        # Markup increases with cost dispersion but decreases with number of firms
-        markup_factor = min(
-            0.3, 0.1 + (cost_dispersion / avg_cost) * 0.2 - (n - 2) * 0.05
-        )
-        equilibrium_price = avg_cost * (1 + markup_factor)
+    demand = max(0.0, alpha - beta * market_price)
+    prices = list(costs)
+    quantities = [0.0] * n
+    for i in leaders:
+        prices[i] = market_price
+        quantities[i] = demand / len(leaders)
+    profits = [(p - c) * q for p, c, q in zip(prices, costs, quantities)]
 
-        # Ensure price is above the second-lowest cost to allow competition
-        if n > 1:
-            second_lowest_cost = firm_data[1][1]
-            equilibrium_price = max(equilibrium_price, second_lowest_cost * 1.05)
-
-    # Calculate market demand at equilibrium price
-    total_demand = max(0.0, alpha - beta * equilibrium_price)
-
-    # Allocate demand with capacity constraints
-    remaining_demand = total_demand
-    active_firms = []
-
-    for i, cost in firm_data:
-        if cost >= equilibrium_price:
-            # Firm cannot profitably produce
-            prices.append(equilibrium_price)
-            quantities.append(0.0)
-            profits.append(0.0)
-        else:
-            # Firm can produce - allocate demand up to capacity
-            firm_capacity = min(max_capacity_per_firm, remaining_demand)
-            if firm_capacity > 0:
-                active_firms.append(i)
-                prices.append(equilibrium_price)
-                quantities.append(firm_capacity)
-                profits.append((equilibrium_price - cost) * firm_capacity)
-                remaining_demand -= firm_capacity
-            else:
-                prices.append(equilibrium_price)
-                quantities.append(0.0)
-                profits.append(0.0)
-
-    # If there's still demand and only one firm is active, allow others to enter
-    if remaining_demand > 0 and len(active_firms) == 1:
-        # Allow other firms to capture remaining demand
-        for i, cost in firm_data:
-            if i not in active_firms and cost < equilibrium_price:
-                firm_capacity = min(max_capacity_per_firm, remaining_demand)
-                if firm_capacity > 0:
-                    quantities[i] = firm_capacity
-                    profits[i] = (equilibrium_price - cost) * firm_capacity
-                    remaining_demand -= firm_capacity
-                    if remaining_demand <= 0:
-                        break
-
-    # Reorder results to match original cost order
-    final_prices = [0.0] * n
-    final_quantities = [0.0] * n
-    final_profits = [0.0] * n
-
-    for i, (original_idx, _) in enumerate(firm_data):
-        final_prices[original_idx] = prices[i]
-        final_quantities[original_idx] = quantities[i]
-        final_profits[original_idx] = profits[i]
-
-    return final_prices, final_quantities, final_profits, equilibrium_price
+    return prices, quantities, profits, market_price
 
 
 def cournot_best_response(

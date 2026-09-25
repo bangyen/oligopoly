@@ -29,26 +29,27 @@ classifiers = [
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
-    "sqlalchemy>=2.0.0",
+    "sqlalchemy>=2.0.0,<3",
     "alembic>=1.12.0",
     "psycopg2-binary>=2.9.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "plotly>=5.17.0",
-    "pandas>=2.0.0",
+    "numpy>=1.24",
     "tqdm>=4.66.0",
-    "requests>=2.31.0",
-    "urllib3>=1.26,<2.0",
     "jinja2>=3.1.0",
 ]
 
 [project.optional-dependencies]
+viz = [
+    "pandas>=2.0.0",
+    "plotly>=5.17.0",
+]
 dev = [
+    "oligopoly[viz]",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
     "httpx>=0.25.0",
-    "black>=23.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
@@ -70,10 +71,6 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
-
-[tool.black]
-line-length = 88
-target-version = ['py310']
 
 [tool.ruff]
 line-length = 88
@@ -133,6 +130,7 @@ disable_error_code = ["import-untyped"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
+pythonpath = ["."]
 addopts = "-ra -q --strict-markers --strict-config"
 testpaths = [
     "tests",
@@ -149,6 +147,9 @@ markers = [
     "unit: marks tests as unit tests",
     "asyncio: marks tests as async tests",
 ]
+
+[tool.coverage.report]
+fail_under = 85
 
 [tool.coverage.run]
 source = ["src"]
