@@ -156,7 +156,13 @@ class FictitiousPlayStrategy:
             if i not in self._beliefs:
                 self._beliefs[i] = StrategyBelief(firm_id=i)
 
-            self._beliefs[i].update_belief(action, round_num, self.belief_decay)
+            belief = self._beliefs[i]
+            belief.update_belief(action, round_num, self.belief_decay)
+            if len(belief.action_history) > self.memory_length:
+                belief.action_history = belief.action_history[-self.memory_length :]
+                weights = belief.belief_weights[-self.memory_length :]
+                total = sum(weights)
+                belief.belief_weights = [w / total for w in weights]
 
     def _calculate_best_response(
         self,
@@ -172,6 +178,15 @@ class FictitiousPlayStrategy:
         predicted_rival_actions = []
         for belief in self._beliefs.values():
             predicted_rival_actions.append(belief.predict_action())
+
+        # Prefer the market's own best response (any demand system) when given
+        best_response_fn = market_params.get("best_response")
+        if best_response_fn is not None:
+            return float(
+                max(
+                    min_bound, min(max_bound, best_response_fn(predicted_rival_actions))
+                )
+            )
 
         if not predicted_rival_actions:
             # No rivals, choose monopoly quantity/price
@@ -307,7 +322,9 @@ class DeepQLearningStrategy:
         self._epsilon = self.epsilon_0
 
         # Initialize Q-function approximation weights
-        self._weights = np.random.normal(0, 0.1, (self.feature_dim, self.action_dim))
+        self._weights = np.random.default_rng(self.seed).normal(
+            0, 0.1, (self.feature_dim, self.action_dim)
+        )
         self._bias = np.zeros(self.action_dim)
 
         # Experience replay buffer
@@ -559,8 +576,22 @@ class BehavioralStrategy:
 
             self._update_reference_point()
 
-        # Calculate rational action (simplified)
-        if market_params.get("model") == "cournot":
+        # Calculate rational action: best response to rivals' last actions when
+        # the market provides one, else the linear-demand monopoly action
+        best_response_fn = market_params.get("best_response")
+        if best_response_fn is not None:
+            rival_actions = []
+            for history in rival_histories:
+                if not history:
+                    rival_actions.append(0.0)
+                    continue
+                last = history[-1]
+                if isinstance(last, CournotResult):
+                    rival_actions.append(last.quantities[0] if last.quantities else 0.0)
+                else:
+                    rival_actions.append(last.prices[0] if last.prices else 0.0)
+            rational_action = float(best_response_fn(rival_actions))
+        elif market_params.get("model") == "cournot":
             a = market_params.get("a", 100.0)
             b = market_params.get("b", 1.0)
             my_cost = market_params.get("my_cost", 10.0)
