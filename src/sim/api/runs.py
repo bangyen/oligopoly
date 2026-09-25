@@ -47,7 +47,7 @@ async def get_run(run_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
             if not firms_data:
                 continue
             metrics[int(round_idx)] = {
-                **round_metrics(model, firms_data, stored_params),
+                **round_metrics(model, firms_data, stored_params, int(round_idx)),
                 "num_firms": len(firms_data),
             }
 

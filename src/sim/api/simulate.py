@@ -315,7 +315,7 @@ def _calculate_comparison_metrics(
         firms_data = list(rounds_data[round_idx].values())
         if not firms_data:
             continue
-        round_values = round_metrics(model, firms_data, stored_params)
+        round_values = round_metrics(model, firms_data, stored_params, int(round_idx))
         for name, values in metrics.items():
             values.append(round_values[name])
 

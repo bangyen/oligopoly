@@ -154,7 +154,11 @@ class ReplaySystem:
         total_quantity = sum(quantities)
         total_profit = sum(profits)
         market_price, hhi, cs = market_metrics(
-            str(self.run.model), dict(self.run.params or {}), prices, quantities
+            str(self.run.model),
+            dict(self.run.params or {}),
+            prices,
+            quantities,
+            round_idx,
         )
 
         # Get events for this round
