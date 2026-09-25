@@ -47,6 +47,130 @@ logger = logging.getLogger(__name__)
 _INNOVATION_EVENT_THRESHOLD = 0.03
 
 
+COLLUSION_STRATEGY_TYPES = ("cartel", "collusive", "opportunistic")
+_COLLUSION_CLASSES = (CartelStrategy, CollusiveStrategy, OpportunisticStrategy)
+# Rounds a cartel waits after breaking down before members try again
+CARTEL_REFORM_DELAY = 5
+
+
+def _collusion_strategy(
+    strategy_type: str,
+    seed: int | None,
+    manager: CollusionManager,
+    **kwargs: Any,
+) -> CartelStrategy | CollusiveStrategy | OpportunisticStrategy:
+    kwargs.pop("seed", None)
+    strategy = create_collusion_strategy(strategy_type, seed=seed, **kwargs)
+    strategy.collusion_manager = manager
+    return strategy
+
+
+def _members(firm_ids: list[int], strategies: list[Any]) -> list[int]:
+    """Firm ids currently playing a collusion strategy."""
+    return [
+        fid
+        for fid, strat in zip(firm_ids, strategies)
+        if isinstance(strat, _COLLUSION_CLASSES)
+    ]
+
+
+def _update_cartel(
+    manager: CollusionManager,
+    market: Market,
+    result: CournotResult | BertrandResult,
+    round_idx: int,
+    firm_ids: list[int],
+    strategies: list[Any],
+    actions: list[float],
+    costs: list[float],
+    reform_after: int,
+) -> int:
+    """Detect defections and (re)form the cartel; return the next reform round.
+
+    A member defects if it undercuts the cartel price (Bertrand) or
+    overproduces the cartel quantity (Cournot) by more than 5%; the cartel then
+    breaks down and members may try again after CARTEL_REFORM_DELAY rounds.
+    Cartel targets maximise the members' joint profit in the current market,
+    taking non-members' current actions as given.
+    """
+    position = {fid: pos for pos, fid in enumerate(firm_ids)}
+    cartel = manager.current_cartel
+    if cartel is not None:
+        defected = False
+        for fid in cartel.participating_firms:
+            pos = position.get(fid)
+            if pos is None:
+                continue
+            if market.model == "cournot":
+                # Cournot firms share one market price; only quantity is theirs
+                defected |= manager.detect_defection(
+                    round_idx,
+                    fid,
+                    cartel.collusive_price,
+                    result.quantities[pos],
+                    cartel.collusive_price,
+                    cartel.collusive_quantity,
+                )
+            else:
+                defected |= manager.detect_defection(
+                    round_idx,
+                    fid,
+                    result.prices[pos],
+                    0.0,
+                    cartel.collusive_price,
+                    cartel.collusive_quantity,
+                )
+        if defected:
+            manager.dissolve_cartel(round_idx)
+            return round_idx + CARTEL_REFORM_DELAY
+        return reform_after
+
+    members = _members(firm_ids, strategies)
+    if len(members) < 2 or round_idx < reform_after:
+        return reform_after
+
+    member_pos = [position[fid] for fid in members]
+    target = market.collusive_action(member_pos, actions, costs)
+    trial = list(actions)
+    for pos in member_pos:
+        trial[pos] = target
+    outcome = market.play(trial, costs, [0.0] * len(costs))
+    if market.model == "cournot":
+        price, quantity = outcome.price, target
+    else:
+        price = target
+        quantity = sum(outcome.quantities[p] for p in member_pos) / len(member_pos)
+    manager.form_cartel(round_idx, price, quantity, members)
+    return reform_after
+
+
+def _cartel_profit_fn(
+    market: Market,
+    firm: int,
+    actions: list[float],
+    costs: list[float],
+    manager: CollusionManager,
+    firm_ids: list[int],
+) -> Any:
+    """Map this firm's action to its profit when the other members comply."""
+    cartel = manager.current_cartel
+    trial = list(actions)
+    if cartel is not None:
+        target = (
+            cartel.collusive_quantity
+            if market.model == "cournot"
+            else cartel.collusive_price
+        )
+        for pos, fid in enumerate(firm_ids):
+            if fid in cartel.participating_firms:
+                trial[pos] = target
+
+    def evaluate(action: float) -> float:
+        return float(market.profit(firm, action, trial, costs))
+
+    return evaluate
+
+
 def _project(
     result: CournotResult | BertrandResult, index: int
 ) -> CournotResult | BertrandResult:
@@ -178,28 +302,19 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
         [] for _ in range(num_firms)
     ]  # Per-firm results (index 0 = that firm)
 
-    for i, firm_config in enumerate(firms):
+    for firm_config in firms:
         strategy_type = firm_config.get("strategy_type", "nash")
         if strategy_type == "nash":
             firm_strategies.append(None)  # Use baseline adaptive Nash
         else:
-            # Create specific strategy (collusive, etc.)
-            # Need to avoid passing strategy_type twice if it's in firm_config
-            strategy_kwargs = firm_config.copy()
-            if "strategy_type" in strategy_kwargs:
-                strategy_kwargs.pop("strategy_type")
-            strategy: CartelStrategy | CollusiveStrategy | OpportunisticStrategy = (
-                create_collusion_strategy(strategy_type, seed=seed, **strategy_kwargs)
+            strategy_kwargs = {
+                k: v for k, v in firm_config.items() if k != "strategy_type"
+            }
+            firm_strategies.append(
+                _collusion_strategy(
+                    strategy_type, seed, collusion_manager, **strategy_kwargs
+                )
             )
-            firm_strategies.append(strategy)
-
-    has_collusion = any(s is not None for s in firm_strategies)
-    if has_collusion and not is_linear:
-        raise ValueError("Collusion strategies require linear demand")
-    if has_collusion and evolution_config is not None:
-        raise ValueError(
-            "Collusion strategies cannot be combined with market evolution"
-        )
 
     nash_actions_initial = market.nash(costs)
     for spec in learning_specs:
@@ -211,6 +326,13 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
             )
         if firm_strategies[firm_idx] is not None:
             raise ValueError(f"Firm {firm_idx} already has a strategy")
+        if spec["strategy_type"] in COLLUSION_STRATEGY_TYPES:
+            firm_strategies[firm_idx] = _collusion_strategy(
+                spec["strategy_type"],
+                None if seed is None else seed + firm_idx,
+                collusion_manager,
+            )
+            continue
         firm_strategies[firm_idx] = create_learning_strategy(
             spec["strategy_type"],
             bounds=market.action_bounds(costs[firm_idx], costs),
@@ -237,6 +359,8 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
 
         # Initialize firm actions
         actions = market.initial_actions(costs)
+        reform_after = 0  # earliest round a (new) cartel may form
+        logged_events = 0
 
         # Run simulation rounds
         for round_idx in range(rounds):
@@ -251,46 +375,30 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
                 if event.round_idx == round_idx:
                     result = apply_policy_shock(result, event, costs)
 
-            # 3. Detect collusion and update manager
-            if collusion_manager.is_cartel_active():
-                cartel = collusion_manager.current_cartel
-                if cartel:
-                    for firm_id in range(num_firms):
-                        collusion_manager.detect_defection(
-                            round_idx,
-                            firm_id,
-                            (
-                                result.price
-                                if model == "cournot"
-                                else result.prices[firm_id]
-                            ),
-                            result.quantities[firm_id],
-                            cartel.collusive_price,
-                            cartel.collusive_quantity
-                            / len(cartel.participating_firms),  # Approximate
-                        )
-
-            # Check if any firm is playing a collusive strategy and try to form cartel if not active
-            colluding_firms = [
-                i
-                for i, s in enumerate(firm_strategies)
-                if s is not None and hasattr(s, "is_colluding") and s.is_colluding
-            ]
-            if colluding_firms and not collusion_manager.is_cartel_active():
-                # Form a cartel agreement based on current collusive intent
-                # In a real scenario, this would be negotiated. Here we use the target of the first colluding firm.
-                first_colluding_idx = colluding_firms[0]
-                strat = firm_strategies[first_colluding_idx]
-                if strat is not None:
-                    target_price = getattr(strat, "target_price", None)
-                    target_quantity = getattr(strat, "target_quantity", None)
-                    if target_price is not None and target_quantity is not None:
-                        collusion_manager.form_cartel(
-                            round_idx,
-                            target_price,
-                            target_quantity,
-                            colluding_firms,
-                        )
+            # 3. Cartel dynamics: detect defections, (re)form the cartel
+            reform_after = _update_cartel(
+                collusion_manager,
+                market,
+                result,
+                round_idx,
+                firm_ids,
+                firm_strategies,
+                actions,
+                costs,
+                reform_after,
+            )
+            for collusion_event in collusion_manager.events[logged_events:]:
+                db.add(
+                    Event(
+                        run_id=run.id,
+                        round_idx=collusion_event.round_idx,
+                        event_type=collusion_event.event_type.value,
+                        firm_id=collusion_event.firm_id,
+                        description=collusion_event.description,
+                        event_data=collusion_event.data,
+                    )
+                )
+            logged_events = len(collusion_manager.events)
 
             # 4. Persist results and update per-firm histories
             for pos, firm_id in enumerate(firm_ids):
@@ -323,7 +431,15 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
                     **base_params,
                     "my_cost": costs[i],
                     "best_response": _best_response_fn(market, i, actions, costs),
+                    "evaluate": _cartel_profit_fn(
+                        market, i, actions, costs, collusion_manager, firm_ids
+                    ),
                 }
+                extra = (
+                    {"my_cost": costs[i]}
+                    if isinstance(strat_opt, _COLLUSION_CLASSES)
+                    else {}
+                )
                 try:
                     action = strat_opt.next_action(
                         round_idx,
@@ -331,6 +447,7 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
                         rival_histories,
                         market.action_bounds(costs[i], costs),
                         market_params,
+                        **extra,
                     )
                     new_actions.append(action)
                 except Exception as e:
@@ -384,6 +501,13 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
                     state.fixed_costs,
                     state.qualities,
                 )
+                cartel = collusion_manager.current_cartel
+                if cartel is not None:
+                    cartel.participating_firms = [
+                        f for f in cartel.participating_firms if f in firm_ids
+                    ]
+                    if len(cartel.participating_firms) < 2:
+                        collusion_manager.dissolve_cartel(round_idx)
                 actions, firm_strategies, firm_histories = (
                     state.actions,
                     state.strategies,

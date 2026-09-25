@@ -255,14 +255,103 @@ class TestMarketEvolution:
         )
         assert get_run_results(run_id, db)["results"]
 
-    def test_collusion_and_evolution_are_exclusive(self, db) -> None:
-        with pytest.raises(ValueError, match="market evolution"):
-            run_game(
-                "cournot",
-                5,
-                {
-                    "firms": [{"cost": 10.0, "strategy_type": "collusive"}] * 2,
-                    "market_evolution": {},
-                },
-                db,
-            )
+    def test_cartel_survives_evolution(self, db) -> None:
+        run_id = run_game(
+            "cournot",
+            30,
+            {
+                "params": {"a": 200.0, "b": 1.0},
+                "firms": [{"cost": 10.0, "strategy_type": "cartel"}] * 2,
+                "seed": 4,
+                "market_evolution": {"entry_cost": 10.0, "growth_rate": 0.02},
+            },
+            db,
+        )
+        assert get_run_results(run_id, db)["results"]
+
+
+def _events(db, run_id, event_type):
+    return (
+        db.query(Event)
+        .filter(Event.run_id == run_id, Event.event_type == event_type)
+        .all()
+    )
+
+
+class TestCollusion:
+    def _cartel_run(self, db, model, params, rounds=20, strategy="cartel", n=2):
+        return run_game(
+            model,
+            rounds,
+            {
+                "params": params,
+                "firms": [{"cost": 10.0}] * n,
+                "seed": 1,
+                "advanced_strategies": [
+                    {"firm_id": i, "strategy_type": strategy} for i in range(n)
+                ],
+            },
+            db,
+        )
+
+    def test_linear_cournot_cartel_plays_joint_monopoly(self, db) -> None:
+        """Joint monopoly with a=100, b=1, c=10: Q=45 split, price 55."""
+        run_id = self._cartel_run(db, "cournot", {"a": 100.0, "b": 1.0})
+        last = _last_round(db, run_id)
+        assert last["firm_0"]["quantity"] == pytest.approx(22.5, rel=1e-3)
+        assert last["firm_1"]["quantity"] == pytest.approx(22.5, rel=1e-3)
+        assert last["firm_0"]["price"] == pytest.approx(55.0, rel=1e-3)
+        (formed,) = _events(db, run_id, "cartel_formed")
+        assert formed.event_data["collusive_quantity"] == pytest.approx(22.5, rel=1e-3)
+
+    def test_isoelastic_cournot_cartel(self, db) -> None:
+        """Monopoly price c e/(e-1) = 20, so Q = (100/20)^2 = 25 split evenly."""
+        run_id = self._cartel_run(
+            db, "cournot", {"demand_type": "isoelastic", "A": 100.0, "elasticity": 2.0}
+        )
+        last = _last_round(db, run_id)
+        assert last["firm_0"]["price"] == pytest.approx(20.0, rel=1e-3)
+        assert last["firm_0"]["quantity"] == pytest.approx(12.5, rel=1e-3)
+
+    def test_ces_bertrand_cartel_prices_above_nash(self, db) -> None:
+        params = {"demand_type": "ces", "elasticity": 3.0, "market_size": 300.0}
+        run_id = self._cartel_run(db, "bertrand", params, n=3)
+        nash = CESBertrandMarket(params, 3).nash([10.0] * 3)[0]
+        last = _last_round(db, run_id)
+        assert all(f["price"] > nash * 1.2 for f in last.values())
+
+    def test_defection_breaks_and_reforms_cartel(self, db) -> None:
+        run_id = run_game(
+            "cournot",
+            60,
+            {
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [{"cost": 10.0}] * 2,
+                "seed": 2,
+                "advanced_strategies": [
+                    {"firm_id": 0, "strategy_type": "cartel"},
+                    {"firm_id": 1, "strategy_type": "collusive"},
+                ],
+            },
+            db,
+        )
+        formed = _events(db, run_id, "cartel_formed")
+        defections = [
+            e for e in _events(db, run_id, "firm_defected") if e.firm_id is not None
+        ]
+        assert defections, "the collusive firm should defect at some point"
+        assert all(e.firm_id == 1 for e in defections)
+        assert len(formed) >= 2, "cartel should re-form after breaking down"
+
+    def test_single_colluder_forms_no_cartel(self, db) -> None:
+        run_id = run_game(
+            "cournot",
+            10,
+            {
+                "params": {"a": 100.0, "b": 1.0},
+                "firms": [{"cost": 10.0}] * 2,
+                "advanced_strategies": [{"firm_id": 0, "strategy_type": "cartel"}],
+            },
+            db,
+        )
+        assert not _events(db, run_id, "cartel_formed")

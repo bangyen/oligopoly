@@ -170,6 +170,24 @@ class TestAdvancedStrategies:
             assert detail in response.json()["detail"]
 
 
+class TestCollusionStrategies:
+    @pytest.mark.parametrize("strategy_type", ["cartel", "collusive", "opportunistic"])
+    def test_cartel_on_isoelastic_market(self, client, strategy_type) -> None:
+        response = _simulate(
+            client,
+            rounds=10,
+            demand_type="isoelastic",
+            advanced_strategies=[
+                {"firm_id": 0, "strategy_type": "cartel"},
+                {"firm_id": 1, "strategy_type": strategy_type},
+            ],
+        )
+        assert response.status_code == 200, response.text
+        run_id = response.json()["run_id"]
+        events = client.get(f"/runs/{run_id}/events").json()["events"]
+        assert any(e["event_type"] == "cartel_formed" for e in events)
+
+
 class TestMarketEvolution:
     def test_entry_is_recorded(self, client) -> None:
         response = _simulate(

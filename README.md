@@ -122,7 +122,7 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 |-------|--------|-------|
 | `demand_type` | `"linear"` (default), `"isoelastic"` | Isoelastic uses `params: {"A", "elasticity"}` with Q(P) = (A/P)^e |
 | `enhanced_demand` | `{"demand_type": "ces", "elasticity", "market_size", "qualities"}` | Differentiated Bertrand; needs ≥2 firms; consumer surplus is reported as `null` |
-| `advanced_strategies` | `[{"firm_id", "strategy_type", ...}]` | `fictitious_play`, `q_learning`, `deep_q_learning`, `behavioral`; optional `learning_rate`, `memory_length`, `exploration_rate` |
+| `advanced_strategies` | `[{"firm_id", "strategy_type", ...}]` | Learners: `fictitious_play`, `q_learning`, `deep_q_learning`, `behavioral` (optional `learning_rate`, `memory_length`, `exploration_rate`). Collusion: two or more `cartel`/`collusive`/`opportunistic` firms form a cartel at their joint-profit optimum; a defection breaks it for 5 rounds |
 | `market_evolution` | `{"growth_rate", "entry_cost", "exit_threshold", "innovation_rate"}` | Entries, exits and innovations show up in `/runs/{id}/events` |
 
 ```json
@@ -144,8 +144,8 @@ equilibrium each round. Unknown fields are rejected with a 422.
 
 Known gaps and next steps, roughly in priority order:
 
-- [ ] **Collusion everywhere** — collusion strategies currently require linear
-      demand and cannot be combined with market evolution.
+- [x] **Collusion everywhere** — cartels form at the members' joint-profit
+      optimum in every demand system and survive market evolution.
 - [ ] **Bertrand capacity toggle** — expose the capacity-constrained vs
       winner-take-all allocation for linear Bertrand runs in the API.
 - [ ] **CES consumer surplus** — report a money-metric surplus for CES runs
