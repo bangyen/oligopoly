@@ -4,7 +4,6 @@ This module provides comprehensive replay functionality that enables
 frame-by-frame playback of simulation runs with event highlighting.
 """
 
-from collections.abc import Generator
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -34,22 +33,6 @@ class ReplayFrame:
     firm_data: dict[int, dict[str, float]]  # firm_id -> {action, price, qty, profit}
     events: list[dict[str, Any]]  # Events that occurred in this round
     annotations: list[str]  # Human-readable annotations for events
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert frame to dictionary for API serialization."""
-        return {
-            "round_idx": self.round_idx,
-            "timestamp": self.timestamp.isoformat(),
-            "market_price": self.market_price,
-            "total_quantity": self.total_quantity,
-            "total_profit": self.total_profit,
-            "hhi": self.hhi,
-            "consumer_surplus": self.consumer_surplus,
-            "num_firms": self.num_firms,
-            "firm_data": self.firm_data,
-            "events": self.events,
-            "annotations": self.annotations,
-        }
 
 
 class ReplaySystem:
@@ -229,59 +212,3 @@ class ReplaySystem:
             List of round indices with events
         """
         return sorted(self.events_by_round.keys())
-
-    def replay_generator(
-        self, delay_ms: int = 500
-    ) -> Generator[ReplayFrame, None, None]:
-        """Generate frames for replay with specified delay.
-
-        Args:
-            delay_ms: Delay between frames in milliseconds
-
-        Yields:
-            ReplayFrame objects in sequence
-        """
-        import time
-
-        frames = self.get_all_frames()
-        for frame in frames:
-            yield frame
-            time.sleep(delay_ms / 1000.0)
-
-    def get_replay_summary(self) -> dict[str, Any]:
-        """Get summary information about the replay.
-
-        Returns:
-            Dictionary with replay metadata and statistics
-        """
-        frames = self.get_all_frames()
-        event_frames = self.get_frames_with_events()
-
-        summary = {
-            "run_id": self.run_id,
-            "model": self.run.model,
-            "total_rounds": self.run.rounds,
-            "total_frames": len(frames),
-            "frames_with_events": len(event_frames),
-            "event_rounds": self.get_event_rounds(),
-            "first_round": (
-                min(frames, key=lambda f: f.round_idx).round_idx if frames else None
-            ),
-            "last_round": (
-                max(frames, key=lambda f: f.round_idx).round_idx if frames else None
-            ),
-        }
-
-        # Event statistics
-        total_events = sum(len(frame.events) for frame in frames)
-        summary["total_events"] = total_events
-
-        if total_events > 0:
-            event_types: dict[str, int] = {}
-            for frame in frames:
-                for event in frame.events:
-                    event_type = event["type"]
-                    event_types[event_type] = event_types.get(event_type, 0) + 1
-            summary["events_by_type"] = event_types
-
-        return summary

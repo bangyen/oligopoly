@@ -6,7 +6,6 @@ market price based on total quantity supplied and calculates individual firm pro
 Supports both single-segment and multi-segment demand models.
 """
 
-import logging
 from dataclasses import dataclass
 
 from ..models.models import SegmentedDemand
@@ -14,15 +13,7 @@ from ..validation.economic_validation import (
     EconomicValidationError,
     validate_cost_structure,
     validate_demand_parameters,
-    validate_simulation_result,
 )
-
-# Re-export CLI parse helpers from their canonical location.
-# Implementation lives in _parsing.py; importing here preserves backward compatibility.
-from ._parsing import parse_costs as parse_costs  # noqa: F401
-from ._parsing import parse_quantities as parse_quantities  # noqa: F401
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -118,7 +109,6 @@ def cournot_simulation(
     # belong to the firms' strategies, before quantities are submitted.
     price = max(0.0, a - b * sum(quantities))
     profits = _profits(price, costs, quantities, fixed_costs)
-    _log_validation_warnings(price, quantities, profits, costs, {"a": a, "b": b})
     return CournotResult(price=price, quantities=list(quantities), profits=profits)
 
 
@@ -138,25 +128,6 @@ def _profits(
     return [
         (price - cost) * q - fc for cost, q, fc in zip(costs, quantities, fixed_costs)
     ]
-
-
-def _log_validation_warnings(
-    price: float,
-    quantities: list[float],
-    profits: list[float],
-    costs: list[float],
-    params: dict[str, float],
-) -> None:
-    """Log (but never act on) economic-consistency warnings for a round."""
-    try:
-        validation_result = validate_simulation_result(
-            "cournot", [price], quantities, profits, costs, params
-        )
-        warnings = validation_result.warnings
-    except EconomicValidationError as e:
-        warnings = [str(e)]
-    for warning in warnings:
-        logger.warning("Economic validation warning: %s", warning)
 
 
 def cournot_segmented_simulation(
@@ -217,9 +188,6 @@ def cournot_segmented_simulation(
     # cournot_simulation, all submitted quantities clear at this price.
     price = max(0.0, (weighted_alpha - total_quantity) / weighted_beta)
     profits = _profits(price, costs, quantities, fixed_costs)
-    _log_validation_warnings(
-        price, quantities, profits, costs, {"a": weighted_alpha, "b": weighted_beta}
-    )
     return CournotResult(price=price, quantities=list(quantities), profits=profits)
 
 

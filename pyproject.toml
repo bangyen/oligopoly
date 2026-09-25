@@ -8,7 +8,7 @@ py-modules = []
 [project]
 name = "oligopoly"
 version = "0.1.0"
-description = "Oligopoly Market Simulation"
+description = "Oligopoly simulation: demand systems, learning firms and algorithmic collusion"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
@@ -27,25 +27,25 @@ classifiers = [
 ]
 
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn[standard]>=0.24.0",
-    "sqlalchemy>=2.0.0,<3",
-    "alembic>=1.12.0",
-    "psycopg2-binary>=2.9.0",
-    "pydantic>=2.0.0",
-    "pydantic-settings>=2.0.0",
     "numpy>=1.24",
-    "tqdm>=4.66.0",
-    "jinja2>=3.1.0",
+    "sqlalchemy>=2.0.0,<3",
 ]
 
 [project.optional-dependencies]
-viz = [
-    "pandas>=2.0.0",
-    "plotly>=5.17.0",
+# REST API and Scenario Lab dashboard
+api = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "jinja2>=3.1.0",
+]
+# PostgreSQL instead of the default SQLite file
+postgres = [
+    "psycopg2-binary>=2.9.0",
 ]
 dev = [
-    "oligopoly[viz]",
+    "oligopoly[api,postgres]",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
@@ -58,8 +58,6 @@ dev = [
 
 [project.scripts]
 oligopoly = "sim.api:serve"
-cournot = "sim.cli:cournot_main"
-bertrand = "sim.cli:bertrand_main"
 
 [project.urls]
 Homepage = "https://github.com/bangyen/oligopoly"
@@ -95,10 +93,6 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
-module = "alembic.*"
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "dashboard.*"
 disallow_untyped_defs = false
 warn_return_any = false
@@ -110,10 +104,6 @@ module = [
     "sqlalchemy.*",
     "pydantic.*",
     "pydantic_settings.*",
-    "alembic.*",
-    "psycopg2.*",
-    "plotly.*",
-    "pandas.*",
     "requests.*",
     "uvicorn.*",
     "httpx.*",

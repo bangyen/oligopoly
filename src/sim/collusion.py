@@ -1,8 +1,8 @@
 """Collusion and defection dynamics for oligopoly simulation.
 
-This module implements cartel behavior where firms can collude to set high prices/output,
-and individual firms can defect by undercutting to gain higher profits. It also includes
-event logging for tracking collusion, defection, and regulatory interventions.
+Cartels agree a collusive price and per-firm quantity; members may defect by
+undercutting (Bertrand) or overproducing (Cournot). The manager records cartel
+formation, defections and dissolution as events.
 """
 
 from dataclasses import dataclass, field
@@ -15,9 +15,7 @@ class CollusionEventType(Enum):
 
     CARTEL_FORMED = "cartel_formed"
     FIRM_DEFECTED = "firm_defected"
-    REGULATOR_INTERVENED = "regulator_intervened"
-    PENALTY_IMPOSED = "penalty_imposed"
-    PRICE_CAP_IMPOSED = "price_cap_imposed"
+    CARTEL_DISSOLVED = "cartel_dissolved"
 
 
 @dataclass
@@ -25,7 +23,7 @@ class CollusionEvent:
     """Represents an event in the collusion dynamics.
 
     Events track important moments like cartel formation, defections,
-    and regulatory interventions with timestamps and relevant data.
+    and dissolution with the relevant data.
     """
 
     event_type: CollusionEventType
@@ -69,106 +67,20 @@ class CartelAgreement:
             raise ValueError("Cartel must have at least one participating firm")
 
 
-@dataclass
-class RegulatorState:
-    """Tracks regulator monitoring and intervention state.
-
-    Monitors market concentration (HHI) and average prices to detect
-    collusion and determine when to intervene.
-    """
-
-    hhi_threshold: float = 0.8  # HHI threshold for intervention
-    price_threshold_multiplier: float = 1.5  # Price threshold as multiple of baseline
-    baseline_price: float = 0.0  # Baseline competitive price
-    intervention_probability: float = (
-        0.8  # Probability of intervention when thresholds exceeded
-    )
-    penalty_amount: float = 100.0  # Fixed penalty amount
-    price_cap_multiplier: float = 0.9  # Price cap as fraction of detected price
-
-    def __post_init__(self) -> None:
-        """Validate regulator parameters."""
-        if not 0 <= self.hhi_threshold <= 1:
-            raise ValueError(f"HHI threshold {self.hhi_threshold} must be in [0, 1]")
-        if self.price_threshold_multiplier <= 1:
-            raise ValueError(
-                f"Price threshold multiplier {self.price_threshold_multiplier} must be > 1"
-            )
-        if not 0 <= self.intervention_probability <= 1:
-            raise ValueError(
-                f"Intervention probability {self.intervention_probability} must be in [0, 1]"
-            )
-        if self.penalty_amount < 0:
-            raise ValueError(
-                f"Penalty amount {self.penalty_amount} must be non-negative"
-            )
-        if not 0 < self.price_cap_multiplier <= 1:
-            raise ValueError(
-                f"Price cap multiplier {self.price_cap_multiplier} must be in (0, 1]"
-            )
-
-
 class CollusionManager:
     """Manages collusion dynamics and event tracking.
 
-    Handles cartel formation, defection detection, regulator monitoring,
+    Handles cartel formation, defection detection,
     and event logging for the oligopoly simulation.
     """
 
-    def __init__(self, regulator_state: RegulatorState | None = None):
-        """Initialize collusion manager.
-
-        Args:
-            regulator_state: Regulator configuration, uses defaults if None
-        """
-        self.regulator_state = regulator_state or RegulatorState()
+    def __init__(self) -> None:
+        """Initialize collusion manager."""
         self.current_cartel: CartelAgreement | None = None
         self.events: list[CollusionEvent] = []
         self.firm_defection_history: dict[
             int, list[int]
         ] = {}  # firm_id -> list of rounds when defected
-
-    def calculate_hhi(self, market_shares: list[float]) -> float:
-        """Calculate Herfindahl-Hirschman Index (HHI) for market concentration.
-
-        Args:
-            market_shares: List of market shares for each firm (should sum to 1.0)
-
-        Returns:
-            HHI value between 0 and 1
-        """
-        if not market_shares:
-            return 0.0
-
-        # Normalize shares to sum to 1.0
-        total_share = sum(market_shares)
-        if total_share == 0:
-            return 0.0
-
-        normalized_shares = [share / total_share for share in market_shares]
-        return sum(share**2 for share in normalized_shares)
-
-    def calculate_average_price(
-        self, prices: list[float], quantities: list[float]
-    ) -> float:
-        """Calculate quantity-weighted average price.
-
-        Args:
-            prices: List of prices set by each firm
-            quantities: List of quantities sold by each firm
-
-        Returns:
-            Weighted average price
-        """
-        if not prices or not quantities or len(prices) != len(quantities):
-            return 0.0
-
-        total_quantity = sum(quantities)
-        if total_quantity == 0:
-            return 0.0
-
-        weighted_price = sum(p * q for p, q in zip(prices, quantities)) / total_quantity
-        return weighted_price
 
     def detect_defection(
         self,
@@ -268,144 +180,6 @@ class CollusionManager:
         )
         self.events.append(event)
 
-    def check_regulator_intervention(
-        self,
-        round_idx: int,
-        market_shares: list[float],
-        prices: list[float],
-        quantities: list[float],
-    ) -> tuple[bool, str | None, float | None]:
-        """Check if regulator should intervene based on HHI and price thresholds.
-
-        Args:
-            round_idx: Current round index
-            market_shares: Market shares for each firm
-            prices: Prices set by each firm
-            quantities: Quantities sold by each firm
-
-        Returns:
-            Tuple of (should_intervene, intervention_type, intervention_value)
-            intervention_type can be "penalty" or "price_cap"
-            intervention_value is penalty amount or price cap level
-        """
-        # Calculate HHI
-        hhi = self.calculate_hhi(market_shares)
-
-        # Calculate average price
-        avg_price = self.calculate_average_price(prices, quantities)
-
-        # Check thresholds
-        hhi_exceeded = hhi > self.regulator_state.hhi_threshold
-        price_exceeded = (
-            avg_price
-            > self.regulator_state.baseline_price
-            * self.regulator_state.price_threshold_multiplier
-        )
-
-        should_intervene = hhi_exceeded and price_exceeded
-
-        if should_intervene:
-            # Determine intervention type (penalty vs price cap)
-            # Use penalty if HHI is very high, price cap otherwise
-            if hhi > 0.9:
-                intervention_type = "penalty"
-                intervention_value = self.regulator_state.penalty_amount
-            else:
-                intervention_type = "price_cap"
-                intervention_value = (
-                    avg_price * self.regulator_state.price_cap_multiplier
-                )
-
-            # Log regulator intervention event
-            event = CollusionEvent(
-                event_type=CollusionEventType.REGULATOR_INTERVENED,
-                round_idx=round_idx,
-                description="Regulator intervenes",
-                data={
-                    "hhi": hhi,
-                    "avg_price": avg_price,
-                    "intervention_type": intervention_type,
-                    "intervention_value": intervention_value,
-                    "hhi_threshold": self.regulator_state.hhi_threshold,
-                    "price_threshold": self.regulator_state.baseline_price
-                    * self.regulator_state.price_threshold_multiplier,
-                },
-            )
-            self.events.append(event)
-
-            return True, intervention_type, intervention_value
-
-        return False, None, None
-
-    def apply_regulator_intervention(
-        self,
-        round_idx: int,
-        intervention_type: str,
-        intervention_value: float,
-        firm_profits: list[float],
-    ) -> list[float]:
-        """Apply regulator intervention to firm profits.
-
-        Args:
-            round_idx: Current round index
-            intervention_type: Type of intervention ("penalty" or "price_cap")
-            intervention_value: Value of intervention (penalty amount or price cap)
-            firm_profits: Current firm profits
-
-        Returns:
-            Modified firm profits after intervention
-        """
-        modified_profits = firm_profits.copy()
-
-        if intervention_type == "penalty":
-            # Apply penalty to all firms (reduces profits)
-            for i in range(len(modified_profits)):
-                modified_profits[i] = max(0, modified_profits[i] - intervention_value)
-
-            # Log penalty event
-            event = CollusionEvent(
-                event_type=CollusionEventType.PENALTY_IMPOSED,
-                round_idx=round_idx,
-                description=f"Penalty of {intervention_value} imposed on all firms",
-                data={"penalty_amount": intervention_value},
-            )
-            self.events.append(event)
-
-        elif intervention_type == "price_cap":
-            # Price cap affects future rounds, not current profits
-            # Log price cap event
-            event = CollusionEvent(
-                event_type=CollusionEventType.PRICE_CAP_IMPOSED,
-                round_idx=round_idx,
-                description=f"Price cap of {intervention_value} imposed",
-                data={"price_cap": intervention_value},
-            )
-            self.events.append(event)
-
-        return modified_profits
-
-    def get_events_for_round(self, round_idx: int) -> list[CollusionEvent]:
-        """Get all events that occurred in a specific round.
-
-        Args:
-            round_idx: Round index to filter events
-
-        Returns:
-            List of events for the specified round
-        """
-        return [event for event in self.events if event.round_idx == round_idx]
-
-    def get_firm_defection_count(self, firm_id: int) -> int:
-        """Get the number of times a firm has defected.
-
-        Args:
-            firm_id: Firm ID to check
-
-        Returns:
-            Number of defections by the firm
-        """
-        return len(self.firm_defection_history.get(firm_id, []))
-
     def is_cartel_active(self) -> bool:
         """Check if there is an active cartel agreement.
 
@@ -423,7 +197,7 @@ class CollusionManager:
         if self.current_cartel:
             # Log cartel dissolution (could add specific event type)
             event = CollusionEvent(
-                event_type=CollusionEventType.FIRM_DEFECTED,  # Reuse existing type
+                event_type=CollusionEventType.CARTEL_DISSOLVED,
                 round_idx=round_idx,
                 description="Cartel dissolved",
                 data={"participating_firms": self.current_cartel.participating_firms},

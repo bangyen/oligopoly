@@ -42,24 +42,6 @@
     margin: 16px 12px;
 }
 
-.config-section {
-    padding: 0 16px;
-    margin-bottom: 16px;
-}
-
-.config-title {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--color-text-tertiary);
-    margin-bottom: 12px;
-    font-weight: 600;
-}
-
-.config-group {
-    margin-bottom: 12px;
-}
-
 .config-label {
     display: block;
     font-size: 12px;
@@ -175,34 +157,8 @@ body {
     padding: 0 24px;
     margin-top: 16px;
 }
-
-.status-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: var(--color-bg);
-    border-radius: 4px;
-}
-
-.status-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--color-success);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
-}
-
-.status-text {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-}
 
 .main-content {
     flex: 1;
@@ -315,35 +271,6 @@ body {
     word-break: break-word;
 }
 
-.metric-change {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--color-text-tertiary);
-}
-
-.metric-change.positive {
-    color: var(--color-success);
-}
-
-.metric-change.neutral {
-    color: var(--color-neutral);
-}
-
-.chart-section {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    min-width: 0;
-}
-
-.chart-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 4px;
-    padding: 24px;
-    min-width: 0;
-}
-
 .chart-full {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -444,18 +371,9 @@ td.loading {
 tbody tr:hover {
     background: var(--color-bg);
 }
-
-@media (max-width: 1200px) {
     .metrics-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
-    .chart-section {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
     .sidebar {
         width: 80px;
     }
@@ -473,7 +391,6 @@ tbody tr:hover {
     .metrics-grid {
         grid-template-columns: 1fr;
     }
-}
 
 
 /* Scenario Lab */
@@ -533,4 +450,34 @@ tbody tr:hover {
 
 .hidden {
     display: none !important;
+}
+
+/* Sidebar intro and presets */
+.intro {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 0 8px;
+    flex: 1;
+}
+
+.intro a {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.presets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.presets-label {
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 4px;
 }

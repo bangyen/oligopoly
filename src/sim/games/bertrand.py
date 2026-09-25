@@ -12,16 +12,9 @@ from dataclasses import dataclass
 from ..models.models import SegmentedDemand
 from ..validation.economic_validation import (
     EconomicValidationError,
-    enforce_economic_constraints,
     validate_cost_structure,
     validate_demand_parameters,
-    validate_simulation_result,
 )
-
-# Re-export CLI parse helpers from their canonical location.
-# Implementation lives in _parsing.py; importing here preserves backward compatibility.
-from ._parsing import parse_costs as parse_costs  # noqa: F401
-from ._parsing import parse_prices as parse_prices  # noqa: F401
 
 
 @dataclass
@@ -330,63 +323,6 @@ def bertrand_simulation(
         quantities=quantities,
         profits=profits,
     )
-
-    # Validate economic consistency
-    try:
-        validation_result = validate_simulation_result(
-            "bertrand",
-            prices,
-            quantities,
-            profits,
-            costs,
-            {"alpha": alpha, "beta": beta},
-        )
-
-        # Log warnings if any
-        if validation_result.warnings:
-            import logging
-
-            logger = logging.getLogger(__name__)
-            for warning in validation_result.warnings:
-                logger.warning(f"Economic validation warning: {warning}")
-
-    except EconomicValidationError as e:
-        # Log warning but don't fail the simulation
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Economic validation warning: {e}")
-
-        # If validation fails, enforce constraints
-        enforced_quantities = enforce_economic_constraints(
-            quantities,
-            costs,
-            min(prices) if prices else 0.0,
-        )
-
-        # Recalculate with enforced quantities
-        enforced_total_quantity = sum(enforced_quantities)
-
-        # Recalculate profits with enforced quantities
-        if fixed_costs:
-            enforced_profits = [
-                (price - cost) * q - fc
-                for price, cost, q, fc in zip(
-                    prices, costs, enforced_quantities, fixed_costs
-                )
-            ]
-        else:
-            enforced_profits = [
-                (price - cost) * q
-                for price, cost, q in zip(prices, costs, enforced_quantities)
-            ]
-
-        result = BertrandResult(
-            total_demand=enforced_total_quantity,
-            prices=prices.copy(),
-            quantities=enforced_quantities,
-            profits=enforced_profits,
-        )
 
     return result
 

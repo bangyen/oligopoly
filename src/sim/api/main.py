@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sim.database import get_engine
 from sim.models.models import Base
 
-from . import heatmap, runs, simulate
+from . import runs, simulate
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,6 @@ app = FastAPI(
 )
 app.include_router(simulate.router)
 app.include_router(runs.router)
-app.include_router(heatmap.router)
 
 
 @app.get("/healthz")

@@ -18,7 +18,6 @@ from sim.strategies.advanced_strategies import (
     FictitiousPlayStrategy,
     MarketState,
     StrategyBelief,
-    create_advanced_strategy,
 )
 
 
@@ -236,33 +235,6 @@ class TestBehavioralStrategy:
 
         # Test basic attributes
         assert strategy.learning_rate == 0.1
-
-
-class TestCreateAdvancedStrategy:
-    """Test advanced strategy factory function."""
-
-    def test_create_fictitious_play_strategy(self):
-        """Test creating fictitious play strategy."""
-        strategy = create_advanced_strategy("fictitious_play")
-
-        assert isinstance(strategy, FictitiousPlayStrategy)
-
-    def test_create_dqn_strategy(self):
-        """Test creating DQN strategy."""
-        strategy = create_advanced_strategy("deep_q_learning")
-
-        assert isinstance(strategy, DeepQLearningStrategy)
-
-    def test_create_behavioral_strategy(self):
-        """Test creating behavioral strategy."""
-        strategy = create_advanced_strategy("behavioral")
-
-        assert isinstance(strategy, BehavioralStrategy)
-
-    def test_create_invalid_strategy(self):
-        """Test creating invalid strategy type."""
-        with pytest.raises(ValueError, match="Unknown advanced strategy type"):
-            create_advanced_strategy("invalid_strategy")
 
 
 class TestMarketStateValidation:

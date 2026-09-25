@@ -57,127 +57,51 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and start services
+      - name: Build image and start the API
         run: |
-          cd deployment
-          docker compose up --build -d
-          
-      - name: Wait for services to be ready
-        run: |
-          echo "Waiting for services to start..."
-          # Check database health
-          echo "Checking database health..."
-          timeout 60 bash -c 'until docker compose -f deployment/docker-compose.yml exec -T db pg_isready -U user -d oligopoly; do sleep 2; done'
-          
-          # Check API health
-          echo "Checking API health..."
-          timeout 60 bash -c 'until curl -f http://localhost:8000/healthz; do sleep 2; done'
-          
-          echo "All services are healthy!"
-
-      - name: Run simulation test
-        run: |
-          echo "Running simulation test..."
-          
-          # Test basic simulation
-          SIM_RESPONSE=$(curl -s -X POST "http://localhost:8000/simulate" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "model": "cournot",
-              "rounds": 5,
-              "params": {"a": 100.0, "b": 1.0},
-              "firms": [{"cost": 10.0}, {"cost": 15.0}]
-            }')
-          
-          echo "Simulation response: $SIM_RESPONSE"
-          
-          # Extract run_id
-          RUN_ID=$(echo $SIM_RESPONSE | jq -r '.run_id')
-          echo "Run ID: $RUN_ID"
-          
-          # Verify run_id is not null
-          if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
-            echo "ERROR: Failed to get run_id from simulation"
+          docker build -f deployment/Dockerfile -t oligopoly:ci .
+          docker run -d --name api -p 8000:8000 oligopoly:ci
+          if ! timeout 60 bash -c 'until curl -sf http://localhost:8000/healthz; do sleep 2; done'; then
+            docker logs api
             exit 1
           fi
-          
-          # Test getting results
-          echo "Testing results retrieval..."
-          RESULTS=$(curl -s "http://localhost:8000/runs/$RUN_ID")
-          echo "Results: $RESULTS"
-          
-          # Test heatmap generation
-          echo "Testing heatmap generation..."
-          HEATMAP_RESPONSE=$(curl -s -X POST "http://localhost:8000/heatmap" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "model": "cournot",
-              "firm_i": 0,
-              "firm_j": 1,
-              "grid_size": 10,
-              "action_range": [0.0, 50.0],
-              "other_actions": [],
-              "params": {"a": 100.0, "b": 1.0},
-              "firms": [{"cost": 10.0}, {"cost": 15.0}]
-            }')
-          
-          echo "Heatmap response: $HEATMAP_RESPONSE"
-          
-          # Verify heatmap was generated successfully
-          if echo "$HEATMAP_RESPONSE" | jq -e '.profit_surface' > /dev/null; then
-            echo "Heatmap generated successfully!"
-          else
-            echo "ERROR: Failed to generate heatmap"
-            exit 1
-          fi
-          
-          echo "All e2e tests passed!"
 
-      - name: Smoke-test dashboard
+      - name: Exercise the API
         run: |
-          echo "Starting FastAPI dashboard..."
-          # Install into a dedicated venv: mixing ~/.local packages with the
-          # runner's system jinja2 previously loaded two starlette copies and
-          # broke template dispatch.
-          python -m venv /tmp/dashboard-venv
-          /tmp/dashboard-venv/bin/pip install -q -e .
-          /tmp/dashboard-venv/bin/python dashboard/main.py &
-          DASHBOARD_PID=$!
+          set -euo pipefail
+          post() { curl -sf -X POST "http://localhost:8000$1" -H "Content-Type: application/json" -d "$2"; }
 
-          # Wait for the port to answer at all (any status, including 5xx), so a
-          # failing page reports its status instead of timing out with exit 124.
+          RUN_ID=$(post /simulate '{"model": "cournot", "rounds": 5, "params": {"a": 100.0, "b": 1.0}, "firms": [{"cost": 10.0}, {"cost": 15.0}]}' | jq -r .run_id)
+          curl -sf "http://localhost:8000/runs/$RUN_ID" | jq -e '.metrics["4"].hhi'
+
+          # Every feature at once: CES demand, a cartel, learning, market evolution
+          RUN_ID=$(post /simulate '{"model": "bertrand", "rounds": 30, "seed": 1,
+            "firms": [{"cost": 10}, {"cost": 10}, {"cost": 12}],
+            "enhanced_demand": {"demand_type": "ces", "elasticity": 3},
+            "advanced_strategies": [{"firm_id": 0, "strategy_type": "cartel"},
+                                    {"firm_id": 1, "strategy_type": "cartel"},
+                                    {"firm_id": 2, "strategy_type": "fictitious_play"}],
+            "market_evolution": {"entry_cost": 5}}' | jq -r .run_id)
+          curl -sf "http://localhost:8000/runs/$RUN_ID/events" | jq -e 'any(.events[]; .event_type == "cartel_formed")'
+          curl -sf "http://localhost:8000/runs/$RUN_ID/replay" | jq -e '.total_frames == 30'
+
+      - name: Smoke-test the dashboard
+        run: |
+          docker run -d --name dashboard -p 5050:5050 oligopoly:ci python dashboard/main.py
           if ! timeout 60 bash -c 'until curl -s -o /dev/null http://localhost:5050; do sleep 2; done'; then
-            echo "ERROR: dashboard never started listening on :5050"
-            kill $DASHBOARD_PID 2>/dev/null || true
+            docker logs dashboard
             exit 1
           fi
+          curl -sf http://localhost:5050/ | grep -qi "<html"
+          curl -sf -X POST http://localhost:5050/api/scenario -H "Content-Type: application/json" \
+            -d '{"model": "cournot", "rounds": 10, "firms": [{"cost": 10}, {"cost": 12}]}' \
+            | jq -e '.run.results["9"]'
 
-          STATUS=$(curl -s -o /tmp/dashboard-body.html -w '%{http_code}' http://localhost:5050)
-          echo "GET / -> $STATUS"
-          head -c 500 /tmp/dashboard-body.html
-
-          if [ "$STATUS" != "200" ]; then
-            echo "ERROR: dashboard returned HTTP $STATUS, expected 200"
-            kill $DASHBOARD_PID 2>/dev/null || true
-            exit 1
-          fi
-          if ! grep -qi "<html" /tmp/dashboard-body.html; then
-            echo "ERROR: dashboard did not return an HTML page"
-            kill $DASHBOARD_PID 2>/dev/null || true
-            exit 1
-          fi
-          echo "Dashboard smoke test passed!"
-
-          kill $DASHBOARD_PID 2>/dev/null || true
-
-      - name: Cleanup
-        if: always()
+      - name: Container logs
+        if: failure()
         run: |
-          cd deployment
-          docker compose down -v
+          docker logs api || true
+          docker logs dashboard || true
 
   packaging:
     runs-on: ubuntu-latest
@@ -201,6 +125,11 @@ jobs:
           # (e.g. "from src.sim..."), missing __init__.py in shipped
           # subpackages, and console scripts pointing at names that do not exist.
           uv build --wheel -o dist
-          uv venv /tmp/wheelcheck
-          uv pip install --python /tmp/wheelcheck/bin/python dist/*.whl
-          /tmp/wheelcheck/bin/python scripts/ci/check_wheel.py
+          WHEEL=$(ls dist/*.whl)
+          # The simulation core must work without the API extra
+          uv venv /tmp/core
+          uv pip install --python /tmp/core/bin/python "$WHEEL"
+          /tmp/core/bin/python scripts/ci/check_wheel.py --core
+          uv venv /tmp/full
+          uv pip install --python /tmp/full/bin/python "$WHEEL[api]"
+          /tmp/full/bin/python scripts/ci/check_wheel.py

@@ -20,7 +20,7 @@ class TestSettings:
         assert settings.version == "0.1.0"
         assert settings.environment == "development"
         assert settings.debug is False
-        assert settings.database_url == "postgresql://user:password@localhost/oligopoly"
+        assert settings.database_url == "sqlite:///oligopoly.db"
         assert settings.api_host == "0.0.0.0"
         assert settings.api_port == 8000
         assert settings.cors_origins == ["*"]

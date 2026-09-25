@@ -272,20 +272,6 @@ class MarketEvolutionEngine:
 
         return new_firms
 
-    def _should_enter(
-        self,
-        current_firms: list[int],
-        current_profits: list[float],
-        current_costs: list[float],
-    ) -> bool:
-        """Determine if a new firm should enter the market (simplified)."""
-        if not current_firms:
-            return True  # Enter empty market
-
-        # Simple entry rule: enter if average profit exceeds entry cost
-        avg_profit = float(np.mean(current_profits))
-        return avg_profit > self.config.entry_cost
-
     def _generate_entrant_cost(self, current_costs: list[float]) -> float:
         """Generate cost for new entrant."""
         if not current_costs:
@@ -365,49 +351,3 @@ class MarketEvolutionEngine:
 
         # Increase quality by 5%
         qualities[firm_index] *= 1.05
-
-    def get_evolution_metrics(self) -> dict[str, float]:
-        """Get metrics about market evolution."""
-        return {
-            "round_num": self.state.round_num,
-            "total_market_size": self.state.total_market_size,
-            "technology_level": self.state.technology_level,
-            "num_firms": self.state.num_firms,
-            "total_entries": len(self.state.entry_history),
-            "total_exits": len(self.state.exit_history),
-            "net_entries": len(self.state.entry_history) - len(self.state.exit_history),
-        }
-
-    def get_firm_evolution_metrics(self, firm_id: int) -> dict[str, float] | None:
-        """Get evolution metrics for a specific firm."""
-        if firm_id not in self.state.firm_evolutions:
-            return None
-
-        firm_evolution = self.state.firm_evolutions[firm_id]
-
-        return {
-            "firm_id": firm_id,
-            "age": firm_evolution.age,
-            "innovation_level": firm_evolution.innovation_level,
-            "experience": firm_evolution.experience,
-            "avg_market_share": float(
-                np.mean(firm_evolution.market_share_history)
-                if firm_evolution.market_share_history
-                else 0.0
-            ),
-            "avg_profit": float(
-                np.mean(firm_evolution.profit_history)
-                if firm_evolution.profit_history
-                else 0.0
-            ),
-        }
-
-
-def create_market_evolution_engine(
-    config: MarketEvolutionConfig | None = None, seed: int | None = None
-) -> MarketEvolutionEngine:
-    """Create a market evolution engine with default or custom configuration."""
-    if config is None:
-        config = MarketEvolutionConfig()
-
-    return MarketEvolutionEngine(config, seed)
