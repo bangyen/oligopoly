@@ -150,8 +150,8 @@ Known gaps and next steps, roughly in priority order:
       textbook winner-take-all game for linear Bertrand runs.
 - [x] **CES consumer surplus** — nested CES demand with a finite
       `market_elasticity` gives a closed-form consumer surplus.
-- [ ] **Dashboard support** — let the dashboard configure demand types,
-      learning strategies and market evolution.
+- [x] **Dashboard support** — the dashboard's Scenario Lab configures every
+      demand type, strategy and market evolution option.
 - [ ] **Learning benchmarks** — measure whether each learning strategy
       converges to equilibrium under each demand system.
 - [ ] **Docker e2e in CI** — keep the compose-based end-to-end job green.

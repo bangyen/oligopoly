@@ -20,6 +20,11 @@ Visit **http://localhost:5050** in your browser.
 - **Cournot**: Quantity competition dynamics over 50 rounds
 - **Bertrand**: Price competition dynamics over 50 rounds  
 - **Metrics**: Detailed Nash equilibrium calculations and firm data
+- **Scenario Lab**: Runs the full simulation engine with any demand system
+  (linear, isoelastic, CES), a strategy per firm (adaptive Nash, learning or
+  collusion), Bertrand capacity limits and market evolution; charts actions,
+  profits, price, HHI and consumer surplus and lists cartel, entry, exit and
+  innovation events
 
 ### Interactions
 
@@ -38,6 +43,7 @@ Visit **http://localhost:5050** in your browser.
 
 - `GET /` - Dashboard UI
 - `GET /api/metrics` - Nash equilibrium metrics
+- `POST /api/scenario` - Run a scenario (same request body as the API's `POST /simulate`)
 - `GET /api/simulation/cournot` - 50-round Cournot simulation
 - `GET /api/simulation/bertrand` - 50-round Bertrand simulation
 
