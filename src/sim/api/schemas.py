@@ -49,7 +49,9 @@ class PolicyEventRequest(BaseModel):
 
 
 class CournotParams(BaseModel):
-    """Typed demand parameters for the Cournot competition model."""
+    """Typed linear demand parameters for the Cournot competition model."""
+
+    model_config = ConfigDict(extra="forbid")
 
     a: float = Field(100.0, gt=0, description="Demand intercept P = a - b*Q")
     b: float = Field(
@@ -58,12 +60,102 @@ class CournotParams(BaseModel):
 
 
 class BertrandParams(BaseModel):
-    """Typed demand parameters for the Bertrand competition model."""
+    """Typed linear demand parameters for the Bertrand competition model."""
+
+    model_config = ConfigDict(extra="forbid")
 
     alpha: float = Field(
         100.0, gt=0, description="Demand intercept Q(p) = alpha - beta*p"
     )
     beta: float = Field(1.0, gt=0, description="Demand slope")
+
+
+class IsoelasticParams(BaseModel):
+    """Isoelastic demand Q(P) = (A / P)^elasticity, i.e. P(Q) = A * Q^(-1/elasticity).
+
+    Used with ``demand_type="isoelastic"`` for either competition model.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    A: float = Field(100.0, gt=0, description="Demand scale parameter")
+    elasticity: float = Field(
+        2.0, gt=1, description="Constant price elasticity of demand (> 1)"
+    )
+
+
+class EnhancedDemandConfig(BaseModel):
+    """Differentiated-products demand for Bertrand competition.
+
+    ``ces``: CES demand with elasticity of substitution ``elasticity``, total
+    consumer expenditure ``market_size`` and optional per-firm ``qualities``.
+    ``linear`` is the default homogeneous-good demand (same as omitting this).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    demand_type: str = Field(
+        default="linear",
+        pattern="^(linear|ces)$",
+        description="Demand function type",
+    )
+    elasticity: float = Field(
+        default=2.0, gt=1, description="Elasticity of substitution (CES only)"
+    )
+    market_size: float = Field(
+        default=100.0, gt=0, description="Total consumer expenditure (CES only)"
+    )
+    qualities: list[float] | None = Field(
+        default=None,
+        description="Per-firm product quality (CES only; defaults to 1 for all)",
+    )
+
+
+class AdvancedStrategyConfig(BaseModel):
+    """A learning strategy for one firm (others follow adaptive Nash play)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    firm_id: int = Field(..., ge=0, description="Index of the firm in `firms`")
+    strategy_type: str = Field(
+        ...,
+        pattern="^(fictitious_play|q_learning|deep_q_learning|behavioral)$",
+        description="Learning strategy",
+    )
+    learning_rate: float | None = Field(
+        default=None,
+        gt=0,
+        le=1,
+        description="Learning rate (q_learning, deep_q_learning, behavioral)",
+    )
+    memory_length: int | None = Field(
+        default=None, gt=0, description="Rounds of rival history kept (fictitious_play)"
+    )
+    exploration_rate: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Exploration probability (fictitious_play, q_learning)",
+    )
+
+
+class MarketEvolutionRequest(BaseModel):
+    """Market dynamics applied between rounds."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    growth_rate: float = Field(
+        default=0.02, gt=-1, le=1, description="Demand growth per round"
+    )
+    entry_cost: float = Field(
+        default=100.0, gt=0, description="Cost a potential entrant must recoup"
+    )
+    exit_threshold: float = Field(
+        default=-50.0, description="Per-round profit below which firms may exit"
+    )
+    innovation_rate: float = Field(
+        default=0.1, ge=0, le=1, description="Probability scale for innovation"
+    )
 
 
 class SimulationRequest(BaseModel):
@@ -80,10 +172,11 @@ class SimulationRequest(BaseModel):
         description="Competition model type",
     )
     rounds: int = Field(..., gt=0, le=1000, description="Number of simulation rounds")
-    params: CournotParams | BertrandParams | None = Field(
+    params: CournotParams | BertrandParams | IsoelasticParams | None = Field(
         default=None,
         description="Typed market demand parameters. Use CournotParams (a, b) for "
-        "cournot and BertrandParams (alpha, beta) for bertrand.",
+        "cournot and BertrandParams (alpha, beta) for bertrand with linear demand, "
+        "or IsoelasticParams (A, elasticity) with demand_type='isoelastic'.",
     )
     firms: list[FirmConfig] = Field(
         ..., min_length=1, max_length=10, description="Firm configurations"
@@ -92,9 +185,25 @@ class SimulationRequest(BaseModel):
         None,
         description="Segmented demand configuration (overrides single-segment params)",
     )
+    demand_type: str = Field(
+        default="linear",
+        pattern="^(linear|isoelastic)$",
+        description="Homogeneous-good demand curve",
+    )
     seed: int | None = Field(None, description="Random seed for reproducibility")
     events: list[PolicyEventRequest] | None = Field(
         default_factory=list, description="Policy events to apply during simulation"
+    )
+    advanced_strategies: list[AdvancedStrategyConfig] | None = Field(
+        default=None, description="Learning strategies for individual firms"
+    )
+    market_evolution: MarketEvolutionRequest | None = Field(
+        default=None,
+        description="Enable market growth, innovation and entry/exit between rounds",
+    )
+    enhanced_demand: EnhancedDemandConfig | None = Field(
+        default=None,
+        description="Differentiated-products demand (CES) for bertrand",
     )
 
 
@@ -132,14 +241,16 @@ class ComparisonResults(BaseModel):
     left_run_id: str = Field(..., description="Left scenario run ID")
     right_run_id: str = Field(..., description="Right scenario run ID")
     rounds: int = Field(..., description="Number of rounds (should be same for both)")
-    left_metrics: dict[str, list[float]] = Field(
-        ..., description="Left scenario metrics arrays"
+    left_metrics: dict[str, list[float | None]] = Field(
+        ...,
+        description="Left scenario metrics arrays (consumer_surplus is null for "
+        "CES demand, which has no money-metric surplus)",
     )
-    right_metrics: dict[str, list[float]] = Field(
+    right_metrics: dict[str, list[float | None]] = Field(
         ..., description="Right scenario metrics arrays"
     )
-    deltas: dict[str, list[float]] = Field(
-        ..., description="Delta arrays (right - left)"
+    deltas: dict[str, list[float | None]] = Field(
+        ..., description="Delta arrays (right - left); null where either side is"
     )
 
 
@@ -172,7 +283,9 @@ class ReplayFrame(BaseModel):
     total_quantity: float = Field(..., description="Total quantity")
     total_profit: float = Field(..., description="Total profit")
     hhi: float = Field(..., description="Herfindahl-Hirschman Index")
-    consumer_surplus: float = Field(..., description="Consumer surplus")
+    consumer_surplus: float | None = Field(
+        ..., description="Consumer surplus (null for CES demand)"
+    )
     num_firms: int = Field(..., description="Number of firms")
     firm_data: dict[int, dict[str, float]] = Field(
         ..., description="Firm-specific data"

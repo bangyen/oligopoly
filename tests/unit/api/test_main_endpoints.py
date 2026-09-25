@@ -140,10 +140,9 @@ class TestSimulateEndpoint:
 
                 response = client.post("/simulate", json=simulation_data)
 
-                assert response.status_code == 400
-                assert (
-                    "Cournot model requires CournotParams" in response.json()["detail"]
-                )
+                # A negative intercept matches no params model, so validation
+                # rejects it before the handler runs
+                assert response.status_code == 422
 
 
 class TestHeatmapEndpoints:
@@ -326,9 +325,7 @@ class TestMetricsEndpoints:
                 "demand_params": {"a": 100.0, "b": 1.0},
             }
 
-            with patch(
-                "sim.api._common.calculate_round_metrics_cournot"
-            ) as mock_calculate:
+            with patch("sim.api._common.market_metrics") as mock_calculate:
                 mock_calculate.return_value = {
                     "hhi": 0.5,
                     "consumer_surplus": 1000.0,

@@ -10,6 +10,7 @@ from sim.runners.runner import get_run_results, run_game
 
 from ._common import (
     build_policy_events,
+    extended_options,
     params_to_dict,
     round_metrics,
     segments_to_config,
@@ -30,6 +31,39 @@ _DEFAULT_PARAMS: dict[str, dict[str, float]] = {
 }
 _PARAM_FIELDS = {"cournot": ("a", "b"), "bertrand": ("alpha", "beta")}
 _PARAM_TYPES = {"cournot": "CournotParams", "bertrand": "BertrandParams"}
+
+
+def _linear_params(request: SimulationRequest, costs: list[float]) -> dict[str, Any]:
+    """Resolve and cross-validate linear demand params for ``request``."""
+    # The hasattr check is robust against class instance mismatches from re-imports.
+    intercept_name, slope_name = _PARAM_FIELDS[request.model]
+    raw_params = request.params
+    if raw_params is None:
+        params: dict[str, Any] = dict(_DEFAULT_PARAMS[request.model])
+    elif hasattr(raw_params, intercept_name) and hasattr(raw_params, slope_name):
+        params = params_to_dict(raw_params)
+    else:
+        model_name = request.model.capitalize()
+        raise HTTPException(
+            status_code=400,
+            detail=f"{model_name} model requires {_PARAM_TYPES[request.model]} "
+            f"(fields: {intercept_name}, {slope_name})",
+        )
+
+    # Cross-validate params vs costs
+    intercept = params.get(intercept_name, 100.0)
+    slope = params.get(slope_name, 1.0)
+    if any(cost >= intercept for cost in costs):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Firm costs cannot exceed demand intercept ({intercept_name}={intercept}). Firms with costs >= {intercept} would never be profitable.",
+        )
+    if slope < 0.1:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Demand slope ({slope_name}={slope}) is too flat. Use {slope_name} >= 0.1.",
+        )
+    return params
 
 
 @router.post("/simulate", response_model=SimulationResponse)
@@ -63,35 +97,11 @@ async def simulate(
                 status_code=400, detail=f"Unknown model type: {request.model}"
             )
 
-        # Resolve params; the hasattr check is robust against class instance
-        # mismatches from re-imports.
-        intercept_name, slope_name = _PARAM_FIELDS[request.model]
-        raw_params = request.params
-        if raw_params is None:
-            params: dict[str, Any] = dict(_DEFAULT_PARAMS[request.model])
-        elif hasattr(raw_params, intercept_name) and hasattr(raw_params, slope_name):
-            params = params_to_dict(raw_params)
+        nonlinear_params, extra_config = extended_options(request)
+        if nonlinear_params is not None:
+            params: dict[str, Any] = nonlinear_params
         else:
-            model_name = request.model.capitalize()
-            raise HTTPException(
-                status_code=400,
-                detail=f"{model_name} model requires {_PARAM_TYPES[request.model]} "
-                f"(fields: {intercept_name}, {slope_name})",
-            )
-
-        # Cross-validate params vs costs
-        intercept = params.get(intercept_name, 100.0)
-        slope = params.get(slope_name, 1.0)
-        if any(cost >= intercept for cost in costs):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Firm costs cannot exceed demand intercept ({intercept_name}={intercept}). Firms with costs >= {intercept} would never be profitable.",
-            )
-        if slope < 0.1:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Demand slope ({slope_name}={slope}) is too flat. Use {slope_name} >= 0.1.",
-            )
+            params = _linear_params(request, costs)
 
         config: dict[str, Any] = {
             "params": params,
@@ -100,6 +110,7 @@ async def simulate(
             ],
             "seed": request.seed,
             "events": build_policy_events(request.events),
+            **extra_config,
         }
 
         if request.segments:
@@ -162,6 +173,10 @@ def _scenario_config(scenario: SimulationRequest, label: str) -> dict[str, Any]:
         config["params"]["segments"] = segments_to_config(
             scenario.segments, f"{label} scenario segment"
         )
+    nonlinear_params, extra_config = extended_options(scenario, label)
+    if nonlinear_params is not None:
+        config["params"] = nonlinear_params
+    config.update(extra_config)
     return config
 
 
@@ -244,7 +259,9 @@ async def get_comparison_results(
         # Deltas are right - left, truncated to the shorter series
         deltas = {
             name: [
-                right_value - left_value
+                None
+                if left_value is None or right_value is None
+                else right_value - left_value
                 for left_value, right_value in zip(
                     left_metrics[name], right_metrics[name]
                 )
@@ -270,7 +287,9 @@ async def get_comparison_results(
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
-def _calculate_comparison_metrics(run_data: dict[str, Any]) -> dict[str, list[float]]:
+def _calculate_comparison_metrics(
+    run_data: dict[str, Any],
+) -> dict[str, list[float | None]]:
     """Calculate per-round metric arrays for comparison from run data.
 
     Expects the canonical nested-dict format from get_run_results:
@@ -280,7 +299,7 @@ def _calculate_comparison_metrics(run_data: dict[str, Any]) -> dict[str, list[fl
     model = run_data.get("model", "cournot")
     stored_params = run_data.get("params") or {}
 
-    metrics: dict[str, list[float]] = {
+    metrics: dict[str, list[float | None]] = {
         "market_price": [],
         "total_quantity": [],
         "total_profit": [],
