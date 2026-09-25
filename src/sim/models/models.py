@@ -222,7 +222,7 @@ class Event(Base):  # type: ignore
     """Comprehensive event tracking for simulation runs.
 
     Stores all types of events that occur during simulation including collusion,
-    defection, regulator interventions, policy shocks, and market entry/exit.
+    defection, policy shocks, and market entry, exit and innovation.
     This unified event system enables comprehensive replay and analysis.
     """
 

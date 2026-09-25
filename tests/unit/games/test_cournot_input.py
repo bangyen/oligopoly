@@ -6,12 +6,7 @@ ensuring that invalid inputs are properly rejected with meaningful error message
 
 import pytest
 
-from sim.games.cournot import (
-    cournot_simulation,
-    parse_costs,
-    parse_quantities,
-    validate_quantities,
-)
+from sim.games.cournot import cournot_simulation, validate_quantities
 
 
 class TestCournotInputValidation:
@@ -45,56 +40,6 @@ class TestCournotInputValidation:
             match="Costs list length \\(2\\) must match quantities list length \\(3\\)",
         ):
             cournot_simulation(a=100, b=1, costs=[10, 20], quantities=[10, 20, 30])
-
-    def test_parse_costs_valid_format(self) -> None:
-        """Test parsing valid costs string."""
-        costs = parse_costs("10,20,30")
-        assert costs == [10.0, 20.0, 30.0]
-
-    def test_parse_costs_with_spaces(self) -> None:
-        """Test parsing costs string with spaces."""
-        costs = parse_costs(" 10 , 20 , 30 ")
-        assert costs == [10.0, 20.0, 30.0]
-
-    def test_parse_costs_invalid_format(self) -> None:
-        """Test parsing invalid costs string."""
-        with pytest.raises(ValueError, match="Invalid costs format '10,abc,30'"):
-            parse_costs("10,abc,30")
-
-    def test_parse_costs_empty_string(self) -> None:
-        """Test parsing empty costs string."""
-        with pytest.raises(ValueError, match="Costs list cannot be empty"):
-            parse_costs("")
-
-    def test_parse_costs_single_value(self) -> None:
-        """Test parsing single cost value."""
-        costs = parse_costs("15.5")
-        assert costs == [15.5]
-
-    def test_parse_quantities_valid_format(self) -> None:
-        """Test parsing valid quantities string."""
-        quantities = parse_quantities("10,20,30")
-        assert quantities == [10.0, 20.0, 30.0]
-
-    def test_parse_quantities_with_spaces(self) -> None:
-        """Test parsing quantities string with spaces."""
-        quantities = parse_quantities(" 10 , 20 , 30 ")
-        assert quantities == [10.0, 20.0, 30.0]
-
-    def test_parse_quantities_invalid_format(self) -> None:
-        """Test parsing invalid quantities string."""
-        with pytest.raises(ValueError, match="Invalid quantities format '10,xyz,30'"):
-            parse_quantities("10,xyz,30")
-
-    def test_parse_quantities_empty_string(self) -> None:
-        """Test parsing empty quantities string."""
-        with pytest.raises(ValueError, match="Quantities list cannot be empty"):
-            parse_quantities("")
-
-    def test_parse_quantities_single_value(self) -> None:
-        """Test parsing single quantity value."""
-        quantities = parse_quantities("25.5")
-        assert quantities == [25.5]
 
     def test_validate_quantities_function(self) -> None:
         """Test the validate_quantities function directly."""

@@ -5,7 +5,6 @@ against a private in-memory SQLite database, so the dashboard supports exactly
 what the REST API does.
 """
 
-import logging
 from pathlib import Path
 from typing import Any
 
@@ -22,11 +21,6 @@ from sim.api.runs import get_run, get_run_events
 from sim.api.schemas import SimulationRequest
 from sim.api.simulate import simulate
 from sim.models.models import Base, Event, Result, Round, Run
-
-# Per-round economic sanity warnings are noise in an interactive tool
-logging.getLogger("sim.validation.economic_validation").setLevel(logging.ERROR)
-logging.getLogger("sim.games.cournot").setLevel(logging.ERROR)
-logging.getLogger("sim.games.bertrand").setLevel(logging.ERROR)
 
 app = FastAPI(title="Oligopoly Scenario Lab")
 

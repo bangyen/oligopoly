@@ -14,7 +14,6 @@ from sim.models.market_evolution import (
     MarketEvolutionConfig,
     MarketEvolutionEngine,
     MarketEvolutionState,
-    create_market_evolution_engine,
 )
 
 
@@ -303,38 +302,6 @@ class TestMarketEvolutionEngine:
         # Firm 1 should exit
         assert len(new_firms) < len(current_firms)
 
-    def test_should_enter_empty_market(self):
-        """Test entry decision for empty market."""
-        config = MarketEvolutionConfig()
-        engine = MarketEvolutionEngine(config, seed=42)
-
-        result = engine._should_enter([], [], [])
-        assert result is True
-
-    def test_should_enter_profitable_market(self):
-        """Test entry decision for profitable market."""
-        config = MarketEvolutionConfig(entry_cost=50.0)
-        engine = MarketEvolutionEngine(config, seed=42)
-
-        current_firms = [1, 2]
-        current_profits = [60.0, 70.0]  # Above entry cost
-        current_costs = [10.0, 12.0]
-
-        result = engine._should_enter(current_firms, current_profits, current_costs)
-        assert result is True
-
-    def test_should_enter_unprofitable_market(self):
-        """Test entry decision for unprofitable market."""
-        config = MarketEvolutionConfig(entry_cost=100.0)
-        engine = MarketEvolutionEngine(config, seed=42)
-
-        current_firms = [1, 2]
-        current_profits = [30.0, 40.0]  # Below entry cost
-        current_costs = [10.0, 12.0]
-
-        result = engine._should_enter(current_firms, current_profits, current_costs)
-        assert result is False
-
     def test_generate_entrant_cost_empty_costs(self):
         """Test generating entrant cost with no existing costs."""
         config = MarketEvolutionConfig()
@@ -450,88 +417,3 @@ class TestMarketEvolutionEngine:
         assert firm_evolution.innovation_level == 0.1
         assert costs[0] == 10.0 * 0.95  # 5% cost reduction
         assert qualities[0] == 1.0 * 1.05  # 5% quality increase
-
-    def test_get_evolution_metrics(self):
-        """Test getting evolution metrics."""
-        config = MarketEvolutionConfig()
-        engine = MarketEvolutionEngine(config, seed=42)
-
-        # Add some firms and evolve
-        engine.state.add_firm(1)
-        engine.state.add_firm(2)
-        engine.state.round_num = 5
-        engine.state.total_market_size = 120.0
-        engine.state.technology_level = 1.1
-
-        metrics = engine.get_evolution_metrics()
-
-        assert metrics["round_num"] == 5
-        assert metrics["total_market_size"] == 120.0
-        assert metrics["technology_level"] == 1.1
-        assert metrics["num_firms"] == 2
-        assert metrics["total_entries"] == 2
-        assert metrics["total_exits"] == 0
-        assert metrics["net_entries"] == 2
-
-    def test_get_firm_evolution_metrics_existing_firm(self):
-        """Test getting firm evolution metrics for existing firm."""
-        config = MarketEvolutionConfig()
-        engine = MarketEvolutionEngine(config, seed=42)
-
-        engine.state.add_firm(1)
-        firm_evolution = engine.state.firm_evolutions[1]
-        firm_evolution.update_round(0.3, 50.0)
-        firm_evolution.update_round(0.4, 60.0)
-
-        metrics = engine.get_firm_evolution_metrics(1)
-
-        assert metrics is not None
-        assert metrics["firm_id"] == 1
-        assert metrics["age"] == 2
-        assert metrics["innovation_level"] == 0.0
-        assert metrics["experience"] == 0.7
-        assert metrics["avg_market_share"] == 0.35
-        assert metrics["avg_profit"] == 55.0
-
-    def test_get_firm_evolution_metrics_nonexistent_firm(self):
-        """Test getting firm evolution metrics for nonexistent firm."""
-        config = MarketEvolutionConfig()
-        engine = MarketEvolutionEngine(config, seed=42)
-
-        metrics = engine.get_firm_evolution_metrics(999)
-
-        assert metrics is None
-
-
-class TestCreateMarketEvolutionEngine:
-    """Test factory function for creating market evolution engine."""
-
-    def test_create_with_default_config(self):
-        """Test creating engine with default configuration."""
-        engine = create_market_evolution_engine()
-
-        assert isinstance(engine, MarketEvolutionEngine)
-        assert isinstance(engine.config, MarketEvolutionConfig)
-
-    def test_create_with_custom_config(self):
-        """Test creating engine with custom configuration."""
-        config = MarketEvolutionConfig(growth_rate=0.05, entry_cost=200.0)
-        engine = create_market_evolution_engine(config)
-
-        assert engine.config == config
-
-    def test_create_with_seed(self):
-        """Test creating engine with specific seed."""
-        engine1 = create_market_evolution_engine(seed=42)
-        engine2 = create_market_evolution_engine(seed=42)
-
-        # Should produce same random sequence
-        assert engine1.rng.random() == engine2.rng.random()
-
-    def test_create_with_config_and_seed(self):
-        """Test creating engine with both config and seed."""
-        config = MarketEvolutionConfig(innovation_rate=0.3)
-        engine = create_market_evolution_engine(config, seed=123)
-
-        assert engine.config == config
-        assert engine.rng.random() is not None

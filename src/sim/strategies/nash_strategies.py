@@ -10,7 +10,7 @@ import random
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from sim.models.models import SegmentedDemand
+    pass
 
 
 def should_firm_exit(
@@ -219,52 +219,6 @@ def cournot_best_response(
     return max(0.0, best_response)
 
 
-def bertrand_best_response(
-    alpha: float, beta: float, my_cost: float, rival_prices: list[float]
-) -> float:
-    """Calculate Bertrand best response price for a firm.
-
-    Implements a more realistic best response that considers capacity constraints
-    and market frictions to prevent unrealistic price wars.
-
-    Args:
-        alpha: Demand intercept parameter
-        beta: Demand slope parameter
-        my_cost: This firm's marginal cost
-        rival_prices: Prices chosen by rival firms
-
-    Returns:
-        Best response price
-    """
-    if not rival_prices:
-        # If no rivals, price at monopoly level
-        monopoly_price = (alpha + beta * my_cost) / (2 * beta)
-        return max(my_cost, monopoly_price)
-
-    # Find the lowest rival price
-    min_rival_price = min(rival_prices)
-    avg_rival_price = sum(rival_prices) / len(rival_prices)
-
-    # More sophisticated best response that considers:
-    # 1. Capacity constraints (can't serve entire market)
-    # 2. Market frictions (consumers don't instantly switch)
-    # 3. Profit maximization rather than just undercutting
-
-    # If rival prices are very high, can price below them and still be profitable
-    if min_rival_price > my_cost * 1.5:
-        # Can undercut significantly while maintaining good margins
-        best_response = min(min_rival_price * 0.9, avg_rival_price * 0.95)
-    elif min_rival_price > my_cost * 1.2:
-        # Can undercut slightly
-        best_response = min_rival_price * 0.98
-    else:
-        # Rivals are pricing close to cost - price at cost plus small markup
-        best_response = my_cost * 1.05
-
-    # Ensure price is at least marginal cost
-    return max(my_cost, best_response)
-
-
 def adaptive_nash_strategy(
     model: str,
     current_actions: list[float],
@@ -369,33 +323,6 @@ def adaptive_nash_strategy(
             new_actions.append(new_price)
 
     return new_actions
-
-
-def cournot_segmented_nash_equilibrium(
-    segmented_demand: "SegmentedDemand", costs: list[float]
-) -> tuple[list[float], float, list[float]]:
-    """Calculate Cournot Nash equilibrium for segmented demand.
-
-    For segmented demand, we need to solve the Nash equilibrium using
-    the effective demand parameters derived from the segments.
-
-    Args:
-        segmented_demand: SegmentedDemand object with segment configurations
-        costs: List of marginal costs for each firm
-
-    Returns:
-        Tuple of (equilibrium_quantities, equilibrium_price, equilibrium_profits)
-    """
-    # Calculate effective demand parameters
-    weighted_alpha = sum(
-        segment.weight * segment.alpha for segment in segmented_demand.segments
-    )
-    weighted_beta = sum(
-        segment.weight * segment.beta for segment in segmented_demand.segments
-    )
-
-    # Use the effective parameters to calculate Nash equilibrium
-    return cournot_nash_equilibrium(weighted_alpha, weighted_beta, costs)
 
 
 def validate_market_clearing(
