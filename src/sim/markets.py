@@ -365,7 +365,13 @@ class LinearBertrandMarket(Market):
         return list(bertrand_nash_equilibrium(alpha, beta, costs)[0])
 
     def action_bounds(self, cost: float, costs: list[float]) -> tuple[float, float]:
-        return (cost + 0.1, 1000.0)
+        # Nothing sells above the choke price alpha / beta (per segment)
+        segments = self._params.get("segments")
+        if segments:
+            choke = max(s["alpha"] / s["beta"] for s in segments)
+        else:
+            choke = self._params["alpha"] / self._params["beta"]
+        return (cost + 0.1, max(cost + 0.2, choke))
 
     def initial_actions(self, costs: list[float]) -> list[float]:
         return [

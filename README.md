@@ -38,7 +38,7 @@ bertrand      # run a one-off Bertrand simulation
 |------------|-------------|
 | Collusion Detection | Flags cartel behavior and defections with a configurable tolerance |
 | Equilibria | Linear, isoelastic and CES equilibria match closed forms to 1e-6 ([benchmarks](tests/benchmarks/)) |
-| Strategy Adaptation | Firms learn and evolve using Q-learning and Fictitious Play |
+| Strategy Adaptation | Fictitious play converges to Nash in every smooth market ([learning benchmarks](docs/learning_benchmarks.md)) |
 
 Multi-round linear Bertrand runs use a capacity-constrained allocation by
 default (each firm can serve at most 40% of the market), so they deliberately
@@ -152,9 +152,13 @@ Known gaps and next steps, roughly in priority order:
       `market_elasticity` gives a closed-form consumer surplus.
 - [x] **Dashboard support** — the dashboard's Scenario Lab configures every
       demand type, strategy and market evolution option.
-- [ ] **Learning benchmarks** — measure whether each learning strategy
-      converges to equilibrium under each demand system.
-- [ ] **Docker e2e in CI** — keep the compose-based end-to-end job green.
+- [x] **Learning benchmarks** — [convergence of each learner under each
+      demand system](docs/learning_benchmarks.md); only fictitious play reliably
+      reaches Nash within 200 rounds.
+- [ ] **Longer-horizon learning** — run Q-learning long enough (and with a
+      deviation-response test) to tell learned collusion from exploration noise.
+- [x] **Docker e2e in CI** — the compose-based end-to-end job is green again
+      (the image was missing numpy).
 
 ## References
 
