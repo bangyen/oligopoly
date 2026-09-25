@@ -218,9 +218,7 @@ class TestGetCollusionRunResults:
                 return mock_run_query
             elif model.__name__ == "Result":
                 mock_result_query = Mock()
-                mock_result_query.filter.return_value.order_by.return_value.all.return_value = (
-                    []
-                )
+                mock_result_query.filter.return_value.order_by.return_value.all.return_value = []
                 return mock_result_query
             elif model.__name__ == "CollusionEvent":
                 mock_event_query = Mock()

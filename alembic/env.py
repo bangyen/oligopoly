@@ -10,6 +10,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+from sim.database import normalize_database_url
 from sim.models.models import Base
 
 # this is the Alembic Config object, which provides
@@ -33,7 +34,8 @@ target_metadata = Base.metadata
 
 def get_url() -> str:
     """Get database URL from environment or config."""
-    return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    url = os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url") or ""
+    return normalize_database_url(url)
 
 
 def run_migrations_offline() -> None:

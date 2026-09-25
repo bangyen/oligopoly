@@ -475,3 +475,62 @@ tbody tr:hover {
     }
 }
 
+
+/* Scenario Lab */
+.scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.scenario-panel {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    padding: 16px 20px 20px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.scenario-panel legend {
+    font-weight: 600;
+    padding: 0 6px;
+}
+
+.scenario-panel .config-label {
+    margin-top: 8px;
+}
+
+.config-check {
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 13px;
+}
+
+.sc-strategies {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sc-run {
+    margin-top: 20px;
+    justify-content: center;
+}
+
+.sc-error {
+    color: var(--color-accent);
+    font-size: 13px;
+    margin: 12px 0 0;
+}
+
+.hidden {
+    display: none !important;
+}

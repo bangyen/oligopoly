@@ -22,14 +22,12 @@ class TestCournotProfit:
         assert result.profits[1] == 1000.0
 
     def test_cournot_profit_zero_price(self) -> None:
-        """Test profit calculation when market price is zero - firms should exit."""
+        """Test profit calculation when market price is zero."""
         result = cournot_simulation(a=100, b=1, costs=[10, 20], quantities=[50, 50])
 
-        # P = 0, so both firms should exit (quantity = 0) to avoid losses
-        assert result.profits[0] == 0.0  # Firm exits to avoid negative profit
-        assert result.profits[1] == 0.0  # Firm exits to avoid negative profit
-        assert result.quantities[0] == 0.0  # Firm exits
-        assert result.quantities[1] == 0.0  # Firm exits
+        # P = 0: both firms sell their output at zero and lose their costs
+        assert result.price == 0.0
+        assert result.profits == [-500.0, -1000.0]
 
     def test_cournot_profit_equal_costs(self) -> None:
         """Test profit calculation when all firms have equal costs."""
@@ -57,12 +55,12 @@ class TestCournotProfit:
         assert result.profits[0] == 0.0
 
     def test_cournot_profit_negative_profit(self) -> None:
-        """Test profit calculation when cost exceeds price - firm should exit."""
+        """Test profit calculation when cost exceeds price."""
         result = cournot_simulation(a=100, b=1, costs=[80], quantities=[30])
 
-        # P = 100 - 1 * 30 = 70, but cost = 80 > price, so firm should exit
-        assert result.profits[0] == 0.0  # Firm exits to avoid negative profit
-        assert result.quantities[0] == 0.0  # Firm exits
+        # P = 100 - 1 * 30 = 70 < cost 80: the firm makes a loss on what it sold
+        assert result.price == 70.0
+        assert result.profits[0] == -300.0
 
     def test_cournot_profit_multiple_firms(self) -> None:
         """Test profit calculation with multiple firms."""

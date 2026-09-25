@@ -4,22 +4,38 @@ This module provides tools for generating Plotly charts from experiment CSV resu
 focusing on profits, HHI, and collusion dynamics.
 """
 
-from pathlib import Path
+from __future__ import annotations
 
-import pandas as pd
-import plotly.express as px
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+
+def _load_plotting() -> tuple[Any, Any]:
+    """Import the optional plotting stack, with an install hint if missing."""
+    try:
+        import pandas
+        import plotly.express
+    except ImportError as e:
+        raise ImportError(
+            "Experiment plots need the 'viz' extra: pip install 'oligopoly[viz]'"
+        ) from e
+    return pandas, plotly.express
 
 
 class ExperimentVisualizer:
     """Generates automated plots from experiment result CSVs."""
 
     def __init__(self, output_dir: str = "artifacts/plots"):
+        self._pd, self._px = _load_plotting()
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_all_plots(self, csv_path: str) -> list[str]:
         """Generate a standard suite of plots from a result CSV."""
-        df = pd.read_csv(csv_path)
+        df = self._pd.read_csv(csv_path)
         plot_paths = []
 
         # 1. Profit Comparison by Strategy
@@ -39,7 +55,7 @@ class ExperimentVisualizer:
         # Reshape data to long format for strategies if multiple firms
         # This is complex because we have firm_n_strategy and firm_n_profit
         # Let's simplify and plot mean profit per configuration
-        fig = px.box(
+        fig = self._px.box(
             df,
             x="config_id",
             y="mean_profit_per_firm",
@@ -57,7 +73,7 @@ class ExperimentVisualizer:
 
     def plot_market_power(self, df: pd.DataFrame) -> str | None:
         """Scatter plot of HHI vs Average Price."""
-        fig = px.scatter(
+        fig = self._px.scatter(
             df,
             x="avg_hhi",
             y="avg_price",
@@ -80,7 +96,7 @@ class ExperimentVisualizer:
         if "total_defections" not in df.columns:
             return None
 
-        fig = px.bar(
+        fig = self._px.bar(
             df.groupby("config_id")["total_defections"].mean().reset_index(),
             x="config_id",
             y="total_defections",

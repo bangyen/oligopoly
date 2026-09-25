@@ -5,11 +5,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# No system packages needed: psycopg2-binary and numpy ship prebuilt wheels
 
 # Copy project files
 COPY pyproject.toml .

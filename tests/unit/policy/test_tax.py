@@ -22,9 +22,9 @@ def test_tax_shock_basic() -> None:
     expected_profits = [80.0, 120.0, 160.0]
 
     for i, (actual, expected) in enumerate(zip(taxed_profits, expected_profits)):
-        assert math.isclose(
-            actual, expected, abs_tol=1e-6
-        ), f"Firm {i}: expected {expected}, got {actual}"
+        assert math.isclose(actual, expected, abs_tol=1e-6), (
+            f"Firm {i}: expected {expected}, got {actual}"
+        )
 
 
 def test_tax_shock_zero_rate() -> None:
@@ -49,9 +49,9 @@ def test_tax_shock_high_rate() -> None:
     expected_profits = [50.0, 75.0, 100.0]
 
     for i, (actual, expected) in enumerate(zip(taxed_profits, expected_profits)):
-        assert math.isclose(
-            actual, expected, abs_tol=1e-6
-        ), f"Firm {i}: expected {expected}, got {actual}"
+        assert math.isclose(actual, expected, abs_tol=1e-6), (
+            f"Firm {i}: expected {expected}, got {actual}"
+        )
 
 
 def test_tax_shock_invalid_rate() -> None:
@@ -102,6 +102,6 @@ def test_tax_shock_precision() -> None:
     expected_profits = [26.666666, 53.333334]
 
     for i, (actual, expected) in enumerate(zip(taxed_profits, expected_profits)):
-        assert math.isclose(
-            actual, expected, abs_tol=1e-6
-        ), f"Firm {i}: expected {expected}, got {actual}"
+        assert math.isclose(actual, expected, abs_tol=1e-6), (
+            f"Firm {i}: expected {expected}, got {actual}"
+        )
