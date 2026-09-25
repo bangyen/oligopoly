@@ -104,8 +104,6 @@ def extended_options(
             )
         if request.segments:
             raise fail("Segmented demand is only supported with linear demand")
-        if len(request.firms) < 2:
-            raise fail("CES demand needs at least two firms")
         if ces.qualities is not None:
             if len(ces.qualities) != len(request.firms):
                 raise fail(
@@ -117,6 +115,7 @@ def extended_options(
         params = {
             "demand_type": "ces",
             "elasticity": ces.elasticity,
+            "market_elasticity": ces.market_elasticity,
             "market_size": ces.market_size,
         }
         if ces.qualities is not None:
@@ -152,13 +151,16 @@ def extended_options(
 
 
 def round_metrics(
-    model: str, firms_data: list[dict[str, Any]], params: dict[str, Any]
+    model: str,
+    firms_data: list[dict[str, Any]],
+    params: dict[str, Any],
+    round_idx: int | None = None,
 ) -> dict[str, float | None]:
     """Compute market-level metrics for one round of stored firm results."""
     quantities = [firm["quantity"] for firm in firms_data]
     prices = [firm["price"] for firm in firms_data]
     profits = [firm["profit"] for firm in firms_data]
-    market_price, hhi, cs = market_metrics(model, params, prices, quantities)
+    market_price, hhi, cs = market_metrics(model, params, prices, quantities, round_idx)
     return {
         "hhi": hhi,
         "consumer_surplus": cs,

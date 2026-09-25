@@ -12,9 +12,9 @@ Supported markets:
   functions so existing runs are unchanged.
 - ``IsoelasticCournotMarket`` / ``IsoelasticBertrandMarket``: constant
   elasticity demand Q(P) = (A / P)^e, i.e. P(Q) = A * Q^(-1/e), with e > 1.
-- ``CESBertrandMarket``: differentiated-products price competition with CES
-  demand (elasticity of substitution sigma > 1, fixed expenditure M and
-  per-firm qualities).
+- ``CESBertrandMarket``: differentiated-products price competition with nested
+  CES demand (elasticity of substitution sigma > 1 within the group, market
+  elasticity eta > 1 across it, and per-firm qualities).
 """
 
 from __future__ import annotations
@@ -581,14 +581,18 @@ class IsoelasticBertrandMarket(_IsoelasticMixin, Market):
 
 
 class CESBertrandMarket(Market):
-    """Differentiated Bertrand competition with CES demand.
+    """Differentiated Bertrand competition with nested CES demand.
 
-    With quality-adjusted prices x_i = p_i / theta_i and expenditure M,
-    q_i = M x_i^(-sigma) / sum_j x_j^(1-sigma). A firm's perceived demand
-    elasticity is e_i = sigma - (sigma - 1) s_i, where s_i is its expenditure
-    share, so the Nash price solves p_i = c_i e_i / (e_i - 1). A single firm
-    faces unit-elastic demand and would price without bound, so prices are
-    capped at ``max_markup`` times cost.
+    Varieties are CES substitutes (elasticity of substitution ``sigma``) with
+    qualities theta_i; x_i = p_i / theta_i is the quality-adjusted price and
+    P = (sum_j x_j^(1-sigma))^(1/(1-sigma)) the price index. Aggregate demand
+    for the group is Q = market_size * P^(-eta) (``market_elasticity`` eta > 1)
+    and each variety sells q_i = Q (x_i / P)^(-sigma) / theta_i.
+
+    A firm's perceived elasticity is e_i = sigma - (sigma - eta) s_i with s_i its
+    expenditure share, so the Nash price solves p_i = c_i e_i / (e_i - 1); a
+    lone firm charges the monopoly price c eta / (eta - 1). Consumer surplus is
+    market_size P^(1-eta) / (eta - 1) = total expenditure / (eta - 1).
     """
 
     model = "bertrand"
@@ -596,6 +600,7 @@ class CESBertrandMarket(Market):
 
     def __init__(self, params: dict[str, Any], num_firms: int):
         self._sigma = float(params.get("elasticity", 2.0))
+        self._eta = float(params.get("market_elasticity", 2.0))
         self._market_size = float(params.get("market_size", 100.0))
         self._max_markup = float(params.get("max_markup", 10.0))
         qualities = params.get("qualities")
@@ -606,6 +611,8 @@ class CESBertrandMarket(Market):
             raise ValueError(
                 f"CES elasticity of substitution must be > 1, got {self._sigma}"
             )
+        if self._eta <= 1:
+            raise ValueError(f"CES market elasticity must be > 1, got {self._eta}")
         if self._market_size <= 0:
             raise ValueError(
                 f"CES market size must be positive, got {self._market_size}"
@@ -621,21 +628,21 @@ class CESBertrandMarket(Market):
     def set_qualities(self, qualities: list[float]) -> None:
         self._qualities = list(qualities)
 
-    def _shares(self, prices: list[float]) -> list[float]:
+    def _index_and_shares(self, prices: list[float]) -> tuple[float, list[float]]:
         weights = [
-            (p / q) ** (1 - self._sigma) if p > 0 else 0.0
-            for p, q in zip(prices, self._qualities)
+            (p / q) ** (1 - self._sigma) for p, q in zip(prices, self._qualities)
         ]
         total = sum(weights)
-        return [w / total for w in weights] if total > 0 else [0.0] * len(prices)
+        return total ** (1 / (1 - self._sigma)), [w / total for w in weights]
 
     def play(
         self, actions: list[float], costs: list[float], fixed_costs: list[float]
     ) -> RoundResult:
         if any(p <= 0 for p in actions):
             raise ValueError("CES prices must be positive")
-        shares = self._shares(actions)
-        quantities = [self._market_size * s / p for s, p in zip(shares, actions)]
+        index, shares = self._index_and_shares(actions)
+        spend = self._market_size * index ** (1 - self._eta)
+        quantities = [spend * s / p for s, p in zip(shares, actions)]
         profits = [
             (p - c) * q - fc
             for p, c, q, fc in zip(actions, costs, quantities, fixed_costs)
@@ -649,14 +656,12 @@ class CESBertrandMarket(Market):
 
     def nash(self, costs: list[float]) -> list[float]:
         caps = [c * self._max_markup for c in costs]
-        if len(costs) == 1:
-            return caps
         prices = [c * self._sigma / (self._sigma - 1) for c in costs]
         for _ in range(500):
-            shares = self._shares(prices)
+            _, shares = self._index_and_shares(prices)
             updated = []
             for c, s, cap in zip(costs, shares, caps):
-                e = self._sigma - (self._sigma - 1) * s
+                e = self._sigma - (self._sigma - self._eta) * s
                 updated.append(min(cap, c * e / (e - 1)))
             done = max(abs(u - p) for u, p in zip(updated, prices)) < 1e-12
             prices = [0.5 * (u + p) for u, p in zip(updated, prices)]
@@ -671,6 +676,7 @@ class CESBertrandMarket(Market):
         return {
             "demand_type": "ces",
             "elasticity": self._sigma,
+            "market_elasticity": self._eta,
             "market_size": self._market_size,
             "max_markup": self._max_markup,
             "qualities": list(self._qualities),
@@ -683,13 +689,13 @@ class CESBertrandMarket(Market):
         self, prices: list[float], quantities: list[float]
     ) -> tuple[float, float, float | None]:
         total = sum(quantities)
+        spend = sum(p * q for p, q in zip(prices, quantities))
         # Quantity-weighted average price; shares by revenue (= expenditure)
-        price = sum(p * q for p, q in zip(prices, quantities)) / total if total else 0.0
+        price = spend / total if total else 0.0
         shares = (
             calculate_market_shares_bertrand(prices, quantities) if total > 0 else []
         )
-        # CES welfare has no money-metric surplus without a numeraire
-        return price, _hhi_from_shares(shares), None
+        return price, _hhi_from_shares(shares), spend / (self._eta - 1)
 
 
 def build_market(model: str, params: dict[str, Any], num_firms: int) -> Market:
@@ -716,8 +722,6 @@ def build_market(model: str, params: dict[str, Any], num_firms: int) -> Market:
             raise ValueError(
                 "CES demand models differentiated price competition; use model='bertrand'"
             )
-        if num_firms < 2:
-            raise ValueError("CES demand needs at least two firms")
         return CESBertrandMarket(params, num_firms)
     raise ValueError(
         f"Unknown demand_type '{demand_type}'; expected one of {DEMAND_TYPES}"
@@ -729,9 +733,19 @@ def market_metrics(
     params: dict[str, Any],
     prices: list[float],
     quantities: list[float],
+    round_idx: int | None = None,
 ) -> tuple[float, float, float | None]:
-    """Market price, HHI and consumer surplus for stored round data."""
+    """Market price, HHI and consumer surplus for stored round data.
+
+    With market evolution, demand grows by ``growth_rate`` between rounds, so
+    ``round_idx`` is used to rebuild the demand curve that round was played on.
+    """
     # Metrics only need the demand curve, not per-firm qualities (which can
     # change length as firms enter and exit).
     demand = {k: v for k, v in params.items() if k != "qualities"}
-    return build_market(model, demand, max(2, len(prices))).metrics(prices, quantities)
+    market = build_market(model, demand, max(1, len(prices)))
+    evolution = params.get("market_evolution")
+    if evolution is not None and round_idx:
+        growth = float(evolution.get("growth_rate", 0.02))
+        market.scale_demand((1 + growth) ** round_idx)
+    return market.metrics(prices, quantities)

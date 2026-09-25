@@ -87,6 +87,17 @@ class TestIsoelasticDemand:
 
 
 class TestCESDemand:
+    def test_single_firm_prices_at_monopoly_markup(self, client) -> None:
+        data = _run(
+            client,
+            model="bertrand",
+            rounds=40,
+            firms=[{"cost": 10.0}],
+            enhanced_demand={"demand_type": "ces", "market_elasticity": 2.0},
+        )
+        # c * eta / (eta - 1) = 20
+        assert data["results"]["39"]["firm_0"]["price"] == pytest.approx(20.0, rel=0.02)
+
     def test_simulate_and_fetch(self, client) -> None:
         data = _run(
             client,
@@ -101,8 +112,10 @@ class TestCESDemand:
         )
         assert data["params"]["demand_type"] == "ces"
         assert data["params"]["qualities"] == [1.0, 1.2, 0.9]
-        metrics = data["metrics"]["7"]
-        assert metrics["consumer_surplus"] is None
+        # Consumer surplus = total spending / (market_elasticity - 1)
+        last = data["results"]["7"].values()
+        spend = sum(f["price"] * f["quantity"] for f in last)
+        assert data["metrics"]["7"]["consumer_surplus"] == pytest.approx(spend)
         # Differentiated products: all three firms sell every round
         assert all(f["quantity"] > 0 for f in data["results"]["7"].values())
 
@@ -115,7 +128,6 @@ class TestCESDemand:
         [
             ({"model": "cournot"}, "model='bertrand'"),
             ({"params": {"alpha": 100.0, "beta": 1.0}}, "omit params"),
-            ({"firms": [{"cost": 10.0}]}, "two firms"),
             ({"demand_type": "isoelastic"}, "either"),
             (
                 {"enhanced_demand": {"demand_type": "ces", "qualities": [1.0]}},
@@ -251,6 +263,27 @@ class TestMarketEvolution:
         replay = client.get(f"/runs/{run_id}/replay")
         assert replay.status_code == 200, replay.text
 
+    def test_metrics_follow_demand_growth(self, client) -> None:
+        """Surplus uses the grown demand curve, not the initial one."""
+        data = _run(
+            client,
+            rounds=10,
+            demand_type="isoelastic",
+            market_evolution={
+                "growth_rate": 0.1,
+                "entry_cost": 1e9,
+                "innovation_rate": 0.0,
+            },
+        )
+        for round_idx in ("0", "9"):
+            firms = data["results"][round_idx].values()
+            price = next(iter(firms))["price"]
+            total = sum(f["quantity"] for f in firms)
+            # CS = integral of Q(p) above P = P * Q / (e - 1) for isoelastic demand
+            assert data["metrics"][round_idx]["consumer_surplus"] == pytest.approx(
+                price * total / (2.0 - 1)
+            )
+
     def test_defaults(self, client) -> None:
         data = _run(client, market_evolution={})
         assert data["params"]["market_evolution"]["entry_cost"] == 100.0
@@ -285,9 +318,8 @@ def test_compare_with_new_features(client) -> None:
     result = client.get(f"/compare/{ids['left_run_id']}/{ids['right_run_id']}")
     assert result.status_code == 200, result.text
     body = result.json()
-    assert all(v is not None for v in body["left_metrics"]["consumer_surplus"])
-    assert all(v is None for v in body["right_metrics"]["consumer_surplus"])
-    assert all(v is None for v in body["deltas"]["consumer_surplus"])
+    for side in ("left_metrics", "right_metrics", "deltas"):
+        assert all(v is not None for v in body[side]["consumer_surplus"])
 
 
 def test_compare_reports_scenario_in_errors(client) -> None:

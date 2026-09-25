@@ -83,7 +83,7 @@ class TestNonLinearDemand:
         ("model", "params", "firms", "message"),
         [
             ("cournot", {"demand_type": "ces"}, 2, "bertrand"),
-            ("bertrand", {"demand_type": "ces"}, 1, "two firms"),
+            ("bertrand", {"demand_type": "ces", "market_elasticity": 1.0}, 2, "> 1"),
             ("cournot", {"demand_type": "isoelastic", "elasticity": 0.5}, 2, "> 1"),
             ("cournot", {"demand_type": "logit"}, 2, "Unknown demand_type"),
         ],

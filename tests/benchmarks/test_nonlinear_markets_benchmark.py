@@ -76,31 +76,46 @@ class TestIsoelasticBertrand:
 
 
 class TestCESBertrand:
-    @pytest.mark.parametrize(("n", "sigma"), [(2, 2.0), (3, 4.0), (5, 1.5)])
-    def test_symmetric_closed_form(self, n: int, sigma: float) -> None:
-        """Symmetric shares 1/n give e = sigma - (sigma-1)/n, p = c e/(e-1)."""
+    @pytest.mark.parametrize(
+        ("n", "sigma", "eta"),
+        [(1, 3.0, 2.0), (2, 2.0, 1.5), (3, 4.0, 2.0), (5, 1.5, 3.0)],
+    )
+    def test_symmetric_closed_form(self, n: int, sigma: float, eta: float) -> None:
+        """Symmetric shares 1/n give e = sigma - (sigma-eta)/n, p = c e/(e-1).
+
+        n = 1 is the monopoly price c eta / (eta - 1).
+        """
         c = 10.0
-        market = CESBertrandMarket({"elasticity": sigma}, n)
-        e = sigma - (sigma - 1) / n
+        market = CESBertrandMarket({"elasticity": sigma, "market_elasticity": eta}, n)
+        e = sigma - (sigma - eta) / n
         assert market.nash([c] * n) == pytest.approx([c * e / (e - 1)] * n, rel=TOL)
 
     @pytest.mark.parametrize(
         ("costs", "qualities"),
         [
+            ([10.0], None),
             ([10.0, 10.0], None),
             ([8.0, 12.0], None),
             ([10.0, 10.0, 10.0], [1.0, 1.5, 0.8]),
         ],
     )
     def test_no_profitable_deviation(self, costs, qualities) -> None:
-        params = {"elasticity": 3.0, "market_size": 500.0}
+        params = {"elasticity": 3.0, "market_elasticity": 2.0, "market_size": 5000.0}
         if qualities:
             params["qualities"] = qualities
         market = CESBertrandMarket(params, len(costs))
         _assert_no_profitable_deviation(market, costs)
 
-    def test_expenditure_is_market_size(self) -> None:
-        market = CESBertrandMarket({"elasticity": 2.5, "market_size": 250.0}, 3)
-        result = market.play([12.0, 15.0, 20.0], [10.0, 10.0, 10.0], [0.0] * 3)
+    def test_group_demand_and_consumer_surplus(self) -> None:
+        """Spending is M P^(1-eta); surplus integrates Q(P) = M P^-eta above P."""
+        sigma, eta, size = 2.5, 2.0, 250.0
+        market = CESBertrandMarket(
+            {"elasticity": sigma, "market_elasticity": eta, "market_size": size}, 3
+        )
+        prices = [12.0, 15.0, 20.0]
+        result = market.play(prices, [10.0] * 3, [0.0] * 3)
+        index = sum(p ** (1 - sigma) for p in prices) ** (1 / (1 - sigma))
         spend = sum(p * q for p, q in zip(result.prices, result.quantities))
-        assert math.isclose(spend, 250.0)
+        assert math.isclose(spend, size * index ** (1 - eta))
+        _, _, surplus = market.metrics(result.prices, result.quantities)
+        assert math.isclose(surplus, size * index ** (1 - eta) / (eta - 1))

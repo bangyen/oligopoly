@@ -120,7 +120,7 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 | Field | Values | Notes |
 |-------|--------|-------|
 | `demand_type` | `"linear"` (default), `"isoelastic"` | Isoelastic uses `params: {"A", "elasticity"}` with Q(P) = (A/P)^e |
-| `enhanced_demand` | `{"demand_type": "ces", "elasticity", "market_size", "qualities"}` | Differentiated Bertrand; needs ≥2 firms; consumer surplus is reported as `null` |
+| `enhanced_demand` | `{"demand_type": "ces", "elasticity", "market_elasticity", "market_size", "qualities"}` | Differentiated Bertrand with nested CES demand: varieties substitute with `elasticity`; group demand is `market_size · P^-market_elasticity` |
 | `advanced_strategies` | `[{"firm_id", "strategy_type", ...}]` | Learners: `fictitious_play`, `q_learning`, `deep_q_learning`, `behavioral` (optional `learning_rate`, `memory_length`, `exploration_rate`). Collusion: two or more `cartel`/`collusive`/`opportunistic` firms form a cartel at their joint-profit optimum; a defection breaks it for 5 rounds |
 | `capacity_constraints` | `true` (default), `false` | Linear Bertrand only: `false` drops the 40%-of-market cap for textbook winner-take-all |
 | `market_evolution` | `{"growth_rate", "entry_cost", "exit_threshold", "innovation_rate"}` | Entries, exits and innovations show up in `/runs/{id}/events` |
@@ -148,8 +148,8 @@ Known gaps and next steps, roughly in priority order:
       optimum in every demand system and survive market evolution.
 - [x] **Bertrand capacity toggle** — `capacity_constraints: false` gives the
       textbook winner-take-all game for linear Bertrand runs.
-- [ ] **CES consumer surplus** — report a money-metric surplus for CES runs
-      instead of `null`.
+- [x] **CES consumer surplus** — nested CES demand with a finite
+      `market_elasticity` gives a closed-form consumer surplus.
 - [ ] **Dashboard support** — let the dashboard configure demand types,
       learning strategies and market evolution.
 - [ ] **Learning benchmarks** — measure whether each learning strategy

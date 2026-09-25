@@ -87,8 +87,9 @@ class IsoelasticParams(BaseModel):
 class EnhancedDemandConfig(BaseModel):
     """Differentiated-products demand for Bertrand competition.
 
-    ``ces``: CES demand with elasticity of substitution ``elasticity``, total
-    consumer expenditure ``market_size`` and optional per-firm ``qualities``.
+    ``ces``: nested CES demand. Varieties substitute with elasticity
+    ``elasticity``; demand for the group as a whole is
+    ``market_size * P^(-market_elasticity)`` in the CES price index P.
     ``linear`` is the default homogeneous-good demand (same as omitting this).
     """
 
@@ -100,14 +101,19 @@ class EnhancedDemandConfig(BaseModel):
         description="Demand function type",
     )
     elasticity: float = Field(
-        default=2.0, gt=1, description="Elasticity of substitution (CES only)"
+        default=2.0, gt=1, description="Elasticity of substitution between varieties"
+    )
+    market_elasticity: float = Field(
+        default=2.0, gt=1, description="Price elasticity of total group demand"
     )
     market_size: float = Field(
-        default=100.0, gt=0, description="Total consumer expenditure (CES only)"
+        default=100.0,
+        gt=0,
+        description="Group demand at a price index of 1 (demand scale)",
     )
     qualities: list[float] | None = Field(
         default=None,
-        description="Per-firm product quality (CES only; defaults to 1 for all)",
+        description="Per-firm product quality (defaults to 1 for all)",
     )
 
 
@@ -256,8 +262,7 @@ class ComparisonResults(BaseModel):
     rounds: int = Field(..., description="Number of rounds (should be same for both)")
     left_metrics: dict[str, list[float | None]] = Field(
         ...,
-        description="Left scenario metrics arrays (consumer_surplus is null for "
-        "CES demand, which has no money-metric surplus)",
+        description="Left scenario metrics arrays",
     )
     right_metrics: dict[str, list[float | None]] = Field(
         ..., description="Right scenario metrics arrays"
@@ -296,9 +301,7 @@ class ReplayFrame(BaseModel):
     total_quantity: float = Field(..., description="Total quantity")
     total_profit: float = Field(..., description="Total profit")
     hhi: float = Field(..., description="Herfindahl-Hirschman Index")
-    consumer_surplus: float | None = Field(
-        ..., description="Consumer surplus (null for CES demand)"
-    )
+    consumer_surplus: float | None = Field(..., description="Consumer surplus")
     num_firms: int = Field(..., description="Number of firms")
     firm_data: dict[int, dict[str, float]] = Field(
         ..., description="Firm-specific data"
