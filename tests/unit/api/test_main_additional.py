@@ -9,11 +9,8 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from sim.api import (
-    _calculate_comparison_metrics,
-    app,
-    get_db,
-)
+from sim.api import app, get_db
+from sim.api.simulate import _calculate_comparison_metrics
 
 
 class TestSimulateEndpointAdditional:
@@ -290,7 +287,7 @@ class TestSimulateEndpointAdditional:
             mock_db = Mock()
             app.dependency_overrides[get_db] = lambda: mock_db
             try:
-                with patch("sim.api.run_game") as mock_run_game:
+                with patch("sim.api.simulate.run_game") as mock_run_game:
                     mock_run_game.return_value = "run_123"
                     response = client.post("/simulate", json=simulation_data)
                     assert response.status_code == 200
@@ -312,7 +309,7 @@ class TestSimulateEndpointAdditional:
             mock_db = Mock()
             app.dependency_overrides[get_db] = lambda: mock_db
             try:
-                with patch("sim.api.run_game") as mock_run_game:
+                with patch("sim.api.simulate.run_game") as mock_run_game:
                     mock_run_game.side_effect = ValueError("Invalid configuration")
                     response = client.post("/simulate", json=simulation_data)
                     assert response.status_code == 400
@@ -333,7 +330,7 @@ class TestSimulateEndpointAdditional:
             mock_db = Mock()
             app.dependency_overrides[get_db] = lambda: mock_db
             try:
-                with patch("sim.api.run_game") as mock_run_game:
+                with patch("sim.api.simulate.run_game") as mock_run_game:
                     mock_run_game.side_effect = RuntimeError("Simulation failed")
                     response = client.post("/simulate", json=simulation_data)
                     assert response.status_code == 500
@@ -358,7 +355,7 @@ class TestGetRunAdditional:
     def test_get_run_with_bertrand_model(self):
         """Test get run endpoint with Bertrand model."""
         with TestClient(app) as client:
-            with patch("sim.api.get_run_results") as mock_get_run_results:
+            with patch("sim.api.runs.get_run_results") as mock_get_run_results:
                 mock_get_run_results.return_value = {
                     "id": 1,
                     "model": "bertrand",
@@ -387,7 +384,7 @@ class TestGetRunAdditional:
     def test_get_run_with_empty_results(self):
         """Test get run endpoint with empty results."""
         with TestClient(app) as client:
-            with patch("sim.api.get_run_results") as mock_get_run_results:
+            with patch("sim.api.runs.get_run_results") as mock_get_run_results:
                 mock_get_run_results.return_value = {
                     "id": 1,
                     "model": "cournot",
@@ -403,7 +400,7 @@ class TestGetRunAdditional:
     def test_get_run_runtime_error(self):
         """Test get run endpoint with RuntimeError."""
         with TestClient(app) as client:
-            with patch("sim.api.get_run_results") as mock_get_run_results:
+            with patch("sim.api.runs.get_run_results") as mock_get_run_results:
                 mock_get_run_results.side_effect = RuntimeError("Database error")
 
                 response = client.get("/runs/1")
@@ -441,7 +438,7 @@ class TestCompareScenariosAdditional:
             mock_db = Mock()
             app.dependency_overrides[get_db] = lambda: mock_db
             try:
-                with patch("sim.api.run_game") as mock_run_game:
+                with patch("sim.api.simulate.run_game") as mock_run_game:
                     mock_run_game.side_effect = ["run_1", "run_2"]
                     response = client.post("/compare", json=comparison_data)
                     assert response.status_code == 200
@@ -473,7 +470,7 @@ class TestCompareScenariosAdditional:
             mock_db = Mock()
             app.dependency_overrides[get_db] = lambda: mock_db
             try:
-                with patch("sim.api.run_game") as mock_run_game:
+                with patch("sim.api.simulate.run_game") as mock_run_game:
                     mock_run_game.side_effect = RuntimeError("Simulation failed")
                     response = client.post("/compare", json=comparison_data)
                     assert response.status_code == 500
@@ -574,7 +571,7 @@ class TestDatabaseDependencyAdditional:
 
     def test_get_db_exception_handling(self):
         """Test get_db dependency with exception."""
-        with patch("sim.api.SessionLocal") as mock_session_local:
+        with patch("sim.database.SessionLocal") as mock_session_local:
             mock_session_local.side_effect = Exception("Database connection failed")
 
             # The dependency should still yield and close properly
@@ -597,7 +594,7 @@ class TestPydanticModels:
 
     def test_demand_segment_config_validation(self):
         """Test DemandSegmentConfig validation."""
-        from sim.api import DemandSegmentConfig
+        from sim.api.schemas import DemandSegmentConfig
 
         # Valid configuration
         segment = DemandSegmentConfig(alpha=100.0, beta=1.0, weight=0.5)
@@ -617,7 +614,7 @@ class TestPydanticModels:
 
     def test_firm_config_validation(self):
         """Test FirmConfig validation."""
-        from sim.api import FirmConfig
+        from sim.api.schemas import FirmConfig
 
         # Valid configuration
         firm = FirmConfig(cost=10.0, fixed_cost=5.0)
@@ -633,7 +630,7 @@ class TestPydanticModels:
 
     def test_policy_event_request_validation(self):
         """Test PolicyEventRequest validation."""
-        from sim.api import PolicyEventRequest
+        from sim.api.schemas import PolicyEventRequest
         from sim.policy.policy_shocks import PolicyType
 
         # Valid configuration
@@ -651,7 +648,7 @@ class TestPydanticModels:
 
     def test_advanced_strategy_config_validation(self):
         """Test AdvancedStrategyConfig validation."""
-        from sim.api import AdvancedStrategyConfig
+        from sim.api.schemas import AdvancedStrategyConfig
 
         # Valid configuration
         strategy = AdvancedStrategyConfig(
@@ -679,7 +676,7 @@ class TestPydanticModels:
 
     def test_enhanced_demand_config_validation(self):
         """Test EnhancedDemandConfig validation."""
-        from sim.api import EnhancedDemandConfig
+        from sim.api.schemas import EnhancedDemandConfig
 
         # Valid configuration
         demand = EnhancedDemandConfig(demand_type="linear", elasticity=2.0)
@@ -695,7 +692,7 @@ class TestPydanticModels:
 
     def test_simulation_request_validation(self):
         """Test SimulationRequest validation."""
-        from sim.api import SimulationRequest
+        from sim.api.schemas import SimulationRequest
 
         # Valid configuration
         request = SimulationRequest(
@@ -729,7 +726,7 @@ class TestPydanticModels:
 
     def test_heatmap_request_validation(self):
         """Test HeatmapRequest validation."""
-        from sim.api import HeatmapRequest
+        from sim.api.schemas import HeatmapRequest
 
         # Valid configuration
         request = HeatmapRequest(
