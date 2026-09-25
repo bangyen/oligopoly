@@ -12,6 +12,12 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
 
     steps:
       - name: Checkout
@@ -20,7 +26,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install just
         uses: extractions/setup-just@v2
@@ -32,9 +38,11 @@ jobs:
         run: |
           just init
 
+      # `check` verifies formatting instead of rewriting it, so unformatted
+      # code fails CI rather than being silently fixed in the runner.
       - name: Run quality checks
         run: |
-          just all
+          just check
 
   e2e:
     runs-on: ubuntu-latest

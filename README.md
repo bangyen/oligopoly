@@ -1,10 +1,10 @@
 # Oligopoly Simulation
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bangyen/oligopoly/blob/main/oligopoly_demo.ipynb)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen)](tests/)
+[![CI](https://github.com/bangyen/oligopoly/actions/workflows/ci.yml/badge.svg)](https://github.com/bangyen/oligopoly/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/bangyen/oligopoly)](LICENSE)
 
-**Advanced Oligopoly Market Simulation: Validated collusion detection, research-grade calculation precision, and adaptive learning strategies**  
+**Oligopoly market simulation: Cournot and Bertrand competition with learning strategies, collusion detection, and policy shocks**  
 
 <p align="center">
   <img src="docs/cournot_heatmap.png" alt="Oligopoly Dashboard" width="600">
@@ -36,18 +36,23 @@ bertrand      # run a one-off Bertrand simulation
 
 | Capability | Description |
 |------------|-------------|
-| Collusion Detection | Identifies cartel behavior with configurable tolerance |
-| Calculation Precision | Research-grade mathematical accuracy (1e-6) |
+| Collusion Detection | Flags cartel behavior and defections with a configurable tolerance |
+| Cournot Equilibrium | Matches the textbook closed form to 1e-6 ([benchmarks](tests/benchmarks/)) |
 | Strategy Adaptation | Firms learn and evolve using Q-learning and Fictitious Play |
+
+The Bertrand "equilibrium" helper (`bertrand_nash_equilibrium`) is a
+capacity-constrained markup heuristic, not the textbook price-equals-cost
+Bertrand–Nash outcome. See also the known Cournot engine issue recorded in
+`tests/benchmarks/test_cournot_benchmark.py`.
 
 ## Features
 
-- **Collusion Detection** — Accurate identification of cartel behavior and defections.  
-- **Policy Analysis** — Quantifies tax/subsidy effects with high mathematical precision.  
+- **Collusion Detection** — Tolerance-based detection of cartel behavior and defections.  
+- **Policy Analysis** — Applies taxes, subsidies and price caps mid-simulation.  
 - **Learning Strategies** — Supports Q-learning, Fictitious Play, and Tit-for-Tat algorithms.  
-- **Interactive Dashboard** — Real-time visualization using FastAPI and Jinja2 templates.  
+- **Interactive Dashboard** — Visualization using FastAPI and Jinja2 templates.  
 - **REST API** — Comprehensive FastAPI endpoints for simulation management and analysis.  
-- **Batch Experiments** — Statistical analysis with reproducible seed management and CSV export.  
+- **Batch Experiments** — Reproducible seeded runs with CSV export (plots need `pip install -e ".[viz]"`).  
 
 ## Repo Structure
 
@@ -61,9 +66,9 @@ oligopoly/
 │   │   ├── games/       # Cournot & Bertrand models
 │   │   ├── strategies/  # Learning algorithms
 │   │   ├── policy/      # Tax/subsidy interventions
-│   │   └── api.py       # FastAPI application
+│   │   └── api/         # FastAPI app: schemas + simulate/runs/heatmap routers
 │   └── ...
-├── tests/               # Unit/integration tests (>80% coverage)
+├── tests/               # Unit, integration and analytic benchmark tests
 └── oligopoly_demo.ipynb # Colab notebook demo
 ```
 
@@ -78,12 +83,15 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 | `src/sim/policy/` | `tests/unit/policy/` |
 | `src/sim/collusion.py` | `tests/unit/runners/` |
 | `src/sim/runners/` | `tests/unit/runners/` |
-| `src/sim/api.py` | `tests/unit/api/` + `tests/integration/` |
+| `src/sim/api/` | `tests/unit/api/` + `tests/integration/` |
+| Analytic equilibria | `tests/benchmarks/` |
 | `dashboard/main.py` | `tests/unit/heatmap/` + `tests/unit/infrastructure/` |
 
 ## Validation
 
-- ✅ Overall test coverage of >80% (`pytest`)
+- ✅ Test coverage ≥85%, enforced in CI (`just cov`)
+- ✅ Cournot results checked against closed-form equilibria (`tests/benchmarks/`)
+- ✅ CI on Python 3.10, 3.11 and 3.12
 - ✅ Reproducible seeds for experiments
 - ✅ `justfile` for common development tasks
 

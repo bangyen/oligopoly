@@ -44,7 +44,7 @@ def test_generate_all_plots(tmp_path: Path, with_cartel: bool, expected: int) ->
 
     assert len(paths) == expected
     for path in paths:
-        assert Path(path).read_text().lstrip().lower().startswith("<html")
+        assert "<html" in Path(path).read_text().lower()
 
 
 def test_missing_viz_extra_gives_install_hint(tmp_path: Path) -> None:

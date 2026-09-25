@@ -38,8 +38,12 @@ type:
 test:
     {{PYTHON}} -m pytest
 
+# run tests with a coverage report (fails under the configured threshold)
+cov:
+    {{PYTHON}} -m pytest --cov --cov-report=term-missing:skip-covered
+
 # run all checks without modifying files (used by CI)
-check: fmt-check lint type test
+check: fmt-check lint type cov
 
 # format, then run all checks
 all: fmt lint type test

@@ -147,6 +147,9 @@ markers = [
     "asyncio: marks tests as async tests",
 ]
 
+[tool.coverage.report]
+fail_under = 85
+
 [tool.coverage.run]
 source = ["src"]
 omit = [
