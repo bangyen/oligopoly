@@ -5,7 +5,6 @@ oligopoly simulations and persisting results to the database.
 """
 
 import logging
-import math
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -44,6 +43,8 @@ from sim.strategies.nash_strategies import validate_economic_parameters
 from sim.validation import validate_simulation_config
 
 logger = logging.getLogger(__name__)
+
+_INNOVATION_EVENT_THRESHOLD = 0.03
 
 
 def _project(
@@ -479,7 +480,9 @@ def _evolve(
             new_actions.append(actions[old])
             new_strategies.append(strategies[old])
             new_histories.append(histories[old])
-            if not math.isclose(new_costs[pos], costs[old]):
+            # Log firm-level innovations (5% cuts), not the ~1% industry-wide
+            # technology spillover every firm receives
+            if new_costs[pos] < costs[old] * (1 - _INNOVATION_EVENT_THRESHOLD):
                 events.append(
                     (
                         "innovation",

@@ -221,6 +221,20 @@ class TestMarketEvolution:
             )
         )
 
+    def test_innovation_events_are_firm_level(self, db) -> None:
+        run_id = self._run(
+            db, {"growth_rate": 0.0, "entry_cost": 1e9, "innovation_rate": 1.0}
+        )
+        innovations = (
+            db.query(Event)
+            .filter(Event.run_id == run_id, Event.event_type == "innovation")
+            .all()
+        )
+        assert innovations
+        for event in innovations:
+            data = event.event_data
+            assert data["new_cost"] < data["old_cost"] * 0.97
+
     def test_growth_scales_demand(self, db) -> None:
         run_id = self._run(
             db,
