@@ -5,8 +5,10 @@ oligopoly simulations and persisting results to the database.
 """
 
 import logging
+import math
 import random
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -14,24 +16,21 @@ from sqlalchemy.orm import Session
 from sim.collusion import CollusionManager
 from sim.games.bertrand import (
     BertrandResult,
-    bertrand_segmented_simulation,
-    bertrand_simulation,
 )
 from sim.games.cournot import (
     CournotResult,
-    cournot_segmented_simulation,
-    cournot_simulation,
 )
+from sim.markets import Market, build_market
+from sim.models.market_evolution import MarketEvolutionConfig, MarketEvolutionEngine
 from sim.models.metrics import (
     calculate_market_shares_bertrand,
     calculate_market_shares_cournot,
 )
 from sim.models.models import (
-    DemandSegment,
+    Event,
     Result,
     Round,
     Run,
-    SegmentedDemand,
 )
 from sim.policy.policy_shocks import apply_policy_shock, validate_policy_events
 from sim.strategies.collusion_strategies import (
@@ -40,15 +39,38 @@ from sim.strategies.collusion_strategies import (
     OpportunisticStrategy,
     create_collusion_strategy,
 )
-from sim.strategies.nash_strategies import (
-    adaptive_nash_strategy,
-    cournot_nash_equilibrium,
-    validate_economic_parameters,
-    validate_market_clearing,
-)
+from sim.strategies.learning import create_learning_strategy
+from sim.strategies.nash_strategies import validate_economic_parameters
 from sim.validation import validate_simulation_config
 
 logger = logging.getLogger(__name__)
+
+
+def _project(
+    result: CournotResult | BertrandResult, index: int
+) -> CournotResult | BertrandResult:
+    """One firm's view of a round: its own price, quantity and profit at index 0."""
+    if isinstance(result, CournotResult):
+        return CournotResult(
+            price=result.price,
+            quantities=[result.quantities[index]],
+            profits=[result.profits[index]],
+        )
+    return BertrandResult(
+        total_demand=result.total_demand,
+        prices=[result.prices[index]],
+        quantities=[result.quantities[index]],
+        profits=[result.profits[index]],
+    )
+
+
+def _market_shares(model: str, result: CournotResult | BertrandResult) -> list[float]:
+    n = len(result.quantities)
+    if sum(result.quantities) <= 0:
+        return [1.0 / n] * n
+    if model == "cournot":
+        return list(calculate_market_shares_cournot(result.quantities))
+    return list(calculate_market_shares_bertrand(result.prices, result.quantities))
 
 
 def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> str:
@@ -61,9 +83,16 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
         model: Type of competition model ("cournot" or "bertrand")
         rounds: Number of rounds to simulate
         config: Configuration dictionary containing:
-            - params: Market parameters (a, b for Cournot; alpha, beta for Bertrand)
+            - params: Market parameters. ``demand_type`` selects the demand
+              system ("linear" default, "isoelastic", "ces"); see
+              :func:`sim.markets.build_market`.
             - firms: List of firm configurations with costs
             - seed: Optional random seed for reproducibility
+            - events: Optional policy events
+            - advanced_strategies: Optional list of
+              ``{"firm_id", "strategy_type", ...}`` learning strategies
+            - market_evolution: Optional MarketEvolutionConfig fields enabling
+              growth, entry/exit and innovation between rounds
         db: Database session for persistence
 
     Returns:
@@ -86,6 +115,8 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
     firms = config.get("firms", [])
     seed = config.get("seed")
     events = config.get("events", [])
+    learning_specs = config.get("advanced_strategies") or []
+    evolution_config = config.get("market_evolution")
 
     if not firms:
         raise ValueError("Config must contain 'firms' list")
@@ -114,25 +145,37 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
         elif isinstance(params, dict):
             params_dict = params
         # else: unsupported type — leave as None
+    params = params_dict or {}
 
-    # Create run record — persist params so metrics can be recomputed faithfully later
-    run = Run(model=model, rounds=rounds, params=params_dict)
-    db.add(run)
-    db.flush()
-
-    # Extract firm costs and initialize collusion manager
     costs = [firm["cost"] for firm in firms]
     fixed_costs = [firm.get("fixed_cost", 0.0) for firm in firms]
     num_firms = len(costs)
 
+    market = build_market(model, params, num_firms)
+    is_linear = market.demand_type == "linear"
+
+    # Persist params so metrics can be recomputed faithfully later. Linear runs
+    # keep the caller's params exactly; other demand systems store the
+    # normalised demand spec (including demand_type).
+    persisted: dict[str, Any] | None = params_dict if is_linear else market.params()
+    if learning_specs or evolution_config is not None:
+        persisted = dict(persisted or {})
+        if learning_specs:
+            persisted["advanced_strategies"] = list(learning_specs)
+        if evolution_config is not None:
+            persisted["market_evolution"] = dict(evolution_config)
+
+    # Create run record
+    run = Run(model=model, rounds=rounds, params=persisted)
+    db.add(run)
+    db.flush()
+
     # Setup strategies and collusion manager
     collusion_manager = CollusionManager()
-    firm_strategies: list[
-        CartelStrategy | CollusiveStrategy | OpportunisticStrategy | None
-    ] = []
+    firm_strategies: list[Any] = []
     firm_histories: list[list[CournotResult | BertrandResult]] = [
         [] for _ in range(num_firms)
-    ]  # List of results for each firm
+    ]  # Per-firm results (index 0 = that firm)
 
     for i, firm_config in enumerate(firms):
         strategy_type = firm_config.get("strategy_type", "nash")
@@ -149,64 +192,65 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
             )
             firm_strategies.append(strategy)
 
+    has_collusion = any(s is not None for s in firm_strategies)
+    if has_collusion and not is_linear:
+        raise ValueError("Collusion strategies require linear demand")
+    if has_collusion and evolution_config is not None:
+        raise ValueError(
+            "Collusion strategies cannot be combined with market evolution"
+        )
+
+    nash_actions_initial = market.nash(costs)
+    for spec in learning_specs:
+        firm_idx = spec["firm_id"]
+        if not 0 <= firm_idx < num_firms:
+            raise ValueError(
+                f"advanced_strategies firm_id {firm_idx} is out of range for "
+                f"{num_firms} firms"
+            )
+        if firm_strategies[firm_idx] is not None:
+            raise ValueError(f"Firm {firm_idx} already has a strategy")
+        firm_strategies[firm_idx] = create_learning_strategy(
+            spec["strategy_type"],
+            bounds=market.action_bounds(costs[firm_idx], costs),
+            reference_action=nash_actions_initial[firm_idx],
+            seed=None if seed is None else seed + firm_idx,
+            learning_rate=spec.get("learning_rate"),
+            memory_length=spec.get("memory_length"),
+            exploration_rate=spec.get("exploration_rate"),
+        )
+
+    firm_ids = list(range(num_firms))
+    qualities = list(params.get("qualities") or [1.0] * num_firms)
+    evolution = None
+    if evolution_config is not None:
+        evolution = MarketEvolutionEngine(
+            MarketEvolutionConfig(**evolution_config), seed=seed
+        )
+        evolution.state.num_firms = num_firms
+
     try:
         # Validate economic parameters
-        validate_economic_parameters(model, params, costs)
+        if is_linear:
+            validate_economic_parameters(model, params, costs)
 
         # Initialize firm actions
-        if model == "cournot":
-            # Standard or segmented demand
-            segments_config = params.get("segments")
-            if segments_config:
-                weighted_alpha = sum(s["alpha"] * s["weight"] for s in segments_config)
-                weighted_beta = sum(s["beta"] * s["weight"] for s in segments_config)
-                nash_quantities, _, _ = cournot_nash_equilibrium(
-                    weighted_alpha, weighted_beta, costs, fixed_costs
-                )
-            else:
-                a = params.get("a", 100.0)
-                b = params.get("b", 1.0)
-                nash_quantities, _, _ = cournot_nash_equilibrium(
-                    a, b, costs, fixed_costs
-                )
-            actions = [max(0.1, qty + random.uniform(-1, 1)) for qty in nash_quantities]
-        else:  # bertrand
-            alpha = params.get("alpha", 100.0)
-            beta = params.get("beta", 1.0)
-            from sim.strategies.nash_strategies import bertrand_nash_equilibrium
-
-            nash_prices, _, _, _ = bertrand_nash_equilibrium(alpha, beta, costs)
-            actions = [
-                max(costs[i] + 0.1, p + random.uniform(-1, 1))
-                for i, p in enumerate(nash_prices)
-            ]
+        actions = market.initial_actions(costs)
 
         # Run simulation rounds
         for round_idx in range(rounds):
             round_record = Round(run_id=run.id, idx=round_idx)
             db.add(round_record)
 
-            # 1. Get Actions for this round
-            # (First round uses initialized actions, subsequent rounds use updated ones)
+            # 1. Run simulation for this round
+            result = market.play(actions, costs, fixed_costs)
 
-            # 2. Run simulation for this round
-            if model == "cournot":
-                result = _run_cournot_round(params, costs, actions, fixed_costs)
-            else:
-                result = _run_bertrand_round(params, costs, actions, fixed_costs)
-
-            # 3. Apply policy shocks
+            # 2. Apply policy shocks
             for event in events:
                 if event.round_idx == round_idx:
                     result = apply_policy_shock(result, event, costs)
 
-            # 4. Detect collusion and update manager
-            if model == "cournot":
-                calculate_market_shares_cournot(result.quantities)
-            else:
-                calculate_market_shares_bertrand(result.prices, result.quantities)
-
-            # Check for defections if a cartel exists
+            # 3. Detect collusion and update manager
             if collusion_manager.is_cartel_active():
                 cartel = collusion_manager.current_cartel
                 if cartel:
@@ -247,97 +291,105 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
                             colluding_firms,
                         )
 
-            # 5. Persist results and update histories
-            for firm_id in range(num_firms):
-                firm_price = (
-                    result.price if model == "cournot" else result.prices[firm_id]
+            # 4. Persist results and update per-firm histories
+            for pos, firm_id in enumerate(firm_ids):
+                firm_price = result.price if model == "cournot" else result.prices[pos]
+                firm_histories[pos].append(_project(result, pos))
+                db.add(
+                    Result(
+                        run_id=run.id,
+                        round_id=round_record.id,
+                        round_idx=round_idx,
+                        firm_id=firm_id,
+                        action=actions[pos],
+                        price=firm_price,
+                        qty=result.quantities[pos],
+                        profit=result.profits[pos],
+                    )
                 )
 
-                # Update firm history
-                if model == "cournot":
-                    res_c = CournotResult(
-                        price=result.price,
-                        quantities=result.quantities,
-                        profits=result.profits,
-                    )
-                    firm_histories[firm_id].append(res_c)
-                else:
-                    res_b = BertrandResult(
-                        total_demand=result.total_demand,
-                        prices=result.prices,
-                        quantities=result.quantities,
-                        profits=result.profits,
-                    )
-                    firm_histories[firm_id].append(res_b)
-
-                result_record = Result(
-                    run_id=run.id,
-                    round_id=round_record.id,
-                    round_idx=round_idx,
-                    firm_id=firm_id,
-                    action=actions[firm_id],
-                    price=firm_price,
-                    qty=result.quantities[firm_id],
-                    profit=result.profits[firm_id],
-                )
-                db.add(result_record)
-
-            # 6. Update actions for next round
+            # 5. Update actions for next round
+            base_params = market.strategy_params()
             new_actions: list[float | None] = []
             for i, strat_opt in enumerate(firm_strategies):
                 if strat_opt is None:
-                    # Adaptive Nash logic (handled below for simplicity or per-firm)
-                    # For now, we'll store a placeholder and update later
                     new_actions.append(None)
-                else:
-                    # Build rival histories for this firm
-                    rival_histories: list[Sequence[CournotResult | BertrandResult]] = [
-                        firm_histories[j] for j in range(num_firms) if j != i
-                    ]
+                    continue
+                rival_histories: list[Sequence[CournotResult | BertrandResult]] = [
+                    firm_histories[j] for j in range(len(firm_ids)) if j != i
+                ]
+                market_params = {
+                    **base_params,
+                    "my_cost": costs[i],
+                    "best_response": _best_response_fn(market, i, actions, costs),
+                }
+                try:
+                    action = strat_opt.next_action(
+                        round_idx,
+                        firm_histories[i],
+                        rival_histories,
+                        market.action_bounds(costs[i], costs),
+                        market_params,
+                    )
+                    new_actions.append(action)
+                except Exception as e:
+                    logger.warning(
+                        "Strategy error for firm %s: %s. Falling back to Nash.",
+                        firm_ids[i],
+                        e,
+                    )
+                    new_actions.append(None)
 
-                    # Determine bounds (could be expanded)
-                    if model == "cournot":
-                        a = params.get("a", 100.0)
-                        b = params.get("b", 1.0)
-                        bounds = (0.1, a / b)
-                    else:
-                        costs_i = costs[i]
-                        bounds = (costs_i + 0.1, 1000.0)
-
-                    market_params = {**params, "model_type": model}
-
-                    try:
-                        action = strat_opt.next_action(
-                            round_idx,
-                            firm_histories[i],
-                            rival_histories,
-                            bounds,
-                            market_params,
-                        )
-                        new_actions.append(action)
-                    except Exception as e:
-                        logger.warning(
-                            "Strategy error for firm %s: %s. Falling back to Nash.",
-                            i,
-                            e,
-                        )
-                        new_actions.append(None)
-
-            # Handle Nash competitors and merge
-            # First, get a baseline update for everyone
-            nash_actions = adaptive_nash_strategy(
-                model, actions, result.profits, costs, params, round_idx, rounds
+            # Firms without their own strategy adapt towards Nash
+            nash_actions = market.adapt(
+                actions, result.profits, costs, round_idx, rounds
             )
+            final_actions = [
+                float(a) if a is not None else float(nash_actions[i])
+                for i, a in enumerate(new_actions)
+            ]
+            actions = market.clear(final_actions, costs)
 
-            # Use specific strategy action if available, else use Nash
-            final_actions: list[float] = []
-            for i, action_val in enumerate(new_actions):
-                if action_val is not None:
-                    final_actions.append(float(action_val))
-                else:
-                    final_actions.append(float(nash_actions[i]))
-
-            actions = validate_market_clearing(model, final_actions, costs, params)
+            # 6. Market evolution between rounds: growth, innovation, entry/exit
+            if evolution is not None and round_idx < rounds - 1:
+                state = _evolve(
+                    evolution,
+                    market,
+                    model,
+                    result,
+                    round_idx,
+                    firm_ids,
+                    costs,
+                    fixed_costs,
+                    qualities,
+                    actions,
+                    firm_strategies,
+                    firm_histories,
+                )
+                for event_type, event_firm, description, data in state.events:
+                    db.add(
+                        Event(
+                            run_id=run.id,
+                            round_idx=round_idx,
+                            event_type=event_type,
+                            firm_id=event_firm,
+                            description=description,
+                            event_data=data,
+                        )
+                    )
+                firm_ids, costs, fixed_costs, qualities = (
+                    state.firm_ids,
+                    state.costs,
+                    state.fixed_costs,
+                    state.qualities,
+                )
+                actions, firm_strategies, firm_histories = (
+                    state.actions,
+                    state.strategies,
+                    state.histories,
+                )
+                if not firm_ids:
+                    break
 
         db.commit()
         return str(run.id)
@@ -347,68 +399,130 @@ def run_game(model: str, rounds: int, config: dict[str, Any], db: Session) -> st
         raise RuntimeError(f"Simulation failed: {e}")
 
 
-def _run_cournot_round(
-    params: dict[str, Any],
-    costs: list[float],
-    quantities: list[float],
-    fixed_costs: list[float],
+def _best_response_fn(
+    market: Market, firm: int, actions: list[float], costs: list[float]
 ) -> Any:
-    """Run a single Cournot round."""
-    # Check if segmented demand is configured
-    segments_config = params.get("segments")
-    if segments_config:
-        # Create segmented demand
-        segments = []
-        for segment_config in segments_config:
-            segment = DemandSegment(
-                alpha=float(segment_config["alpha"]),
-                beta=float(segment_config["beta"]),
-                weight=float(segment_config["weight"]),
-            )
-            segments.append(segment)
+    """Map rivals' actions (rival order) to ``firm``'s best response."""
 
-        segmented_demand = SegmentedDemand(segments=segments)
-        return cournot_segmented_simulation(
-            segmented_demand, costs, quantities, fixed_costs
-        )
-    else:
-        # Use traditional single-segment demand
-        a = params.get("a", 100.0)
-        b = params.get("b", 1.0)
-        return cournot_simulation(a, b, costs, quantities, fixed_costs)
+    def best_response(rival_actions: list[float]) -> float:
+        full = list(actions)
+        rivals = [j for j in range(len(actions)) if j != firm]
+        for j, value in zip(rivals, rival_actions):
+            full[j] = value
+        return float(market.best_response(firm, full, costs))
+
+    return best_response
 
 
-def _run_bertrand_round(
-    params: dict[str, Any],
+@dataclass
+class _EvolvedState:
+    firm_ids: list[int]
+    costs: list[float]
+    fixed_costs: list[float]
+    qualities: list[float]
+    actions: list[float]
+    strategies: list[Any]
+    histories: list[list[CournotResult | BertrandResult]]
+    events: list[tuple[str, int | None, str, dict[str, Any]]]
+
+
+def _evolve(
+    engine: MarketEvolutionEngine,
+    market: Market,
+    model: str,
+    result: CournotResult | BertrandResult,
+    round_idx: int,
+    firm_ids: list[int],
     costs: list[float],
-    prices: list[float],
     fixed_costs: list[float],
-) -> Any:
-    """Run a single Bertrand round."""
-    # Check if segmented demand is configured
-    segments_config = params.get("segments")
-    if segments_config:
-        # Create segmented demand
-        segments = []
-        for segment_config in segments_config:
-            segment = DemandSegment(
-                alpha=float(segment_config["alpha"]),
-                beta=float(segment_config["beta"]),
-                weight=float(segment_config["weight"]),
-            )
-            segments.append(segment)
+    qualities: list[float],
+    actions: list[float],
+    strategies: list[Any],
+    histories: list[list[CournotResult | BertrandResult]],
+) -> _EvolvedState:
+    """Apply one round of market evolution and realign per-firm state by id."""
+    growth = 1.0 + engine.config.growth_rate
+    # The engine mutates the cost/quality lists it is given; pass copies.
+    new_ids, new_costs, new_qualities, _ = engine.evolve_market(
+        list(firm_ids),
+        list(result.profits),
+        _market_shares(model, result),
+        list(costs),
+        list(qualities),
+        {},
+    )
+    market.scale_demand(growth)
 
-        segmented_demand = SegmentedDemand(segments=segments)
-        return bertrand_segmented_simulation(
-            segmented_demand, costs, prices, fixed_costs
-        )
+    by_id = {fid: pos for pos, fid in enumerate(firm_ids)}
+    mean_fixed = sum(fixed_costs) / len(fixed_costs) if fixed_costs else 0.0
+    events: list[tuple[str, int | None, str, dict[str, Any]]] = []
+
+    for fid in firm_ids:
+        if fid not in new_ids:
+            events.append(
+                (
+                    "firm_exit",
+                    fid,
+                    f"Firm {fid} exited the market",
+                    {"icon": "🚪", "profit": result.profits[by_id[fid]]},
+                )
+            )
+
+    new_fixed, new_actions, new_strategies, new_histories = [], [], [], []
+    if new_ids:
+        market.set_qualities(new_qualities)
+        entrant_nash = market.nash(new_costs)
+    for pos, fid in enumerate(new_ids):
+        if fid in by_id:
+            old = by_id[fid]
+            new_fixed.append(fixed_costs[old])
+            new_actions.append(actions[old])
+            new_strategies.append(strategies[old])
+            new_histories.append(histories[old])
+            if not math.isclose(new_costs[pos], costs[old]):
+                events.append(
+                    (
+                        "innovation",
+                        fid,
+                        f"Firm {fid} cut marginal cost to {new_costs[pos]:.2f}",
+                        {
+                            "icon": "💡",
+                            "old_cost": costs[old],
+                            "new_cost": new_costs[pos],
+                        },
+                    )
+                )
+        else:
+            new_fixed.append(mean_fixed)
+            new_actions.append(entrant_nash[pos])
+            new_strategies.append(None)
+            new_histories.append([])
+            events.append(
+                (
+                    "firm_entry",
+                    fid,
+                    f"Firm {fid} entered with marginal cost {new_costs[pos]:.2f}",
+                    {"icon": "🏭", "cost": new_costs[pos]},
+                )
+            )
+
+    if new_ids:
+        new_actions = market.clear(new_actions, new_costs)
     else:
-        # Use traditional single-segment demand
-        alpha = params.get("alpha", 100.0)
-        beta = params.get("beta", 1.0)
-        return bertrand_simulation(
-            alpha, beta, costs, prices, fixed_costs, use_capacity_constraints=True
+        events.append(
+            ("market_collapse", None, "All firms exited the market", {"icon": "⚠️"})
         )
+
+    return _EvolvedState(
+        firm_ids=list(new_ids),
+        costs=list(new_costs),
+        fixed_costs=new_fixed,
+        qualities=list(new_qualities),
+        actions=new_actions,
+        strategies=new_strategies,
+        histories=new_histories,
+        events=events,
+    )
 
 
 def get_run_results(run_id: str, db: Session) -> dict[str, Any]:
