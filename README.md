@@ -155,8 +155,9 @@ Known gaps and next steps, roughly in priority order:
 - [x] **Learning benchmarks** — [convergence of each learner under each
       demand system](docs/learning_benchmarks.md); only fictitious play reliably
       reaches Nash within 200 rounds.
-- [ ] **Longer-horizon learning** — run Q-learning long enough (and with a
-      deviation-response test) to tell learned collusion from exploration noise.
+- [x] **Longer-horizon learning** — [Calvano-style Q-learning with deviation
+      tests and a memoryless control](docs/learning_benchmarks.md#long-horizon-q-learning-algorithmic-collusion):
+      learned, punishment-backed collusion in Cournot and CES markets.
 - [x] **Docker e2e in CI** — the compose-based end-to-end job is green again
       (the image was missing numpy).
 
