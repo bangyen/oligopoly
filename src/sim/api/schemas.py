@@ -2,11 +2,8 @@
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from sim.models.market_evolution import (
-    MarketEvolutionConfig,
-)
 from sim.policy.policy_shocks import PolicyType
 
 
@@ -51,33 +48,6 @@ class PolicyEventRequest(BaseModel):
     )
 
 
-class AdvancedStrategyConfig(BaseModel):
-    """Simplified configuration for learning strategies."""
-
-    strategy_type: str = Field(
-        ...,
-        pattern="^(fictitious_play|q_learning)$",
-        description="Type of learning strategy (removed complex options)",
-    )
-    learning_rate: float = Field(default=0.1, gt=0, le=1, description="Learning rate")
-    memory_length: int = Field(
-        default=10, gt=0, description="Memory length for learning (reduced from 20)"
-    )
-
-
-class EnhancedDemandConfig(BaseModel):
-    """Simplified configuration for demand functions."""
-
-    demand_type: str = Field(
-        default="linear",
-        pattern="^(linear|ces)$",
-        description="Type of demand function (simplified to essential options)",
-    )
-    elasticity: float = Field(
-        default=2.0, gt=1, description="Elasticity of substitution (CES only)"
-    )
-
-
 class CournotParams(BaseModel):
     """Typed demand parameters for the Cournot competition model."""
 
@@ -97,7 +67,12 @@ class BertrandParams(BaseModel):
 
 
 class SimulationRequest(BaseModel):
-    """Request model for simulation endpoint."""
+    """Request model for simulation endpoint.
+
+    Unknown fields are rejected (422) rather than silently ignored.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     model: str = Field(
         ...,
@@ -117,23 +92,9 @@ class SimulationRequest(BaseModel):
         None,
         description="Segmented demand configuration (overrides single-segment params)",
     )
-    demand_type: str = Field(
-        default="linear",
-        pattern="^(linear|isoelastic)$",
-        description="Type of demand function",
-    )
     seed: int | None = Field(None, description="Random seed for reproducibility")
     events: list[PolicyEventRequest] | None = Field(
         default_factory=list, description="Policy events to apply during simulation"
-    )
-    advanced_strategies: list[AdvancedStrategyConfig] | None = Field(
-        default=None, description="Simplified learning strategies for firms"
-    )
-    market_evolution: MarketEvolutionConfig | None = Field(
-        default=None, description="Market evolution configuration"
-    )
-    enhanced_demand: EnhancedDemandConfig | None = Field(
-        default=None, description="Enhanced demand function configuration"
     )
 
 

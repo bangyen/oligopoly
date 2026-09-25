@@ -646,49 +646,33 @@ class TestPydanticModels:
         with pytest.raises(ValueError):
             PolicyEventRequest(round_idx=5, policy_type=PolicyType.TAX, value=-10.0)
 
-    def test_advanced_strategy_config_validation(self):
-        """Test AdvancedStrategyConfig validation."""
-        from sim.api.schemas import AdvancedStrategyConfig
+    @pytest.mark.parametrize(
+        "field",
+        ["demand_type", "advanced_strategies", "market_evolution", "enhanced_demand"],
+    )
+    def test_simulation_request_rejects_unsupported_fields(self, field):
+        """Fields the engine does not implement are rejected, not ignored."""
+        from sim.api.schemas import SimulationRequest
 
-        # Valid configuration
-        strategy = AdvancedStrategyConfig(
-            strategy_type="fictitious_play", learning_rate=0.1, memory_length=10
-        )
-        assert strategy.strategy_type == "fictitious_play"
-        assert strategy.learning_rate == 0.1
-        assert strategy.memory_length == 10
-
-        # Test validation errors
-        with pytest.raises(ValueError):
-            AdvancedStrategyConfig(
-                strategy_type="invalid", learning_rate=0.1, memory_length=10
+        with pytest.raises(ValueError, match=field):
+            SimulationRequest(
+                model="cournot", rounds=5, firms=[{"cost": 10.0}], **{field: None}
             )
 
-        with pytest.raises(ValueError):
-            AdvancedStrategyConfig(
-                strategy_type="fictitious_play", learning_rate=1.5, memory_length=10
+    def test_simulate_endpoint_rejects_unknown_field(self):
+        """The API responds 422 naming the unsupported field."""
+        with TestClient(app) as client:
+            response = client.post(
+                "/simulate",
+                json={
+                    "model": "cournot",
+                    "rounds": 5,
+                    "firms": [{"cost": 10.0}],
+                    "market_evolution": {"enable_entry": True},
+                },
             )
-
-        with pytest.raises(ValueError):
-            AdvancedStrategyConfig(
-                strategy_type="fictitious_play", learning_rate=0.1, memory_length=0
-            )
-
-    def test_enhanced_demand_config_validation(self):
-        """Test EnhancedDemandConfig validation."""
-        from sim.api.schemas import EnhancedDemandConfig
-
-        # Valid configuration
-        demand = EnhancedDemandConfig(demand_type="linear", elasticity=2.0)
-        assert demand.demand_type == "linear"
-        assert demand.elasticity == 2.0
-
-        # Test validation errors
-        with pytest.raises(ValueError):
-            EnhancedDemandConfig(demand_type="invalid", elasticity=2.0)
-
-        with pytest.raises(ValueError):
-            EnhancedDemandConfig(demand_type="ces", elasticity=0.5)
+        assert response.status_code == 422
+        assert "market_evolution" in response.text
 
     def test_simulation_request_validation(self):
         """Test SimulationRequest validation."""
