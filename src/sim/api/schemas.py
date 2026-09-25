@@ -112,15 +112,23 @@ class EnhancedDemandConfig(BaseModel):
 
 
 class AdvancedStrategyConfig(BaseModel):
-    """A learning strategy for one firm (others follow adaptive Nash play)."""
+    """A learning or collusion strategy for one firm.
+
+    Firms without one follow adaptive Nash play.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     firm_id: int = Field(..., ge=0, description="Index of the firm in `firms`")
     strategy_type: str = Field(
         ...,
-        pattern="^(fictitious_play|q_learning|deep_q_learning|behavioral)$",
-        description="Learning strategy",
+        pattern=(
+            "^(fictitious_play|q_learning|deep_q_learning|behavioral"
+            "|cartel|collusive|opportunistic)$"
+        ),
+        description="Learning strategy, or a collusion strategy: two or more "
+        "cartel/collusive/opportunistic firms form a cartel at their joint-profit "
+        "maximising action",
     )
     learning_rate: float | None = Field(
         default=None,

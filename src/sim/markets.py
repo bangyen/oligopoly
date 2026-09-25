@@ -75,6 +75,22 @@ def _golden_max(f: Any, lo: float, hi: float, iterations: int = 60) -> float:
     return (a + b) / 2
 
 
+def _maximize(f: Any, lo: float, hi: float) -> float:
+    """Maximise ``f`` on [lo, hi].
+
+    A coarse grid locates the best region (profit may be discontinuous in
+    Bertrand) and a golden-section search refines it.
+    """
+    if hi <= lo:
+        return lo
+    grid = [lo + (hi - lo) * k / 400 for k in range(401)]
+    values = [f(x) for x in grid]
+    k = max(range(len(grid)), key=values.__getitem__)
+    left, right = grid[max(0, k - 1)], grid[min(len(grid) - 1, k + 1)]
+    refined = _golden_max(f, left, right)
+    return float(refined if f(refined) > values[k] else grid[k])
+
+
 class Market(ABC):
     """A demand system plus the competition model played on it."""
 
@@ -120,23 +136,30 @@ class Market(ABC):
     def best_response(
         self, firm: int, actions: list[float], costs: list[float]
     ) -> float:
-        """Numerically maximise ``firm``'s profit holding rivals fixed.
-
-        A coarse grid locates the best region (profit may be discontinuous in
-        Bertrand) and a golden-section search refines it.
-        """
+        """Numerically maximise ``firm``'s profit holding rivals fixed."""
         lo, hi = self.action_bounds(costs[firm], costs)
-        grid = [lo + (hi - lo) * k / 400 for k in range(401)]
-        values = [self.profit(firm, x, actions, costs) for x in grid]
-        k = max(range(len(grid)), key=values.__getitem__)
-        left, right = grid[max(0, k - 1)], grid[min(len(grid) - 1, k + 1)]
-        refined = _golden_max(
-            lambda x: self.profit(firm, x, actions, costs), left, right
-        )
-        best = max(
-            (grid[k], refined), key=lambda x: self.profit(firm, x, actions, costs)
-        )
-        return float(best)
+        return _maximize(lambda x: self.profit(firm, x, actions, costs), lo, hi)
+
+    def collusive_action(
+        self, members: list[int], actions: list[float], costs: list[float]
+    ) -> float:
+        """Common action maximising the members' joint profit.
+
+        Members all play the same action; non-members keep ``actions``.
+        """
+        zeros = [0.0] * len(costs)
+
+        def joint(x: float) -> float:
+            trial = list(actions)
+            for m in members:
+                trial[m] = x
+            profits = self.play(trial, costs, zeros).profits
+            return float(sum(profits[m] for m in members))
+
+        bounds = [self.action_bounds(costs[m], costs) for m in members]
+        lo = max(b[0] for b in bounds)
+        hi = max(lo, min(b[1] for b in bounds))
+        return _maximize(joint, lo, hi)
 
     def initial_actions(self, costs: list[float]) -> list[float]:
         """Nash actions with a small random perturbation (uses ``random``)."""
