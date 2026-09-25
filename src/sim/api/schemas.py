@@ -20,11 +20,6 @@ class DemandSegmentConfig(BaseModel):
         ..., gt=0, le=1, description="Market share weight for this segment"
     )
 
-
-class ProductCharacteristicsConfig(BaseModel):
-    """Simplified configuration for product characteristics."""
-
-    quality: float = Field(default=1.0, gt=0, description="Product quality level")
     # Removed complex parameters: location, brand_strength, innovation_level
 
 

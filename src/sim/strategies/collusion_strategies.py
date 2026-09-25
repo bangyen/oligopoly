@@ -1,7 +1,7 @@
 """Collusion-aware strategies for oligopoly simulation.
 
 This module implements strategies that can participate in cartel agreements,
-defect from collusion, or respond to regulatory interventions.
+or defect from collusion.
 """
 
 import random
@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..collusion import CollusionEventType, CollusionManager
+from ..collusion import CollusionManager
 from ..games.bertrand import BertrandResult
 from ..games.cournot import CournotResult
 
@@ -21,14 +21,11 @@ class CollusiveStrategy:
 
     This strategy follows cartel agreements but has a probability of defecting
     to gain higher short-term profits. Defection probability can be influenced
-    by various factors like profit differentials and regulatory pressure.
+    by recent profit shortfalls.
     """
 
     defection_probability: float = 0.1  # Base probability of defecting
     defection_threshold: float = 0.2  # Profit advantage threshold for defection
-    regulatory_sensitivity: float = (
-        0.5  # How much regulatory pressure affects defection
-    )
     seed: int | None = None
     # Collusion manager injected at construction; can also be supplied per-call.
     # If neither is provided, the strategy degrades to midpoint and emits a warning.
@@ -43,10 +40,6 @@ class CollusiveStrategy:
         if not 0 <= self.defection_threshold <= 1:
             raise ValueError(
                 f"Defection threshold {self.defection_threshold} must be in [0, 1]"
-            )
-        if not 0 <= self.regulatory_sensitivity <= 1:
-            raise ValueError(
-                f"Regulatory sensitivity {self.regulatory_sensitivity} must be in [0, 1]"
             )
 
         self._rng = random.Random(self.seed)
@@ -71,15 +64,6 @@ class CollusiveStrategy:
         """
         base_prob = self.defection_probability
 
-        # Increase defection probability if there have been recent regulatory interventions
-        recent_interventions = sum(
-            1
-            for event in collusion_manager.events
-            if event.event_type == CollusionEventType.REGULATOR_INTERVENED
-            and event.round_idx >= round_num - 3
-        )
-        regulatory_factor = 1 + (recent_interventions * self.regulatory_sensitivity)
-
         # Adjust based on profit history (if we've been doing poorly, more likely to defect)
         if my_history and len(my_history) >= 2:
             recent_profit = my_history[-1].profits[0] if my_history[-1].profits else 0
@@ -92,7 +76,7 @@ class CollusiveStrategy:
             ):  # Recent profit significantly below average
                 base_prob *= 1.5
 
-        return min(1.0, base_prob * regulatory_factor)
+        return min(1.0, base_prob)
 
     def should_defect(
         self,
@@ -549,7 +533,6 @@ def create_collusion_strategy(
         return CollusiveStrategy(
             defection_probability=kwargs.get("defection_probability", 0.1),
             defection_threshold=kwargs.get("defection_threshold", 0.2),
-            regulatory_sensitivity=kwargs.get("regulatory_sensitivity", 0.5),
             seed=kwargs.get("seed"),
         )
 
