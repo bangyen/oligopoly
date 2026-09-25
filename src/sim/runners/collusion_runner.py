@@ -92,7 +92,9 @@ def run_collusion_game(
     params_dict = (
         params.model_dump()
         if hasattr(params, "model_dump")
-        else params if isinstance(params, dict) else None
+        else params
+        if isinstance(params, dict)
+        else None
     )
 
     # Create run record — persist params so metrics can be recomputed faithfully later

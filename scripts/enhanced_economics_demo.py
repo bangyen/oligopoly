@@ -9,7 +9,6 @@ This script demonstrates the new economic features including:
 - Enhanced profit calculations
 """
 
-
 from sim.games.enhanced_simulation import (
     EnhancedSimulationConfig,
     enhanced_bertrand_simulation,

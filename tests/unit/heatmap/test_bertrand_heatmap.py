@@ -24,9 +24,9 @@ class TestCreatePriceGrid:
         expected = [0.0, 2.5, 5.0, 7.5, 10.0]
         assert len(grid) == 5
         for i, (actual, exp) in enumerate(zip(grid, expected)):
-            assert math.isclose(
-                actual, exp, abs_tol=1e-10
-            ), f"Index {i}: {actual} != {exp}"
+            assert math.isclose(actual, exp, abs_tol=1e-10), (
+                f"Index {i}: {actual} != {exp}"
+            )
 
     def test_create_price_grid_single_point(self) -> None:
         """Test price grid with single point."""

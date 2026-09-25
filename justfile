@@ -19,7 +19,12 @@ init:
 
 # format code
 fmt:
-    {{PYTHON}} -m black .
+    {{PYTHON}} -m ruff format .
+    {{PYTHON}} -m ruff check --fix .
+
+# check formatting without modifying files
+fmt-check:
+    {{PYTHON}} -m ruff format --check .
 
 # lint code
 lint:
@@ -33,7 +38,10 @@ type:
 test:
     {{PYTHON}} -m pytest
 
-# run all checks (fmt, lint, type, test)
+# run all checks without modifying files (used by CI)
+check: fmt-check lint type test
+
+# format, then run all checks
 all: fmt lint type test
     echo "All checks completed!"
 
