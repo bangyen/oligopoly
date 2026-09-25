@@ -140,6 +140,22 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 Firms without an advanced strategy adapt towards the market's Nash
 equilibrium each round. Unknown fields are rejected with a 422.
 
+## Roadmap
+
+Known gaps and next steps, roughly in priority order:
+
+- [ ] **Collusion everywhere** — collusion strategies currently require linear
+      demand and cannot be combined with market evolution.
+- [ ] **Bertrand capacity toggle** — expose the capacity-constrained vs
+      winner-take-all allocation for linear Bertrand runs in the API.
+- [ ] **CES consumer surplus** — report a money-metric surplus for CES runs
+      instead of `null`.
+- [ ] **Dashboard support** — let the dashboard configure demand types,
+      learning strategies and market evolution.
+- [ ] **Learning benchmarks** — measure whether each learning strategy
+      converges to equilibrium under each demand system.
+- [ ] **Docker e2e in CI** — keep the compose-based end-to-end job green.
+
 ## References
 
 - Cournot, A. (1838). *[Recherches sur les principes mathématiques de la théorie des richesses](https://gallica.bnf.fr/ark:/12148/bpt6k6117257c)*
