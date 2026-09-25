@@ -122,6 +122,15 @@ def extended_options(
         if ces.qualities is not None:
             params["qualities"] = list(ces.qualities)
 
+    if request.capacity_constraints is not None:
+        if request.model != "bertrand" or params is not None:
+            raise fail("capacity_constraints only applies to linear bertrand demand")
+        if request.segments:
+            raise fail(
+                "capacity_constraints does not apply to segmented demand, "
+                "which is always winner-take-all"
+            )
+
     extra: dict[str, Any] = {}
     if request.advanced_strategies:
         firm_ids = [spec.firm_id for spec in request.advanced_strategies]
