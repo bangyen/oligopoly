@@ -1,34 +1,29 @@
-"""Oligopoly simulation package for market competition modeling.
+"""Oligopoly simulation: markets, learning firms and algorithmic collusion.
 
-This package provides tools for simulating oligopoly markets with various
-competition models (Cournot, Bertrand), strategies, and advanced features
-like collusion dynamics and regulatory interventions.
+The core API:
+
+- :func:`sim.markets.build_market` — a demand system (linear, isoelastic or CES)
+  with its round engine, Nash equilibrium, best responses and metrics.
+- :func:`sim.runners.runner.run_game` — multi-round simulations with learning,
+  collusive or adaptive-Nash firms, policy shocks and market evolution.
+- :mod:`sim.experiments.algorithmic_collusion` — long-horizon Q-learning
+  experiments with deviation tests.
 """
 
-from .collusion import CollusionEventType, CollusionManager, RegulatorState
-from .games.bertrand import BertrandResult, bertrand_simulation
-from .games.cournot import CournotResult, cournot_simulation
-from .runners.collusion_runner import (
-    create_collusion_simulation_config,
-    run_collusion_game,
+from .experiments.algorithmic_collusion import (
+    ExperimentConfig,
+    impulse_response,
+    run_experiment,
 )
-from .strategies.collusion_strategies import (
-    CartelStrategy,
-    CollusiveStrategy,
-    OpportunisticStrategy,
-)
+from .markets import Market, build_market
+from .runners.runner import get_run_results, run_game
 
 __all__ = [
-    "bertrand_simulation",
-    "BertrandResult",
-    "cournot_simulation",
-    "CournotResult",
-    "CollusionManager",
-    "RegulatorState",
-    "CollusionEventType",
-    "CartelStrategy",
-    "CollusiveStrategy",
-    "OpportunisticStrategy",
-    "run_collusion_game",
-    "create_collusion_simulation_config",
+    "ExperimentConfig",
+    "Market",
+    "build_market",
+    "get_run_results",
+    "impulse_response",
+    "run_experiment",
+    "run_game",
 ]

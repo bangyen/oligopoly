@@ -13,7 +13,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from sim.api import app, get_db
-from sim.events.event_types import EventType
 from sim.models.models import Base, Event, Run
 
 
@@ -66,7 +65,7 @@ class TestFeedApiSchema:
         event1 = Event(
             run_id=test_run.id,
             round_idx=1,
-            event_type=EventType.CARTEL_FORMED.value,
+            event_type="cartel_formed",
             description="Cartel formed with 3 firms",
             event_data={
                 "participating_firms": 3,
@@ -77,7 +76,7 @@ class TestFeedApiSchema:
         event2 = Event(
             run_id=test_run.id,
             round_idx=2,
-            event_type=EventType.DEFECTION_DETECTED.value,
+            event_type="defection_detected",
             firm_id=1,
             description="Firm 1 defected from cartel",
             event_data={"severity": "high", "icon": "⚔️", "category": "collusion"},
@@ -120,21 +119,21 @@ class TestFeedApiSchema:
             Event(
                 run_id=test_run.id,
                 round_idx=0,
-                event_type=EventType.CARTEL_FORMED.value,
+                event_type="cartel_formed",
                 description="Cartel formed",
                 event_data={"participating_firms": 3, "collusive_price": 25.0},
             ),
             Event(
                 run_id=test_run.id,
                 round_idx=1,
-                event_type=EventType.TAX_APPLIED.value,
+                event_type="tax_applied",
                 description="Tax applied to profits",
                 event_data={"tax_rate": 0.2, "policy_value": 0.2},
             ),
             Event(
                 run_id=test_run.id,
                 round_idx=2,
-                event_type=EventType.FIRM_ENTRY.value,
+                event_type="firm_entry",
                 firm_id=3,
                 description="New firm entered market",
                 event_data={"cost": 15.0, "entry_cost": 1000.0},
@@ -177,19 +176,19 @@ class TestFeedApiSchema:
             Event(
                 run_id=test_run.id,
                 round_idx=3,
-                event_type=EventType.CARTEL_DISSOLVED.value,
+                event_type="cartel_dissolved",
                 description="Cartel dissolved",
             ),
             Event(
                 run_id=test_run.id,
                 round_idx=1,
-                event_type=EventType.CARTEL_FORMED.value,
+                event_type="cartel_formed",
                 description="Cartel formed",
             ),
             Event(
                 run_id=test_run.id,
                 round_idx=2,
-                event_type=EventType.DEFECTION_DETECTED.value,
+                event_type="defection_detected",
                 description="Defection detected",
             ),
         ]
@@ -213,9 +212,9 @@ class TestFeedApiSchema:
         assert events[2]["round_idx"] == 3
 
         # Check event types match ordering
-        assert events[0]["event_type"] == EventType.CARTEL_FORMED.value
-        assert events[1]["event_type"] == EventType.DEFECTION_DETECTED.value
-        assert events[2]["event_type"] == EventType.CARTEL_DISSOLVED.value
+        assert events[0]["event_type"] == "cartel_formed"
+        assert events[1]["event_type"] == "defection_detected"
+        assert events[2]["event_type"] == "cartel_dissolved"
 
     def test_empty_events_response(self, test_client, test_db, test_run):
         """Test response when no events exist."""
@@ -233,7 +232,7 @@ class TestFeedApiSchema:
         event = Event(
             run_id=test_run.id,
             round_idx=1,
-            event_type=EventType.REGULATOR_INTERVENTION.value,
+            event_type="regulator_intervention",
             description="Regulator imposed price cap",
             event_data={
                 "price_cap": 30.0,

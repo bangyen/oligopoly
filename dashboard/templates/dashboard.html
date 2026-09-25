@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oligopoly Analytics</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=8">
+    <title>Oligopoly Scenario Lab</title>
+    <link rel="stylesheet" href="/static/css/style.css?v=9">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,73 +24,11 @@
                 <span>Oligopoly</span>
             </div>
             
-            <nav class="nav">
-                <button class="nav-item active" data-view="overview">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="2" y="2" width="6" height="6" stroke="currentColor" stroke-width="2"/>
-                        <rect x="12" y="2" width="6" height="6" stroke="currentColor" stroke-width="2"/>
-                        <rect x="2" y="12" width="6" height="6" stroke="currentColor" stroke-width="2"/>
-                        <rect x="12" y="12" width="6" height="6" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                    <span>Overview</span>
-                </button>
-                
-                <button class="nav-item" data-view="cournot">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="2" y="12" width="5" height="5" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                        <rect x="8" y="8" width="5" height="9" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                        <rect x="14" y="4" width="5" height="13" stroke="currentColor" stroke-width="1.5" fill="none"/>
-                    </svg>
-                    <span>Cournot</span>
-                </button>
-                
-                <button class="nav-item" data-view="bertrand">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <rect x="2" y="4" width="4" height="14" fill="currentColor"/>
-                        <rect x="8" y="8" width="4" height="10" fill="currentColor"/>
-                        <rect x="14" y="6" width="4" height="12" fill="currentColor"/>
-                    </svg>
-                    <span>Bertrand</span>
-                </button>
-                
-                <button class="nav-item" data-view="metrics">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="2"/>
-                        <path d="M10 6V10L13 13" stroke="currentColor" stroke-width="2"/>
-                    </svg>
-                    <span>Metrics</span>
-                </button>
-
-                <button class="nav-item" data-view="scenario">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                        <path d="M7 2V8L3 16C2.5 17 3.2 18 4.3 18H15.7C16.8 18 17.5 17 17 16L13 8V2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        <path d="M6 2H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                    <span>Scenario Lab</span>
-                </button>
-
-                <div class="nav-divider"></div>
-                
-                <div class="config-section">
-                    <h3 class="config-title">Configuration</h3>
-                    
-                    <div class="config-group">
-                        <label for="config-a" class="config-label">Demand Intercept (a)</label>
-                        <input type="number" id="config-a" class="config-input" value="100" min="10" step="10">
-                    </div>
-                    
-                    <div class="config-group">
-                        <label for="config-b" class="config-label">Demand Slope (b)</label>
-                        <input type="number" id="config-b" class="config-input" value="1.0" min="0.1" step="0.1">
-                    </div>
-                    
-                    <div class="config-group">
-                        <label for="config-costs" class="config-label">Firm Costs (csv)</label>
-                        <input type="text" id="config-costs" class="config-input" value="20, 25, 30" placeholder="e.g. 10, 20">
-                    </div>
-                </div>
-            </nav>
-            
+            <div class="intro">
+                <p>Simulate Cournot and Bertrand oligopolies with linear, isoelastic or CES demand. Give each firm a strategy: adaptive Nash, a learning algorithm, or a cartel member that may defect.</p>
+                <p>Market evolution adds demand growth, innovation, and firm entry and exit between rounds.</p>
+                <p><a href="https://github.com/bangyen/oligopoly" target="_blank" rel="noopener">Source &amp; research notes →</a></p>
+            </div>
             <div class="sidebar-footer">
                 <button id="theme-toggle" class="nav-item" style="width: 100%; margin-bottom: 12px; justify-content: flex-start;">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" class="sun-icon">
@@ -102,143 +40,20 @@
                     </svg>
                     <span>Dark Mode</span>
                 </button>
-            
-                <div class="status-indicator">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Live</span>
-                </div>
             </div>
         </aside>
-        
+
         <main class="main-content">
             <header class="header">
-                <h1 class="page-title">Market Analysis</h1>
-                <div class="header-actions">
-                    <button class="btn-primary" id="run-simulation-btn">
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path d="M14 8C14 11.3137 11.3137 14 8 14C4.68629 14 2 11.3137 2 8C2 4.68629 4.68629 2 8 2C10.3 2 12.3 3.2 13.4 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M13 2V5H10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Run Simulation
-                    </button>
+                <h1 class="page-title">Scenario Lab</h1>
+                <div class="header-actions presets" id="presets">
+                    <span class="presets-label">Presets</span>
+                    <button type="button" class="btn-secondary" data-preset="cartel">CES cartel</button>
+                    <button type="button" class="btn-secondary" data-preset="learning">Learning duopoly</button>
+                    <button type="button" class="btn-secondary" data-preset="entry">Entry &amp; exit</button>
                 </div>
             </header>
-            
-            <div class="view-container" id="overview-view">
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-label">Total Firms</div>
-                        <div class="metric-value">3</div>
-                        <div class="metric-change positive">Active</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-label">Market HHI</div>
-                        <div class="metric-value" id="hhi-value">—</div>
-                        <div class="metric-change neutral">Moderate</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-label">Actual Price</div>
-                        <div class="metric-value" id="nash-price-value">—</div>
-                        <div class="metric-change" id="price-comparison">—</div>
-                    </div>
-                    
-                    <div class="metric-card">
-                        <div class="metric-label">Total Surplus</div>
-                        <div class="metric-value" id="surplus-value">—</div>
-                        <div class="metric-change" id="surplus-comparison">—</div>
-                    </div>
-                </div>
-                
-                <div class="chart-card" style="margin-bottom: 32px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 class="chart-title" style="margin: 0;">Actual vs Nash Equilibrium</h3>
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <span id="session-count" style="font-family: 'Space Grotesk', sans-serif; font-size: 13px; color: #86868B; font-weight: 500;">Session: 0 runs</span>
-                            <button id="reset-session-btn" class="btn-secondary" style="padding: 6px 12px; font-size: 13px;">Reset</button>
-                        </div>
-                    </div>
-                    <div class="data-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Metric</th>
-                                    <th>Theoretical</th>
-                                    <th>Actual</th>
-                                    <th>Deviation</th>
-                                </tr>
-                            </thead>
-                            <tbody id="comparison-table-body">
-                                <tr>
-                                    <td colspan="4" class="loading">Loading data...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="chart-section">
-                    <div class="chart-card">
-                        <h3 class="chart-title">Profit Distribution</h3>
-                        <canvas id="profit-chart"></canvas>
-                    </div>
-                    
-                    <div class="chart-card">
-                        <h3 class="chart-title">Market Share</h3>
-                        <canvas id="share-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="view-container hidden" id="cournot-view">
-                <div class="chart-full">
-                    <div class="chart-controls">
-                        <h3 class="chart-title">Quantity Competition</h3>
-                        <div class="toggle-group">
-                            <button class="toggle-btn active" data-series="quantities">Quantities</button>
-                            <button class="toggle-btn" data-series="prices">Prices</button>
-                            <button class="toggle-btn" data-series="profits">Profits</button>
-                        </div>
-                    </div>
-                    <canvas id="cournot-chart"></canvas>
-                </div>
-            </div>
-            
-            <div class="view-container hidden" id="bertrand-view">
-                <div class="chart-full">
-                    <div class="chart-controls">
-                        <h3 class="chart-title">Price Competition</h3>
-                        <div class="toggle-group">
-                            <button class="toggle-btn active" data-series="prices">Prices</button>
-                            <button class="toggle-btn" data-series="quantities">Quantities</button>
-                            <button class="toggle-btn" data-series="profits">Profits</button>
-                        </div>
-                    </div>
-                    <canvas id="bertrand-chart"></canvas>
-                </div>
-            </div>
-            
-            <div class="view-container hidden" id="metrics-view">
-                <div class="data-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Firm</th>
-                                <th>Nash Quantity</th>
-                                <th>Nash Profit</th>
-                                <th>Market Share</th>
-                            </tr>
-                        </thead>
-                        <tbody id="metrics-table-body">
-                            <tr>
-                                <td colspan="4" class="loading">Loading data...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="view-container hidden" id="scenario-view">
+            <div class="view-container" id="scenario-view">
                 <form class="scenario-form" id="scenario-form" novalidate>
                     <div class="scenario-grid">
                         <fieldset class="scenario-panel">
@@ -343,7 +158,7 @@
         </main>
     </div>
     
-    <script src="/static/js/dashboard.js?v=8"></script>
+    <script src="/static/js/dashboard.js?v=9"></script>
 </body>
 </html>
 

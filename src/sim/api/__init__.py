@@ -1,7 +1,7 @@
 """REST API for the oligopoly simulation.
 
-Routes live in :mod:`sim.api.simulate`, :mod:`sim.api.runs` and
-:mod:`sim.api.heatmap`; request/response models in :mod:`sim.api.schemas`.
+Routes live in :mod:`sim.api.simulate` and :mod:`sim.api.runs`;
+request/response models in :mod:`sim.api.schemas`.
 """
 
 from sim.database import get_db

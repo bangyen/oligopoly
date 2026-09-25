@@ -534,3 +534,33 @@ tbody tr:hover {
 .hidden {
     display: none !important;
 }
+
+/* Sidebar intro and presets */
+.intro {
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 0 8px;
+    flex: 1;
+}
+
+.intro a {
+    color: var(--color-accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.presets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.presets-label {
+    color: var(--color-text-tertiary);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-right: 4px;
+}

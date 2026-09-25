@@ -342,12 +342,6 @@ class TestSimulateEndpointAdditional:
 class TestDifferentiatedBertrandAdditional:
     """Test additional scenarios for differentiated Bertrand endpoint."""
 
-    def test_differentiated_bertrand_runtime_error(self):
-        """Endpoint removed; any request to /differentiated-bertrand should return 404."""
-        with TestClient(app) as client:
-            response = client.post("/differentiated-bertrand", json={})
-            assert response.status_code in (404, 405, 422)
-
 
 class TestGetRunAdditional:
     """Test additional scenarios for get run endpoint."""
@@ -693,77 +687,4 @@ class TestPydanticModels:
         with pytest.raises(ValueError):
             SimulationRequest(
                 model="cournot", rounds=10, firms=[{"cost": 10.0}] * 11, params={}
-            )
-
-    def test_heatmap_request_validation(self):
-        """Test HeatmapRequest validation."""
-        from sim.api.schemas import HeatmapRequest
-
-        # Valid configuration
-        request = HeatmapRequest(
-            model="cournot",
-            firm_i=0,
-            firm_j=1,
-            grid_size=20,
-            action_range=(10.0, 50.0),
-            other_actions=[15.0],
-            params={"a": 100.0, "b": 1.0},
-            firms=[
-                {"cost": 10.0, "fixed_cost": 0.0},
-                {"cost": 12.0, "fixed_cost": 0.0},
-                {"cost": 15.0, "fixed_cost": 0.0},
-            ],
-        )
-        assert request.model == "cournot"
-        assert request.firm_i == 0
-        assert request.firm_j == 1
-        assert request.grid_size == 20
-
-        # Test validation errors
-        with pytest.raises(ValueError):
-            HeatmapRequest(
-                model="invalid",
-                firm_i=0,
-                firm_j=1,
-                grid_size=20,
-                action_range=(10.0, 50.0),
-                other_actions=[],
-                params={},
-                firms=[{"cost": 10.0}, {"cost": 12.0}],
-            )
-
-        with pytest.raises(ValueError):
-            HeatmapRequest(
-                model="cournot",
-                firm_i=-1,
-                firm_j=1,
-                grid_size=20,
-                action_range=(10.0, 50.0),
-                other_actions=[],
-                params={},
-                firms=[{"cost": 10.0}, {"cost": 12.0}],
-            )
-
-        with pytest.raises(ValueError):
-            HeatmapRequest(
-                model="cournot",
-                firm_i=0,
-                firm_j=1,
-                grid_size=4,  # Too small
-                action_range=(10.0, 50.0),
-                other_actions=[],
-                params={},
-                firms=[{"cost": 10.0}, {"cost": 12.0}],
-            )
-
-        with pytest.raises(ValueError):
-            HeatmapRequest(
-                model="cournot",
-                firm_i=0,
-                firm_j=1,
-                grid_size=20,
-                action_range=(10.0, 50.0),
-                other_actions=[],
-                params={},
-                firms=[{"cost": 10.0}],  # Too few firms
             )
