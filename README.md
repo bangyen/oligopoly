@@ -37,13 +37,14 @@ bertrand      # run a one-off Bertrand simulation
 | Capability | Description |
 |------------|-------------|
 | Collusion Detection | Flags cartel behavior and defections with a configurable tolerance |
-| Cournot Equilibrium | Matches the textbook closed form to 1e-6 ([benchmarks](tests/benchmarks/)) |
+| Equilibria | Cournot and Bertrand match textbook closed forms to 1e-6 ([benchmarks](tests/benchmarks/)) |
 | Strategy Adaptation | Firms learn and evolve using Q-learning and Fictitious Play |
 
-The Bertrand "equilibrium" helper (`bertrand_nash_equilibrium`) is a
-capacity-constrained markup heuristic, not the textbook price-equals-cost
-Bertrand–Nash outcome. See also the known Cournot engine issue recorded in
-`tests/benchmarks/test_cournot_benchmark.py`.
+Multi-round Bertrand runs use a capacity-constrained allocation by default
+(each firm can serve at most 40% of the market), so they deliberately depart
+from the winner-take-all textbook model that the equilibrium helper and
+benchmarks use. Pass `use_capacity_constraints=False` to `bertrand_simulation`
+for the textbook game.
 
 ## Features
 
@@ -90,7 +91,7 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 ## Validation
 
 - ✅ Test coverage ≥85%, enforced in CI (`just cov`)
-- ✅ Cournot results checked against closed-form equilibria (`tests/benchmarks/`)
+- ✅ Cournot and Bertrand equilibria checked against closed forms (`tests/benchmarks/`)
 - ✅ CI on Python 3.10, 3.11 and 3.12
 - ✅ Reproducible seeds for experiments
 - ✅ `justfile` for common development tasks

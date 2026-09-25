@@ -186,32 +186,36 @@ class TestBertrandNashEquilibrium:
         assert profits[0] > 0
 
     def test_bertrand_nash_two_firms_symmetric(self):
-        """Test Bertrand Nash with two symmetric firms."""
+        """Symmetric firms price at marginal cost and split demand (Bertrand paradox)."""
         prices, quantities, profits, market_price = bertrand_nash_equilibrium(
             200.0, 2.0, [10.0, 10.0]
         )
 
-        # Both firms should set price slightly above marginal cost (implementation adds 10% markup)
-        assert math.isclose(prices[0], 11.0, abs_tol=1e-6)  # 10.0 * 1.1
-        assert math.isclose(prices[1], 11.0, abs_tol=1e-6)  # 10.0 * 1.1
-        # Quantities should be equal
-        assert math.isclose(quantities[0], quantities[1], abs_tol=1e-6)
-        # Profits should be positive (price > marginal cost)
-        assert profits[0] > 0
-        assert profits[1] > 0
+        assert prices == [10.0, 10.0]
+        assert market_price == 10.0
+        assert quantities == [90.0, 90.0]
+        assert profits == [0.0, 0.0]
 
     def test_bertrand_nash_two_firms_asymmetric(self):
-        """Test Bertrand Nash with two asymmetric firms."""
+        """The low-cost firm limit-prices at the rival's cost and takes the market."""
         prices, quantities, profits, market_price = bertrand_nash_equilibrium(
             200.0, 2.0, [10.0, 20.0]
         )
 
-        # Lower-cost firm should capture entire market with slight markup
-        assert math.isclose(prices[0], 21.0, abs_tol=1e-6)  # 20.0 * 1.05 markup
-        assert quantities[0] > 0
-        assert quantities[1] > 0  # Both firms participate in this implementation
-        assert profits[0] > 0
-        assert profits[1] > 0
+        assert market_price == 20.0
+        assert prices == [20.0, 20.0]
+        assert quantities == [160.0, 0.0]
+        assert profits == [1600.0, 0.0]
+
+    def test_bertrand_nash_monopoly_price_binds(self):
+        """If the rival's cost is above the monopoly price, the leader charges that."""
+        prices, quantities, profits, market_price = bertrand_nash_equilibrium(
+            200.0, 2.0, [10.0, 80.0]
+        )
+
+        assert market_price == 55.0  # (200 + 2 * 10) / (2 * 2)
+        assert prices == [55.0, 80.0]
+        assert quantities == [90.0, 0.0]
 
     def test_bertrand_nash_with_fixed_costs(self):
         """Test Bertrand Nash with fixed costs."""
