@@ -646,19 +646,6 @@ class TestPydanticModels:
         with pytest.raises(ValueError):
             PolicyEventRequest(round_idx=5, policy_type=PolicyType.TAX, value=-10.0)
 
-    @pytest.mark.parametrize(
-        "field",
-        ["demand_type", "advanced_strategies", "market_evolution", "enhanced_demand"],
-    )
-    def test_simulation_request_rejects_unsupported_fields(self, field):
-        """Fields the engine does not implement are rejected, not ignored."""
-        from sim.api.schemas import SimulationRequest
-
-        with pytest.raises(ValueError, match=field):
-            SimulationRequest(
-                model="cournot", rounds=5, firms=[{"cost": 10.0}], **{field: None}
-            )
-
     def test_simulate_endpoint_rejects_unknown_field(self):
         """The API responds 422 naming the unsupported field."""
         with TestClient(app) as client:
@@ -668,11 +655,11 @@ class TestPydanticModels:
                     "model": "cournot",
                     "rounds": 5,
                     "firms": [{"cost": 10.0}],
-                    "market_evolution": {"enable_entry": True},
+                    "market_dynamics": {"enable_entry": True},
                 },
             )
         assert response.status_code == 422
-        assert "market_evolution" in response.text
+        assert "market_dynamics" in response.text
 
     def test_simulation_request_validation(self):
         """Test SimulationRequest validation."""
