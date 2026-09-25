@@ -170,6 +170,47 @@ class TestAdvancedStrategies:
             assert detail in response.json()["detail"]
 
 
+class TestCapacityConstraints:
+    def test_winner_take_all(self, client) -> None:
+        """Without capacity limits the lowest price serves the whole market."""
+        data = _run(
+            client,
+            model="bertrand",
+            rounds=30,
+            capacity_constraints=False,
+            firms=[{"cost": 10.0}, {"cost": 20.0}],
+        )
+        assert data["params"]["capacity_constraints"] is False
+        for round_idx in range(20, 30):
+            firms = data["results"][str(round_idx)].values()
+            assert sum(f["quantity"] > 0 for f in firms) == 1
+            # Price is driven to the rival's cost (limit pricing)
+            assert data["metrics"][str(round_idx)]["market_price"] == pytest.approx(
+                20.0, rel=0.02
+            )
+
+    def test_capacity_constrained_default_shares_market(self, client) -> None:
+        data = _run(
+            client, model="bertrand", rounds=30, firms=[{"cost": 10.0}, {"cost": 20.0}]
+        )
+        last = data["results"]["29"]
+        assert last["firm_1"]["quantity"] > 0.0
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"model": "cournot"},
+            {"demand_type": "isoelastic"},
+            {"segments": [{"alpha": 100.0, "beta": 1.0, "weight": 1.0}]},
+        ],
+    )
+    def test_invalid(self, client, overrides) -> None:
+        body = {"model": "bertrand", "capacity_constraints": False, **overrides}
+        response = _simulate(client, **body)
+        assert response.status_code == 400
+        assert "capacity_constraints" in response.json()["detail"]
+
+
 class TestCollusionStrategies:
     @pytest.mark.parametrize("strategy_type", ["cartel", "collusive", "opportunistic"])
     def test_cartel_on_isoelastic_market(self, client, strategy_type) -> None:

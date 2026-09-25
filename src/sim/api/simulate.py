@@ -112,6 +112,8 @@ async def simulate(
             "events": build_policy_events(request.events),
             **extra_config,
         }
+        if request.capacity_constraints is not None:
+            config["params"]["capacity_constraints"] = request.capacity_constraints
 
         if request.segments:
             segments = segments_to_config(request.segments)
@@ -176,6 +178,8 @@ def _scenario_config(scenario: SimulationRequest, label: str) -> dict[str, Any]:
     nonlinear_params, extra_config = extended_options(scenario, label)
     if nonlinear_params is not None:
         config["params"] = nonlinear_params
+    if scenario.capacity_constraints is not None:
+        config["params"]["capacity_constraints"] = scenario.capacity_constraints
     config.update(extra_config)
     return config
 

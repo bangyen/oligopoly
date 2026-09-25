@@ -322,7 +322,12 @@ class LinearCournotMarket(Market):
 
 
 class LinearBertrandMarket(Market):
-    """Bertrand competition with demand Q = alpha - beta*p (or segmented)."""
+    """Bertrand competition with demand Q = alpha - beta*p (or segmented).
+
+    By default each firm can serve at most 40% of the market
+    (``capacity_constraints``); set ``params["capacity_constraints"] = False``
+    for the textbook winner-take-all game.
+    """
 
     model = "bertrand"
     demand_type = "linear"
@@ -350,7 +355,9 @@ class LinearBertrandMarket(Market):
             costs,
             actions,
             fixed_costs,
-            use_capacity_constraints=True,
+            use_capacity_constraints=bool(
+                self._params.get("capacity_constraints", True)
+            ),
         )
 
     def nash(self, costs: list[float]) -> list[float]:

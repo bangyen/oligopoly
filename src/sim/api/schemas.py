@@ -198,6 +198,11 @@ class SimulationRequest(BaseModel):
         pattern="^(linear|isoelastic)$",
         description="Homogeneous-good demand curve",
     )
+    capacity_constraints: bool | None = Field(
+        default=None,
+        description="Linear bertrand only: cap each firm at 40% of the market "
+        "(default true); false gives the textbook winner-take-all game",
+    )
     seed: int | None = Field(None, description="Random seed for reproducibility")
     events: list[PolicyEventRequest] | None = Field(
         default_factory=list, description="Policy events to apply during simulation"

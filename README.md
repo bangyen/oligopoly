@@ -40,11 +40,10 @@ bertrand      # run a one-off Bertrand simulation
 | Equilibria | Linear, isoelastic and CES equilibria match closed forms to 1e-6 ([benchmarks](tests/benchmarks/)) |
 | Strategy Adaptation | Firms learn and evolve using Q-learning and Fictitious Play |
 
-Multi-round Bertrand runs use a capacity-constrained allocation by default
-(each firm can serve at most 40% of the market), so they deliberately depart
-from the winner-take-all textbook model that the equilibrium helper and
-benchmarks use. Pass `use_capacity_constraints=False` to `bertrand_simulation`
-for the textbook game.
+Multi-round linear Bertrand runs use a capacity-constrained allocation by
+default (each firm can serve at most 40% of the market), so they deliberately
+depart from the winner-take-all textbook model that the equilibrium helper and
+benchmarks use. Set `capacity_constraints: false` for the textbook game.
 
 ## Features
 
@@ -123,6 +122,7 @@ Tests mirror the source tree under `tests/unit/`. Non-obvious mappings:
 | `demand_type` | `"linear"` (default), `"isoelastic"` | Isoelastic uses `params: {"A", "elasticity"}` with Q(P) = (A/P)^e |
 | `enhanced_demand` | `{"demand_type": "ces", "elasticity", "market_size", "qualities"}` | Differentiated Bertrand; needs ≥2 firms; consumer surplus is reported as `null` |
 | `advanced_strategies` | `[{"firm_id", "strategy_type", ...}]` | Learners: `fictitious_play`, `q_learning`, `deep_q_learning`, `behavioral` (optional `learning_rate`, `memory_length`, `exploration_rate`). Collusion: two or more `cartel`/`collusive`/`opportunistic` firms form a cartel at their joint-profit optimum; a defection breaks it for 5 rounds |
+| `capacity_constraints` | `true` (default), `false` | Linear Bertrand only: `false` drops the 40%-of-market cap for textbook winner-take-all |
 | `market_evolution` | `{"growth_rate", "entry_cost", "exit_threshold", "innovation_rate"}` | Entries, exits and innovations show up in `/runs/{id}/events` |
 
 ```json
@@ -146,8 +146,8 @@ Known gaps and next steps, roughly in priority order:
 
 - [x] **Collusion everywhere** — cartels form at the members' joint-profit
       optimum in every demand system and survive market evolution.
-- [ ] **Bertrand capacity toggle** — expose the capacity-constrained vs
-      winner-take-all allocation for linear Bertrand runs in the API.
+- [x] **Bertrand capacity toggle** — `capacity_constraints: false` gives the
+      textbook winner-take-all game for linear Bertrand runs.
 - [ ] **CES consumer surplus** — report a money-metric surplus for CES runs
       instead of `null`.
 - [ ] **Dashboard support** — let the dashboard configure demand types,
