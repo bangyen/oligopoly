@@ -612,26 +612,3 @@ class BehavioralStrategy:
 
         # Ensure within bounds
         return float(max(min_bound, min(max_bound, action)))
-
-
-def create_advanced_strategy(strategy_type: str, **kwargs: Any) -> AdvancedStrategy:
-    """Factory function to create advanced strategies.
-
-    Args:
-        strategy_type: Type of strategy to create
-        **kwargs: Strategy-specific parameters
-
-    Returns:
-        Advanced strategy instance
-
-    Raises:
-        ValueError: If strategy type is unknown
-    """
-    if strategy_type == "fictitious_play":
-        return FictitiousPlayStrategy(**kwargs)
-    elif strategy_type == "deep_q_learning":
-        return DeepQLearningStrategy(**kwargs)
-    elif strategy_type == "behavioral":
-        return BehavioralStrategy(**kwargs)
-    else:
-        raise ValueError(f"Unknown advanced strategy type: {strategy_type}")

@@ -5,7 +5,7 @@ scenarios in the Cournot game implementation.
 """
 
 import math
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -13,8 +13,6 @@ from sim.games.cournot import (
     CournotResult,
     cournot_segmented_simulation,
     cournot_simulation,
-    parse_costs,
-    parse_quantities,
     validate_quantities,
 )
 from sim.models.models import DemandSegment, SegmentedDemand
@@ -176,39 +174,6 @@ class TestCournotSimulationAdditional:
                 )
             assert "Invalid cost structure" in str(exc_info.value)
 
-    def test_cournot_simulation_validation_warnings(self):
-        """Test cournot_simulation with validation warnings."""
-        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
-            # Mock validation result with warnings
-            mock_result = Mock()
-            mock_result.warnings = ["Warning: High market concentration"]
-            mock_validate.return_value = mock_result
-
-            with patch("sim.games.cournot.logger") as mock_logger:
-                cournot_simulation(
-                    a=100.0, b=1.0, costs=[10.0, 12.0], quantities=[20.0, 15.0]
-                )
-
-                # Should log the warning
-                mock_logger.warning.assert_called_once()
-                assert "Economic validation warning" in str(
-                    mock_logger.warning.call_args
-                )
-
-    def test_cournot_simulation_validation_failure_is_logged_only(self):
-        """A validation failure is logged and never rewrites the outcome."""
-        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
-            mock_validate.side_effect = EconomicValidationError("Validation failed")
-
-            with patch("sim.games.cournot.logger") as mock_logger:
-                result = cournot_simulation(
-                    a=100.0, b=1.0, costs=[10.0, 12.0], quantities=[20.0, 15.0]
-                )
-
-                assert result.quantities == [20.0, 15.0]
-                assert result.price == 65.0
-                mock_logger.warning.assert_called_once()
-
     def test_cournot_simulation_zero_total_quantity(self):
         """Test cournot_simulation with zero total quantity."""
         result = cournot_simulation(
@@ -322,58 +287,6 @@ class TestCournotSegmentedSimulationAdditional:
             exc_info.value
         )
 
-    def test_cournot_segmented_simulation_validation_warnings(self):
-        """Test cournot_segmented_simulation with validation warnings."""
-        segments = [
-            DemandSegment(alpha=100.0, beta=1.0, weight=0.6),
-            DemandSegment(alpha=80.0, beta=1.2, weight=0.4),
-        ]
-        segmented_demand = SegmentedDemand(segments=segments)
-
-        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
-            # Mock validation result with warnings
-            mock_result = Mock()
-            mock_result.warnings = ["Warning: High market concentration"]
-            mock_validate.return_value = mock_result
-
-            with patch("sim.games.cournot.logger") as mock_logger:
-                cournot_segmented_simulation(
-                    segmented_demand=segmented_demand,
-                    costs=[10.0, 12.0],
-                    quantities=[20.0, 15.0],
-                )
-
-                # Should log the warning
-                mock_logger.warning.assert_called_once()
-                assert "Economic validation warning" in str(
-                    mock_logger.warning.call_args
-                )
-
-    def test_cournot_segmented_simulation_validation_failure(self):
-        """Test cournot_segmented_simulation with validation failure."""
-        segments = [
-            DemandSegment(alpha=100.0, beta=1.0, weight=0.6),
-            DemandSegment(alpha=80.0, beta=1.2, weight=0.4),
-        ]
-        segmented_demand = SegmentedDemand(segments=segments)
-
-        with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
-            mock_validate.side_effect = EconomicValidationError("Validation failed")
-
-            with patch("sim.games.cournot.logger") as mock_logger:
-                result = cournot_segmented_simulation(
-                    segmented_demand=segmented_demand,
-                    costs=[10.0, 12.0],
-                    quantities=[20.0, 15.0],
-                )
-
-                # Should still return a result
-                assert result.price > 0
-                assert len(result.quantities) == 2
-                assert len(result.profits) == 2
-                # Should log the warning
-                mock_logger.warning.assert_called_once()
-
     def test_cournot_segmented_simulation_zero_total_quantity(self):
         """Test cournot_segmented_simulation with zero total quantity."""
         segments = [
@@ -425,89 +338,3 @@ class TestCournotSegmentedSimulationAdditional:
         )
         # weighted_alpha = 9.2, total_qty = 35 -> demand price clamps to 0
         assert result.price == 0.0
-
-
-class TestParseCosts:
-    """Test the parse_costs function."""
-
-    def test_parse_costs_valid(self):
-        """Test parse_costs with valid input."""
-        costs = parse_costs("10.0,20.0,30.0")
-        assert costs == [10.0, 20.0, 30.0]
-
-    def test_parse_costs_with_spaces(self):
-        """Test parse_costs with spaces."""
-        costs = parse_costs(" 10.0 , 20.0 , 30.0 ")
-        assert costs == [10.0, 20.0, 30.0]
-
-    def test_parse_costs_single_value(self):
-        """Test parse_costs with single value."""
-        costs = parse_costs("10.0")
-        assert costs == [10.0]
-
-    def test_parse_costs_empty_string(self):
-        """Test parse_costs with empty string."""
-        with pytest.raises(ValueError) as exc_info:
-            parse_costs("")
-        assert "Costs list cannot be empty" in str(exc_info.value)
-
-    def test_parse_costs_whitespace_only(self):
-        """Test parse_costs with whitespace only."""
-        with pytest.raises(ValueError) as exc_info:
-            parse_costs("   ")
-        assert "Costs list cannot be empty" in str(exc_info.value)
-
-    def test_parse_costs_invalid_format(self):
-        """Test parse_costs with invalid format."""
-        with pytest.raises(ValueError) as exc_info:
-            parse_costs("10.0,abc,30.0")
-        assert "Invalid costs format" in str(exc_info.value)
-
-    def test_parse_costs_empty_after_split(self):
-        """Test parse_costs with empty values after splitting."""
-        # Empty values are filtered out, so this should work
-        result = parse_costs("10.0,,30.0")
-        assert result == [10.0, 30.0]
-
-
-class TestParseQuantities:
-    """Test the parse_quantities function."""
-
-    def test_parse_quantities_valid(self):
-        """Test parse_quantities with valid input."""
-        quantities = parse_quantities("10.0,20.0,30.0")
-        assert quantities == [10.0, 20.0, 30.0]
-
-    def test_parse_quantities_with_spaces(self):
-        """Test parse_quantities with spaces."""
-        quantities = parse_quantities(" 10.0 , 20.0 , 30.0 ")
-        assert quantities == [10.0, 20.0, 30.0]
-
-    def test_parse_quantities_single_value(self):
-        """Test parse_quantities with single value."""
-        quantities = parse_quantities("10.0")
-        assert quantities == [10.0]
-
-    def test_parse_quantities_empty_string(self):
-        """Test parse_quantities with empty string."""
-        with pytest.raises(ValueError) as exc_info:
-            parse_quantities("")
-        assert "Quantities list cannot be empty" in str(exc_info.value)
-
-    def test_parse_quantities_whitespace_only(self):
-        """Test parse_quantities with whitespace only."""
-        with pytest.raises(ValueError) as exc_info:
-            parse_quantities("   ")
-        assert "Quantities list cannot be empty" in str(exc_info.value)
-
-    def test_parse_quantities_invalid_format(self):
-        """Test parse_quantities with invalid format."""
-        with pytest.raises(ValueError) as exc_info:
-            parse_quantities("10.0,abc,30.0")
-        assert "Invalid quantities format" in str(exc_info.value)
-
-    def test_parse_quantities_empty_after_split(self):
-        """Test parse_quantities with empty values after splitting."""
-        # Empty values are filtered out, so this should work
-        result = parse_quantities("10.0,,30.0")
-        assert result == [10.0, 30.0]

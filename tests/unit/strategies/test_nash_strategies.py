@@ -10,7 +10,6 @@ import pytest
 
 from sim.strategies.nash_strategies import (
     adaptive_nash_strategy,
-    bertrand_best_response,
     bertrand_nash_equilibrium,
     cournot_best_response,
     cournot_nash_equilibrium,
@@ -272,42 +271,6 @@ class TestCournotBestResponse:
 
         # Should return 0 when calculation would be negative
         assert quantity == 0.0
-
-
-class TestBertrandBestResponse:
-    """Test Bertrand best response calculations."""
-
-    def test_bertrand_best_response_single_firm(self):
-        """Test Bertrand best response for single firm."""
-        price = bertrand_best_response(
-            alpha=200.0, beta=2.0, my_cost=10.0, rival_prices=[]
-        )
-
-        # Should set monopoly price
-        expected_price = (200.0 + 2.0 * 10.0) / (2 * 2.0)  # 55.0
-        assert math.isclose(price, expected_price, abs_tol=1e-6)
-
-    def test_bertrand_best_response_undercut_rival(self):
-        """Test Bertrand best response to undercut rival."""
-        price = bertrand_best_response(
-            alpha=200.0, beta=2.0, my_cost=10.0, rival_prices=[50.0]
-        )
-
-        # Should undercut rival by small amount
-        assert price < 50.0
-        assert price >= 10.0  # At least marginal cost
-
-    def test_bertrand_best_response_rival_below_cost(self):
-        """Test Bertrand best response when rival prices below cost."""
-        price = bertrand_best_response(
-            alpha=200.0,
-            beta=2.0,
-            my_cost=10.0,
-            rival_prices=[5.0],  # Below my cost
-        )
-
-        # Should set price to marginal cost plus small markup (1.05)
-        assert math.isclose(price, 10.5, abs_tol=1e-6)
 
 
 class TestAdaptiveNashStrategy:

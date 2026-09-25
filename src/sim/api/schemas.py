@@ -20,11 +20,6 @@ class DemandSegmentConfig(BaseModel):
         ..., gt=0, le=1, description="Market share weight for this segment"
     )
 
-
-class ProductCharacteristicsConfig(BaseModel):
-    """Simplified configuration for product characteristics."""
-
-    quality: float = Field(default=1.0, gt=0, description="Product quality level")
     # Removed complex parameters: location, brand_strength, innovation_level
 
 
@@ -339,56 +334,3 @@ class RunDetail(BaseModel):
     created_at: str
     updated_at: str
     results: dict[str, Any] | None = None
-
-
-class HeatmapRequest(BaseModel):
-    """Request model for heatmap endpoint."""
-
-    model: str = Field(
-        ..., pattern="^(cournot|bertrand)$", description="Competition model type"
-    )
-    firm_i: int = Field(..., ge=0, description="Index of firm to compute surface for")
-    firm_j: int = Field(..., ge=0, description="Index of second firm in heatmap")
-    grid_size: int = Field(
-        ..., ge=5, le=50, description="Number of grid points per dimension"
-    )
-    action_range: tuple[float, float] = Field(
-        ..., description="Min and max values for action grid (quantity or price)"
-    )
-    other_actions: list[float] = Field(
-        ..., description="Fixed actions for all other firms"
-    )
-    params: CournotParams | BertrandParams | None = Field(
-        default=None,
-        description="Typed demand parameters. Use CournotParams for cournot, BertrandParams for bertrand.",
-    )
-    firms: list[FirmConfig] = Field(
-        ..., min_length=2, max_length=10, description="Firm configurations"
-    )
-    segments: list[DemandSegmentConfig] | None = Field(
-        None,
-        description="Segmented demand configuration (overrides single-segment params)",
-    )
-
-
-class HeatmapResponse(BaseModel):
-    """Response model for heatmap endpoint."""
-
-    model: str = Field(..., description="Competition model type")
-    firm_i: int = Field(..., description="Index of firm surface computed for")
-    firm_j: int = Field(..., description="Index of second firm in heatmap")
-    profit_surface: list[list[float]] = Field(
-        ..., description="2D array of profits for firm_i"
-    )
-    market_share_surface: list[list[float]] | None = Field(
-        None, description="2D array of market shares for firm_i (Bertrand only)"
-    )
-    action_i_grid: list[float] = Field(
-        ..., description="Grid values for firm_i actions (quantities or prices)"
-    )
-    action_j_grid: list[float] = Field(
-        ..., description="Grid values for firm_j actions (quantities or prices)"
-    )
-    computation_time_ms: float = Field(
-        ..., description="Computation time in milliseconds"
-    )

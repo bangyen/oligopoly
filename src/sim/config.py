@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = Field(
-        default="postgresql://user:password@localhost/oligopoly",
+        default="sqlite:///oligopoly.db",
         description="Database connection URL",
     )
 

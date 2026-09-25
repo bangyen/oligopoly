@@ -8,6 +8,11 @@ installed -- NOT from an editable install, which puts the repo root on
 * modules importing through a ``src.`` prefix that does not ship
 * shipped subpackages missing ``__init__.py``
 * console scripts pointing at names the package does not export
+* core modules that need the optional ``api`` extra
+
+Pass ``--core`` when the wheel was installed without extras: only modules
+outside ``sim.api`` (and the database config it uses) are imported, which
+proves the simulation core works with just its base dependencies.
 """
 
 import importlib
@@ -16,15 +21,19 @@ import sys
 from importlib.metadata import entry_points
 from typing import Any
 
-CONSOLE_SCRIPTS = ("oligopoly", "cournot", "bertrand")
+CONSOLE_SCRIPTS = ("oligopoly",)
+# Modules that need the `api` extra
+API_MODULES = ("sim.api", "sim.config", "sim.database")
 
 
-def check_imports() -> list[str]:
+def check_imports(core_only: bool = False) -> list[str]:
     """Import every module under ``sim`` and collect failures."""
     import sim
 
     failures: list[str] = []
     for mod in pkgutil.walk_packages(sim.__path__, prefix="sim."):
+        if core_only and mod.name.startswith(API_MODULES):
+            continue
         try:
             importlib.import_module(mod.name)
         except Exception as exc:  # noqa: BLE001 - report, don't mask
@@ -64,13 +73,16 @@ def check_console_scripts() -> list[str]:
 
 
 def main() -> int:
-    print("Importing every shipped sim.* module...")
-    failures = check_imports()
+    core_only = "--core" in sys.argv[1:]
+    scope = "core" if core_only else "every shipped"
+    print(f"Importing {scope} sim.* module...")
+    failures = check_imports(core_only)
     if not failures:
-        print("  all sim.* modules import cleanly")
+        print("  all imported cleanly")
 
-    print("Verifying console scripts...")
-    failures += check_console_scripts()
+    if not core_only:
+        print("Verifying console scripts...")
+        failures += check_console_scripts()
 
     if failures:
         print("\nFAILED:")
