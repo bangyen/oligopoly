@@ -1,12 +1,5 @@
-"""Event system for oligopoly simulation.
+"""Replay of persisted simulation runs, frame by frame with their events."""
 
-This module provides comprehensive event tracking and logging capabilities
-for simulation runs, including collusion, defection, policy shocks, and
-market dynamics.
-"""
-
-from .event_logger import EventLogger
-from .event_types import EventType
 from .replay import ReplayFrame, ReplaySystem
 
-__all__ = ["EventType", "EventLogger", "ReplayFrame", "ReplaySystem"]
+__all__ = ["ReplayFrame", "ReplaySystem"]

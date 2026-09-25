@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 
 from dashboard.main import _session_factory, app
 from sim.models.models import Run
-from sim.strategies.nash_strategies import cournot_nash_equilibrium
 
 
 @pytest.fixture
@@ -78,14 +77,3 @@ def test_scenario_runs_are_not_retained(client) -> None:
         assert db.query(Run).count() == 0
     finally:
         db.close()
-
-
-def test_metrics_use_asymmetric_nash(client) -> None:
-    """The old formula (a - c_i) / (b (n + 1)) is wrong when costs differ."""
-    data = client.get(
-        "/api/metrics", params={"a": 100, "b": 1, "costs": "10,20,30"}
-    ).json()
-    quantities, price, _ = cournot_nash_equilibrium(100.0, 1.0, [10.0, 20.0, 30.0])
-    assert data["nash_quantities"] == pytest.approx(quantities)
-    assert data["nash_price"] == pytest.approx(price)
-    assert data["nash_quantities"] == pytest.approx([30.0, 20.0, 10.0])

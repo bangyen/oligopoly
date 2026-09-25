@@ -1,56 +1,18 @@
-# Oligopoly Analytics Dashboard
+# Scenario Lab
 
-A minimalist, Bauhaus-inspired dashboard for visualizing oligopoly market simulations.
-
-## Running the Dashboard
+A browser front end for the simulation engine. Pick a competition model and a
+demand system (linear, isoelastic or CES). Give each firm a strategy: adaptive
+Nash, a learning algorithm, or a cartel member. Optionally turn on market
+evolution. The lab charts actions, profits, price, HHI and consumer surplus,
+and lists cartel, entry, exit and innovation events.
 
 ```bash
-# From project root
-source venv/bin/activate
-python3 dashboard/main.py
+pip install -e ".[api]"
+python dashboard/main.py   # http://localhost:5050
 ```
 
-Visit **http://localhost:5050** in your browser.
+Or with Docker: `just docker-dashboard`.
 
-## Features
-
-### Views
-
-- **Overview**: Market metrics, profit distribution, and market share visualization
-- **Cournot**: Quantity competition dynamics over 50 rounds
-- **Bertrand**: Price competition dynamics over 50 rounds  
-- **Metrics**: Detailed Nash equilibrium calculations and firm data
-- **Scenario Lab**: Runs the full simulation engine with any demand system
-  (linear, isoelastic, CES), a strategy per firm (adaptive Nash, learning or
-  collusion), Bertrand capacity limits and market evolution; charts actions,
-  profits, price, HHI and consumer surplus and lists cartel, entry, exit and
-  innovation events
-
-### Interactions
-
-- Navigation sidebar for switching between views
-- Toggle buttons on charts to switch between quantities/prices/profits
-- Refresh button to reload all data
-- Run Simulation button to execute new simulations
-
-## Design System
-
-**Typography**: Space Grotesk  
-**Colors**: Red (#E63946), Navy (#1D3557), Steel Blue (#457B9D)  
-**Style**: Flat colors, sharp edges, custom SVG icons, geometric layouts
-
-## API Endpoints
-
-- `GET /` - Dashboard UI
-- `GET /api/metrics` - Nash equilibrium metrics
-- `POST /api/scenario` - Run a scenario (same request body as the API's `POST /simulate`)
-- `GET /api/simulation/cournot` - 50-round Cournot simulation
-- `GET /api/simulation/bertrand` - 50-round Bertrand simulation
-
-## Tech Stack
-
-- **Backend**: Flask (Python)
-- **Frontend**: Vanilla HTML/CSS/JavaScript
-- **Charts**: Chart.js
-- **Design**: Custom CSS with design tokens
-
+`POST /api/scenario` takes the same request body as the REST API's
+`POST /simulate` and runs it against a private in-memory database, so the lab
+supports exactly the options the API does.

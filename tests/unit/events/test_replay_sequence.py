@@ -8,7 +8,6 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from sim.events.event_types import EventType
 from sim.events.replay import ReplaySystem
 from sim.models.models import Base, Event, Result, Run
 
@@ -125,14 +124,14 @@ class TestReplaySequence:
         event1 = Event(
             run_id=test_run.id,
             round_idx=1,
-            event_type=EventType.CARTEL_FORMED.value,
+            event_type="cartel_formed",
             description="Cartel formed with 3 firms",
             event_data={"icon": "🤝", "category": "collusion"},
         )
         event2 = Event(
             run_id=test_run.id,
             round_idx=2,
-            event_type=EventType.DEFECTION_DETECTED.value,
+            event_type="defection_detected",
             firm_id=1,
             description="Firm 1 defected from cartel",
             event_data={"icon": "⚔️", "category": "collusion"},
@@ -222,21 +221,21 @@ class TestReplaySequence:
             Event(
                 run_id=test_run.id,
                 round_idx=0,
-                event_type=EventType.CARTEL_FORMED.value,
+                event_type="cartel_formed",
                 description="Cartel formed",
                 event_data={"icon": "🤝", "category": "collusion"},
             ),
             Event(
                 run_id=test_run.id,
                 round_idx=1,
-                event_type=EventType.TAX_APPLIED.value,
+                event_type="tax_applied",
                 description="Tax applied",
                 event_data={"icon": "📈", "category": "policy", "policy_value": 0.2},
             ),
             Event(
                 run_id=test_run.id,
                 round_idx=2,
-                event_type=EventType.FIRM_ENTRY.value,
+                event_type="firm_entry",
                 description="New firm entered",
                 event_data={"icon": "🚀", "category": "market", "cost": 15.0},
             ),
