@@ -184,10 +184,7 @@ class TestCournotSimulationAdditional:
             mock_result.warnings = ["Warning: High market concentration"]
             mock_validate.return_value = mock_result
 
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
-
+            with patch("sim.games.cournot.logger") as mock_logger:
                 cournot_simulation(
                     a=100.0, b=1.0, costs=[10.0, 12.0], quantities=[20.0, 15.0]
                 )
@@ -198,28 +195,19 @@ class TestCournotSimulationAdditional:
                     mock_logger.warning.call_args
                 )
 
-    def test_cournot_simulation_validation_failure_with_enforcement(self):
-        """Test cournot_simulation with validation failure and constraint enforcement."""
+    def test_cournot_simulation_validation_failure_is_logged_only(self):
+        """A validation failure is logged and never rewrites the outcome."""
         with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
             mock_validate.side_effect = EconomicValidationError("Validation failed")
 
-            with patch(
-                "sim.games.cournot.enforce_economic_constraints"
-            ) as mock_enforce:
-                mock_enforce.return_value = [18.0, 12.0]  # Enforced quantities
+            with patch("sim.games.cournot.logger") as mock_logger:
+                result = cournot_simulation(
+                    a=100.0, b=1.0, costs=[10.0, 12.0], quantities=[20.0, 15.0]
+                )
 
-                with patch("logging.getLogger") as mock_get_logger:
-                    mock_logger = Mock()
-                    mock_get_logger.return_value = mock_logger
-
-                    result = cournot_simulation(
-                        a=100.0, b=1.0, costs=[10.0, 12.0], quantities=[20.0, 15.0]
-                    )
-
-                    # Should use enforced quantities
-                    assert result.quantities == [18.0, 12.0]
-                    # Should log the warning
-                    mock_logger.warning.assert_called_once()
+                assert result.quantities == [20.0, 15.0]
+                assert result.price == 65.0
+                mock_logger.warning.assert_called_once()
 
     def test_cournot_simulation_zero_total_quantity(self):
         """Test cournot_simulation with zero total quantity."""
@@ -238,11 +226,9 @@ class TestCournotSimulationAdditional:
             costs=[10.0, 12.0],
             quantities=[60.0, 50.0],  # Total = 110 > 100
         )
-        assert result.price == 100.0  # Should be a (max price) when no firms produce
-        assert result.quantities == [0.0, 0.0]  # Firms exit due to unprofitability
-        # Profits should be zero (no production)
-        assert result.profits[0] == 0.0
-        assert result.profits[1] == 0.0
+        assert result.price == 0.0
+        assert result.quantities == [60.0, 50.0]
+        assert result.profits == [-600.0, -600.0]
 
 
 class TestCournotSegmentedSimulationAdditional:
@@ -350,10 +336,7 @@ class TestCournotSegmentedSimulationAdditional:
             mock_result.warnings = ["Warning: High market concentration"]
             mock_validate.return_value = mock_result
 
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
-
+            with patch("sim.games.cournot.logger") as mock_logger:
                 cournot_segmented_simulation(
                     segmented_demand=segmented_demand,
                     costs=[10.0, 12.0],
@@ -362,7 +345,7 @@ class TestCournotSegmentedSimulationAdditional:
 
                 # Should log the warning
                 mock_logger.warning.assert_called_once()
-                assert "Segmented demand validation warning" in str(
+                assert "Economic validation warning" in str(
                     mock_logger.warning.call_args
                 )
 
@@ -377,10 +360,7 @@ class TestCournotSegmentedSimulationAdditional:
         with patch("sim.games.cournot.validate_simulation_result") as mock_validate:
             mock_validate.side_effect = EconomicValidationError("Validation failed")
 
-            with patch("logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
-
+            with patch("sim.games.cournot.logger") as mock_logger:
                 result = cournot_segmented_simulation(
                     segmented_demand=segmented_demand,
                     costs=[10.0, 12.0],
@@ -426,13 +406,12 @@ class TestCournotSegmentedSimulationAdditional:
             costs=[10.0, 12.0],
             quantities=[100.0, 50.0],  # Very high quantities
         )
-        # Price should be max(0, (weighted_alpha - total_qty) / weighted_beta)
-        # But firms may exit due to unprofitability, changing the calculation
-        # With high quantities, firms may exit, so price calculation changes
-        assert result.price > 0  # Price should be positive
+        # Price is max(0, (weighted_alpha - total_qty) / weighted_beta) = 0
+        assert result.price == 0.0
+        assert result.quantities == [100.0, 50.0]
 
-    def test_cournot_segmented_simulation_minimum_viable_price(self):
-        """Test cournot_segmented_simulation with minimum viable price enforcement."""
+    def test_cournot_segmented_simulation_no_price_floor(self):
+        """Price comes from demand alone; there is no floor at marginal cost."""
         segments = [
             DemandSegment(alpha=10.0, beta=1.0, weight=0.6),  # Low alpha
             DemandSegment(alpha=8.0, beta=1.2, weight=0.4),
@@ -444,8 +423,8 @@ class TestCournotSegmentedSimulationAdditional:
             costs=[5.0, 6.0],
             quantities=[20.0, 15.0],
         )
-        # Price should be at least min(costs) + 0.1 = 5.1
-        assert result.price >= 5.1
+        # weighted_alpha = 9.2, total_qty = 35 -> demand price clamps to 0
+        assert result.price == 0.0
 
 
 class TestParseCosts:

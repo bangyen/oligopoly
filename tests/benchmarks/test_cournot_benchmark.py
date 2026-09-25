@@ -69,15 +69,10 @@ def test_no_profitable_unilateral_deviation(
         assert best <= profits[i] + TOL
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known engine issue: cournot_simulation zeroes out firms priced below "
-        "cost after the round and recomputes the price, so a low-cost firm can "
-        "flood the market to force a rival out and beat its Nash profit."
-    ),
-)
 def test_engine_has_no_profitable_deviation_from_nash() -> None:
+    """Regression: the engine once removed below-cost rivals after the round and
+    recomputed the price, letting a low-cost firm flood the market for profit.
+    """
     a, b, costs = 100.0, 1.0, [10.0, 20.0]
     quantities, _, profits = cournot_nash_equilibrium(a, b, costs)
     for q in np.linspace(0.0, a / b, 2001):
