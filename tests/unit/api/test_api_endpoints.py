@@ -7,12 +7,8 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from sim.api import (
-    RunDetail,
-    RunSummary,
-    get_run_detail,
-    list_runs,
-)
+from sim.api.runs import get_run_detail, list_runs
+from sim.api.schemas import RunDetail, RunSummary
 
 
 class TestRunSummary:
@@ -174,9 +170,7 @@ class TestGetRunDetail:
 
         # Mock query result for Result (empty list to avoid iteration issues)
         mock_result_query = Mock()
-        mock_result_query.filter.return_value.order_by.return_value.all.return_value = (
-            []
-        )
+        mock_result_query.filter.return_value.order_by.return_value.all.return_value = []
 
         # Set up mock_db.query to return different mocks based on the model
         def mock_query_side_effect(model):
